@@ -10,10 +10,11 @@ import { TagPanel } from './TagPanel'
 
 interface Props {
   build: Build
+  mode: 'view' | 'edit'
   onChange: (patch: Partial<Build>) => void
 }
 
-export function ItemSlotList({ build, onChange }: Props) {
+export function ItemSlotList({ build, mode, onChange }: Props) {
   const { items } = useGameData()
   const [preview, setPreview] = useState<Record<string, string>>({})
 
@@ -72,9 +73,13 @@ export function ItemSlotList({ build, onChange }: Props) {
     })
   }
 
+  if (mode === 'view' && build.itemSlots.every((s) => s.options.length === 0)) {
+    return <div style={{ color: 'var(--text-dim)' }}>No items in this build yet.</div>
+  }
+
   return (
     <div>
-      <TagPanel tags={allTags} />
+      {mode === 'edit' && <TagPanel tags={allTags} />}
       {build.itemSlots.map((slot) => (
         <ItemSlotRow
           key={slot.id}
@@ -82,6 +87,7 @@ export function ItemSlotList({ build, onChange }: Props) {
           allSlots={build.itemSlots}
           items={items}
           allTags={allTags}
+          mode={mode}
           previewSelectedId={preview[slot.id]}
           excludedIds={excludedIds}
           onSlotChange={(patch) => updateSlot(slot.id, patch)}
@@ -90,9 +96,11 @@ export function ItemSlotList({ build, onChange }: Props) {
           onClickOption={(optionId) => clickOption(slot.id, optionId)}
         />
       ))}
-      <button type="button" onClick={addSlot}>
-        + Add slot
-      </button>
+      {mode === 'edit' && (
+        <button type="button" onClick={addSlot}>
+          + Add slot
+        </button>
+      )}
     </div>
   )
 }

@@ -10,7 +10,15 @@ export function BuildCard({ build }: { build: Build }) {
   const champion = champions.find((c) => c.id === build.champion.id)
 
   return (
-    <div style={{ border: '1px solid #444', borderRadius: 8, padding: 12, width: 160 }}>
+    <div
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        padding: 14,
+        width: 168,
+        background: 'var(--bg-panel)',
+      }}
+    >
       <Link to={`/build/${build.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         {champion && (
           <img
@@ -18,15 +26,21 @@ export function BuildCard({ build }: { build: Build }) {
             alt={champion.name}
             width={64}
             height={64}
-            style={{ borderRadius: 6 }}
+            style={{ borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         )}
-        <div>{build.title}</div>
-        <small>{new Date(build.updatedAt).toLocaleDateString()}</small>
+        <div style={{ marginTop: 8, fontWeight: 600, color: 'var(--text-heading)' }}>{build.title}</div>
+        <small style={{ color: 'var(--text-dim)' }}>{new Date(build.updatedAt).toLocaleDateString()}</small>
       </Link>
-      <button type="button" onClick={() => toggleFavorite(build.id)}>
-        {build.favorite ? '★ Favorite' : '☆ Favorite'}
-      </button>
+      <div style={{ marginTop: 8 }}>
+        <button
+          type="button"
+          onClick={() => toggleFavorite(build.id)}
+          style={build.favorite ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : undefined}
+        >
+          {build.favorite ? '★ Favorite' : '☆ Favorite'}
+        </button>
+      </div>
     </div>
   )
 }

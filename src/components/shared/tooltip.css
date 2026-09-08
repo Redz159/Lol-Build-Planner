@@ -1,0 +1,61 @@
+.tooltip-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-bubble {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 280px;
+  background: linear-gradient(180deg, #1c222c 0%, #12161d 100%);
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.tooltip-title {
+  color: var(--gold-bright);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.tooltip-gold {
+  color: var(--gold);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.tooltip-desc {
+  color: var(--text-dim);
+}
+
+.tooltip-desc mainText,
+.tooltip-desc stats {
+  display: block;
+}
+
+.tooltip-desc attention {
+  color: var(--gold-bright);
+  font-weight: 600;
+}
+
+.tooltip-desc passive,
+.tooltip-desc active {
+  display: block;
+  margin-top: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tooltip-desc rarityMythic {
+  color: #ff8b3d;
+}

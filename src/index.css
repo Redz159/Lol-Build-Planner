@@ -1,8 +1,81 @@
 :root {
-  color-scheme: light dark;
-  font: 16px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
+  font: 15px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --bg: #0a0e14;
+  --bg-panel: #161b22;
+  --bg-panel-raised: #1c222c;
+  --border: #2a3140;
+  --border-strong: #3a4356;
+  --text: #d7dae0;
+  --text-dim: #8a94a6;
+  --text-heading: #f0e6d2;
+  --gold: #c8aa6e;
+  --gold-bright: #f0e6d2;
+  --accent: #5fa8ff;
+  --danger: #e05f5f;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--gold);
+  background: #232b38;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input[type='text'],
+input[type='search'],
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+input[type='text']:focus,
+select:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+details summary:hover {
+  color: var(--text);
 }

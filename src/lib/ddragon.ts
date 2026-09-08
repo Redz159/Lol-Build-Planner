@@ -28,7 +28,7 @@ export async function getChampions(): Promise<DDragonChampion[]> {
 }
 
 interface RawDDragonItem extends DDragonItem {
-  gold: { purchasable: boolean }
+  gold: { total: number; purchasable: boolean }
   maps: Record<string, boolean>
 }
 
@@ -39,7 +39,14 @@ export async function getItems(): Promise<DDragonItem[]> {
   )
   return Object.entries(raw.data)
     .filter(([, item]) => item.gold.purchasable && item.maps['11'])
-    .map(([id, item]) => ({ id, name: item.name, image: item.image }))
+    .map(([id, item]) => ({
+      id,
+      name: item.name,
+      description: item.description,
+      image: item.image,
+      tags: item.tags,
+      gold: { total: item.gold.total },
+    }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 

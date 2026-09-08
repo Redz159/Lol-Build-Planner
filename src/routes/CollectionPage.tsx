@@ -31,8 +31,8 @@ export function CollectionPage() {
   if (error) return <div>Failed to load game data: {error}</div>
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>My collection</h1>
+    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 28 }}>My collection</h1>
       <SearchAndFilterBar
         search={search}
         onSearchChange={setSearch}
@@ -41,11 +41,11 @@ export function CollectionPage() {
         sortKey={sortKey}
         onSortKeyChange={setSortKey}
       />
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <NewBuildButton />
         <ImportBuildButton />
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 20 }}>
         {visibleBuilds.map((build) => (
           <BuildCard key={build.id} build={build} />
         ))}

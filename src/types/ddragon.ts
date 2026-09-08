@@ -8,7 +8,10 @@ export interface DDragonChampion {
 export interface DDragonItem {
   id: string
   name: string
+  description: string
   image: { full: string }
+  tags: string[]
+  gold: { total: number }
 }
 
 export interface DDragonRune {

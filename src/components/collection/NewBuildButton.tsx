@@ -41,7 +41,7 @@ export function NewBuildButton() {
     setOpen(false)
     setChampionId('')
     setTitle('')
-    navigate(`/build/${build.id}`)
+    navigate(`/build/${build.id}`, { state: { startInEdit: true } })
   }
 
   return (

@@ -29,7 +29,7 @@ export function RunePicker({ value, onChange }: Props) {
     <div>
       <div style={{ display: 'flex', gap: 24, marginBottom: 12 }}>
         <div>
-          <div>Primary</div>
+          <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Primary</div>
           <RuneTreeSelector
             runeTrees={runeTrees}
             selectedId={value.primaryTreeId}
@@ -37,7 +37,7 @@ export function RunePicker({ value, onChange }: Props) {
           />
         </div>
         <div>
-          <div>Secondary</div>
+          <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Secondary</div>
           <RuneTreeSelector
             runeTrees={runeTrees}
             selectedId={value.secondaryTreeId}
@@ -73,7 +73,7 @@ export function RunePicker({ value, onChange }: Props) {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <div>Stat shards</div>
+        <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Stat shards</div>
         <StatShardRow
           options={OFFENSE_SHARDS}
           selectedId={value.shards.offense}
