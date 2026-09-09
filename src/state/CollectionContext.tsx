@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useReducer, useRef, type ReactNode } from 'react'
 import type { Build } from '../types/build'
 import type { Collection } from '../types/collection'
 import { loadCollection, saveCollection } from '../lib/storage'
+
+const MAX_UNDO_HISTORY = 50
 
 type Action =
   | { type: 'ADD_BUILD'; build: Build }
@@ -50,16 +52,40 @@ const CollectionContext = createContext<CollectionApi | null>(null)
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadCollection)
+  const historyRef = useRef<Collection[]>([])
 
   useEffect(() => {
     saveCollection(state)
   }, [state])
 
+  // Ctrl/Cmd+Z undoes the last mutation, unless a text field has focus (so native
+  // text-undo in inputs still works).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+      const target = e.target as HTMLElement | null
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return
+      const stack = historyRef.current
+      const previous = stack[stack.length - 1]
+      if (!previous) return
+      e.preventDefault()
+      historyRef.current = stack.slice(0, -1)
+      dispatch({ type: 'REPLACE_ALL', collection: previous })
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const withHistory = (action: Action) => {
+    historyRef.current = [...historyRef.current, state].slice(-MAX_UNDO_HISTORY)
+    dispatch(action)
+  }
+
   const api: CollectionApi = {
     builds: state.builds,
-    addBuild: (build) => dispatch({ type: 'ADD_BUILD', build }),
-    updateBuild: (build) => dispatch({ type: 'UPDATE_BUILD', build }),
-    deleteBuild: (id) => dispatch({ type: 'DELETE_BUILD', id }),
+    addBuild: (build) => withHistory({ type: 'ADD_BUILD', build }),
+    updateBuild: (build) => withHistory({ type: 'UPDATE_BUILD', build }),
+    deleteBuild: (id) => withHistory({ type: 'DELETE_BUILD', id }),
     duplicateBuild: (id) => {
       const source = state.builds.find((b) => b.id === id)
       if (!source) return
@@ -71,10 +97,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
         createdAt: now,
         updatedAt: now,
       }
-      dispatch({ type: 'DUPLICATE_BUILD', id, newBuild })
+      withHistory({ type: 'DUPLICATE_BUILD', id, newBuild })
     },
-    toggleFavorite: (id) => dispatch({ type: 'TOGGLE_FAVORITE', id }),
-    replaceAll: (collection) => dispatch({ type: 'REPLACE_ALL', collection }),
+    toggleFavorite: (id) => withHistory({ type: 'TOGGLE_FAVORITE', id }),
+    replaceAll: (collection) => withHistory({ type: 'REPLACE_ALL', collection }),
   }
 
   return <CollectionContext.Provider value={api}>{children}</CollectionContext.Provider>

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { newId } from '../../lib/id'
-import { EMPTY_RUNE_SELECTION } from '../../types/runes'
 import type { Build } from '../../types/build'
 
 export function NewBuildButton() {
@@ -30,7 +29,7 @@ export function NewBuildButton() {
       id: newId(),
       champion: { id: champion.id, name: champion.name },
       title: title.trim() || champion.name,
-      runes: EMPTY_RUNE_SELECTION,
+      runePages: [],
       itemSlots: [],
       customTags: [],
       favorite: false,

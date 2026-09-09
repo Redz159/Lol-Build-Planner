@@ -13,7 +13,7 @@ export function exportBuild(build: Build): void {
 export async function importBuildFile(file: File): Promise<Build> {
   const text = await file.text()
   const parsed = JSON.parse(text) as Build
-  if (!parsed.id || !parsed.champion || !parsed.runes || !Array.isArray(parsed.itemSlots)) {
+  if (!parsed.id || !parsed.champion || !Array.isArray(parsed.runePages) || !Array.isArray(parsed.itemSlots)) {
     throw new Error('Invalid build file')
   }
   return parsed

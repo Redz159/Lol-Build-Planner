@@ -1,21 +1,26 @@
-export interface RuneSelection {
-  primaryTreeId: number
-  keystoneId: number
-  primaryRuneIds: number[]
-  secondaryTreeId: number
-  secondaryRuneIds: number[]
-  shards: {
-    offense: number
-    flex: number
-    defense: number
-  }
+export interface ShardSelection {
+  offense: number[]
+  flex: number[]
+  defense: number[]
 }
 
-export const EMPTY_RUNE_SELECTION: RuneSelection = {
-  primaryTreeId: 0,
-  keystoneId: 0,
-  primaryRuneIds: [],
-  secondaryTreeId: 0,
-  secondaryRuneIds: [],
-  shards: { offense: 0, flex: 0, defense: 0 },
+export const EMPTY_SHARDS: ShardSelection = { offense: [], flex: [], defense: [] }
+
+export interface RuneVariant {
+  id: string
+  secondaryTreeId: number
+  secondaryRuneIds: number[]
+  preferredSecondaryRuneIds: number[]
+  shards: ShardSelection
+  preferredShards: ShardSelection
+}
+
+export interface RunePage {
+  id: string
+  primaryTreeId: number
+  keystoneId: number
+  preferredKeystone: boolean
+  primaryRuneIds: number[]
+  preferredPrimaryRuneIds: number[]
+  variants: RuneVariant[]
 }

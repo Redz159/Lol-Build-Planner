@@ -27,12 +27,19 @@ export function CollectionPage() {
     })
   }, [builds, search, favoritesOnly, sortKey])
 
-  if (loading) return <div>Loading game data...</div>
-  if (error) return <div>Failed to load game data: {error}</div>
+  if (loading)
+    return <div style={{ padding: 32, color: 'var(--text-dim)' }}>Loading game data...</div>
+  if (error)
+    return (
+      <div style={{ padding: 32, color: 'var(--danger)' }}>Failed to load game data: {error}</div>
+    )
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 28 }}>My collection</h1>
+    <div style={{ padding: '32px 28px', maxWidth: 1160, margin: '0 auto' }}>
+      <h1 style={{ fontSize: 32, marginBottom: 4 }}>My collection</h1>
+      <div style={{ color: 'var(--text-dim)', fontSize: 13, marginBottom: 22 }}>
+        {builds.length} {builds.length === 1 ? 'build' : 'builds'} saved
+      </div>
       <SearchAndFilterBar
         search={search}
         onSearchChange={setSearch}
@@ -41,11 +48,11 @@ export function CollectionPage() {
         sortKey={sortKey}
         onSortKeyChange={setSortKey}
       />
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
         <NewBuildButton />
         <ImportBuildButton />
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 26 }}>
         {visibleBuilds.map((build) => (
           <BuildCard key={build.id} build={build} />
         ))}

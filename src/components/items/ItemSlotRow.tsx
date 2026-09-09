@@ -67,12 +67,10 @@ export function ItemSlotRow({
 
   return (
     <div
+      className="panel"
       style={{
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 10,
-        background: 'var(--bg-panel)',
+        padding: 14,
+        marginBottom: 12,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -94,13 +92,13 @@ export function ItemSlotRow({
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         {slot.options.map((option) => {
           const item = items.find((i) => i.id === option.itemId)
           const autoTags = item ? getAutoStatTags(item.tags) : []
           const assignedTags = allTags.filter((t) => option.tagIds.includes(t.id))
           return (
-            <div key={option.id} style={{ textAlign: 'center', width: 130 }}>
+            <div key={option.id} style={{ textAlign: 'center', width: 140 }}>
               <ItemOptionIcon
                 option={option}
                 item={item}

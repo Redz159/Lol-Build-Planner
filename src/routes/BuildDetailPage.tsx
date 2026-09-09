@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCollection } from '../state/CollectionContext'
 import { Tabs } from '../components/shared/Tabs'
-import { RunePicker } from '../components/runes/RunePicker'
-import { RuneSummary } from '../components/runes/RuneSummary'
+import { RunePagesEditor } from '../components/runes/RunePagesEditor'
+import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemSlotList } from '../components/items/ItemSlotList'
 import { exportBuild } from '../lib/exportImport'
 
@@ -26,9 +26,19 @@ export function BuildDetailPage() {
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: '32px 28px', maxWidth: 1160, margin: '0 auto' }}>
       <Link to="/">&larr; Back to collection</Link>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 20px', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          margin: '16px 0 22px',
+          paddingBottom: 20,
+          borderBottom: '1px solid var(--border)',
+          flexWrap: 'wrap',
+        }}
+      >
         {editingTitle ? (
           <>
             <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} />
@@ -90,9 +100,9 @@ export function BuildDetailPage() {
             label: 'Runes',
             content:
               mode === 'edit' ? (
-                <RunePicker value={build.runes} onChange={(runes) => save({ runes })} />
+                <RunePagesEditor pages={build.runePages} onChange={(runePages) => save({ runePages })} />
               ) : (
-                <RuneSummary value={build.runes} />
+                <RunePagesViewer pages={build.runePages} />
               ),
           },
           {

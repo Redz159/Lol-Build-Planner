@@ -10,33 +10,40 @@ export function BuildCard({ build }: { build: Build }) {
   const champion = champions.find((c) => c.id === build.champion.id)
 
   return (
-    <div
-      style={{
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        padding: 14,
-        width: 168,
-        background: 'var(--bg-panel)',
-      }}
-    >
+    <div className="card" style={{ padding: 16, width: 184 }}>
       <Link to={`/build/${build.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         {champion && (
           <img
             src={championImageUrl(champion.image.full)}
             alt={champion.name}
-            width={64}
-            height={64}
-            style={{ borderRadius: 6, border: '1px solid var(--border-strong)' }}
+            width={88}
+            height={88}
+            style={{ borderRadius: 8, border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-sm)' }}
           />
         )}
-        <div style={{ marginTop: 8, fontWeight: 600, color: 'var(--text-heading)' }}>{build.title}</div>
+        <div
+          style={{
+            marginTop: 10,
+            fontWeight: 600,
+            color: 'var(--text-heading)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {build.title}
+        </div>
         <small style={{ color: 'var(--text-dim)' }}>{new Date(build.updatedAt).toLocaleDateString()}</small>
       </Link>
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 10 }}>
         <button
           type="button"
           onClick={() => toggleFavorite(build.id)}
-          style={build.favorite ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : undefined}
+          style={
+            build.favorite
+              ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)', width: '100%' }
+              : { width: '100%' }
+          }
         >
           {build.favorite ? '★ Favorite' : '☆ Favorite'}
         </button>

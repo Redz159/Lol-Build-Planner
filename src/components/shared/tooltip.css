@@ -6,20 +6,32 @@
 .tooltip-bubble {
   position: absolute;
   z-index: 100;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
   max-width: 280px;
   background: linear-gradient(180deg, #1c222c 0%, #12161d 100%);
   border: 1px solid var(--gold);
-  border-radius: 6px;
-  padding: 10px 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+  padding: 10px 13px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--text);
   pointer-events: none;
+  animation: tooltip-in 0.12s ease-out;
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .tooltip-title {

@@ -4,30 +4,60 @@ import { Tooltip } from '../shared/Tooltip'
 
 interface Props {
   options: StatShardOption[]
-  selectedId: number
-  onSelect: (id: number) => void
+  selectedIds: number[]
+  preferredIds?: number[]
+  readOnly?: boolean
+  accentColor?: string
+  onSelect?: (id: number, preferred: boolean) => void
 }
 
-export function StatShardRow({ options, selectedId, onSelect }: Props) {
+export function StatShardRow({ options, selectedIds, preferredIds, readOnly, accentColor, onSelect }: Props) {
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {options.map((opt) => (
-        <Tooltip key={opt.id} title={opt.name}>
-          <button
-            type="button"
-            aria-label={opt.name}
-            onClick={() => onSelect(opt.id)}
-            style={{
-              border: opt.id === selectedId ? '2px solid var(--gold)' : '1px solid var(--border-strong)',
-              borderRadius: '50%',
-              padding: 2,
-              background: 'var(--bg-panel-raised)',
-            }}
-          >
-            <img src={runeIconUrl(opt.icon)} alt={opt.name} width={18} height={18} />
-          </button>
-        </Tooltip>
-      ))}
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map((opt) => {
+        const selected = selectedIds.includes(opt.id)
+        const preferred = preferredIds?.includes(opt.id) ?? false
+
+        let border: string
+        let opacity: number
+        if (preferred) {
+          border = '3px solid var(--preferred)'
+          opacity = 1
+        } else if (selected) {
+          border = `2px solid ${accentColor ?? 'var(--gold)'}`
+          opacity = readOnly ? 0.85 : 1
+        } else {
+          border = '1px solid var(--border-strong)'
+          opacity = readOnly ? 0.6 : 0.85
+        }
+
+        return (
+          <Tooltip key={opt.id} title={opt.name}>
+            <button
+              type="button"
+              aria-label={opt.name}
+              onClick={readOnly ? undefined : (e) => onSelect?.(opt.id, e.ctrlKey || e.metaKey)}
+              style={{
+                border,
+                borderRadius: '50%',
+                padding: 3,
+                opacity,
+                background: 'var(--bg-panel-raised)',
+                cursor: readOnly ? 'default' : 'pointer',
+                boxShadow: preferred || selected ? 'var(--shadow-sm)' : 'none',
+              }}
+            >
+              <img
+                src={runeIconUrl(opt.icon)}
+                alt={opt.name}
+                width={22}
+                height={22}
+                style={{ borderRadius: '50%', filter: selected ? 'none' : 'grayscale(1) brightness(1.3)' }}
+              />
+            </button>
+          </Tooltip>
+        )
+      })}
     </div>
   )
 }

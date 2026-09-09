@@ -21,13 +21,14 @@ export function RuneTreeSelector({ runeTrees, selectedId, disabledId, onSelect }
             aria-label={tree.name}
             style={{
               border: tree.id === selectedId ? '2px solid var(--gold)' : '1px solid var(--border-strong)',
-              borderRadius: 6,
-              padding: 4,
+              borderRadius: 8,
+              padding: 5,
               opacity: tree.id === disabledId ? 0.3 : 1,
               background: 'var(--bg-panel)',
+              boxShadow: tree.id === selectedId ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
             }}
           >
-            <img src={runeIconUrl(tree.icon)} alt={tree.name} width={32} height={32} />
+            <img src={runeIconUrl(tree.icon)} alt={tree.name} width={38} height={38} />
           </button>
         </Tooltip>
       ))}

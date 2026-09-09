@@ -20,27 +20,37 @@ export function ItemOptionIcon({ option, item, selected, excluded, onClick }: Pr
       style={{
         position: 'relative',
         border: selected ? '2px solid var(--gold)' : '1px solid var(--border-strong)',
-        borderRadius: 6,
-        padding: 2,
+        borderRadius: 8,
+        padding: 3,
         opacity: excluded ? 0.3 : 1,
         background: 'var(--bg-panel)',
+        boxShadow: selected ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
       }}
     >
-      {item && <img src={itemImageUrl(item.image.full)} alt={item.name} width={36} height={36} />}
+      {item && (
+        <img
+          src={itemImageUrl(item.image.full)}
+          alt={item.name}
+          width={44}
+          height={44}
+          style={{ borderRadius: 4, display: 'block' }}
+        />
+      )}
       {option.situational && (
         <span
           style={{
             position: 'absolute',
-            top: -4,
-            right: -4,
+            top: -5,
+            right: -5,
             fontSize: 10,
             background: '#e0a83d',
             color: '#1a1408',
             fontWeight: 700,
             borderRadius: '50%',
-            width: 14,
-            height: 14,
-            lineHeight: '14px',
+            width: 15,
+            height: 15,
+            lineHeight: '15px',
+            boxShadow: 'var(--shadow-sm)',
           }}
           title="Situational"
         >

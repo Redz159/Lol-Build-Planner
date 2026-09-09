@@ -1,6 +1,91 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
+import type { Build } from '../types/build'
+import type { RunePage, RuneVariant } from '../types/runes'
+import { newId } from './id'
 
 const STORAGE_KEY = 'lolbp:collection'
+
+interface LegacyRuneSelection {
+  primaryTreeId: number
+  keystoneId: number
+  primaryRuneIds: number[]
+  secondaryTreeId: number
+  secondaryRuneIds: number[]
+  shards: { offense: number; flex: number; defense: number }
+}
+
+// Tolerates both the current flat-array "preferred" shape and the earlier one-per-row
+// (nullable) shape, so builds saved during development don't break on load.
+function toPreferredArray(value: unknown): number[] {
+  if (Array.isArray(value)) return value.filter((id): id is number => typeof id === 'number')
+  if (typeof value === 'number') return [value]
+  return []
+}
+
+// `v` is untrusted data straight from JSON.parse, potentially in an older shape.
+function normalizeVariant(v: any): RuneVariant {
+  return {
+    id: v.id ?? newId(),
+    secondaryTreeId: v.secondaryTreeId ?? 0,
+    secondaryRuneIds: v.secondaryRuneIds ?? [],
+    preferredSecondaryRuneIds: toPreferredArray(v.preferredSecondaryRuneIds),
+    shards: v.shards ?? { offense: [], flex: [], defense: [] },
+    preferredShards: {
+      offense: toPreferredArray(v.preferredShards?.offense),
+      flex: toPreferredArray(v.preferredShards?.flex),
+      defense: toPreferredArray(v.preferredShards?.defense),
+    },
+  }
+}
+
+function normalizeRunePage(p: Partial<RunePage>): RunePage {
+  return {
+    id: p.id ?? newId(),
+    primaryTreeId: p.primaryTreeId ?? 0,
+    keystoneId: p.keystoneId ?? 0,
+    preferredKeystone: p.preferredKeystone ?? false,
+    primaryRuneIds: p.primaryRuneIds ?? [],
+    preferredPrimaryRuneIds: toPreferredArray(p.preferredPrimaryRuneIds),
+    variants: (p.variants ?? []).map(normalizeVariant),
+  }
+}
+
+// Older saved builds had a single `runes` selection instead of `runePages`.
+function migrateBuild(build: Build & { runes?: LegacyRuneSelection }): Build {
+  if (Array.isArray(build.runePages)) {
+    return { ...build, runePages: build.runePages.map(normalizeRunePage) }
+  }
+  const { runes, ...rest } = build
+  if (!runes || !runes.primaryTreeId) return { ...rest, runePages: [] }
+
+  return {
+    ...rest,
+    runePages: [
+      {
+        id: newId(),
+        primaryTreeId: runes.primaryTreeId,
+        keystoneId: runes.keystoneId,
+        preferredKeystone: false,
+        primaryRuneIds: runes.primaryRuneIds,
+        preferredPrimaryRuneIds: [],
+        variants: [
+          {
+            id: newId(),
+            secondaryTreeId: runes.secondaryTreeId,
+            secondaryRuneIds: runes.secondaryRuneIds,
+            preferredSecondaryRuneIds: [],
+            shards: {
+              offense: runes.shards.offense ? [runes.shards.offense] : [],
+              flex: runes.shards.flex ? [runes.shards.flex] : [],
+              defense: runes.shards.defense ? [runes.shards.defense] : [],
+            },
+            preferredShards: { offense: [], flex: [], defense: [] },
+          },
+        ],
+      },
+    ],
+  }
+}
 
 export function loadCollection(): Collection {
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -8,7 +93,7 @@ export function loadCollection(): Collection {
   try {
     const parsed = JSON.parse(raw) as Collection
     if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.builds)) return EMPTY_COLLECTION
-    return parsed
+    return { ...parsed, builds: parsed.builds.map(migrateBuild) }
   } catch {
     return EMPTY_COLLECTION
   }
