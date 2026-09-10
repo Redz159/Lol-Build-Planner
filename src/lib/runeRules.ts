@@ -190,6 +190,7 @@ export function selectShard(
 }
 
 // New variants start with the previous variant's shards, since shard picks are usually tree-independent.
+// The copied shards aren't marked "preferred" though — that flag should only ever be set explicitly per variant.
 export function addVariant(page: RunePage): RunePage {
   const last = page.variants[page.variants.length - 1]
   const variant = createVariant()
@@ -198,11 +199,6 @@ export function addVariant(page: RunePage): RunePage {
       offense: [...last.shards.offense],
       flex: [...last.shards.flex],
       defense: [...last.shards.defense],
-    }
-    variant.preferredShards = {
-      offense: [...last.preferredShards.offense],
-      flex: [...last.preferredShards.flex],
-      defense: [...last.preferredShards.defense],
     }
   }
   return { ...page, variants: [...page.variants, variant] }

@@ -11,6 +11,7 @@ interface Props {
   selectedRuneIds: number[]
   preferredRuneIds?: number[]
   readOnly?: boolean
+  compact?: boolean
   accentColor?: string
   extra?: ReactNode
   onSelectKeystone?: (runeId: number, preferred: boolean) => void
@@ -25,22 +26,24 @@ export function RuneTreeColumn({
   selectedRuneIds,
   preferredRuneIds,
   readOnly,
+  compact,
   accentColor,
   extra,
   onSelectKeystone,
   onSelectRune,
 }: Props) {
   const rows = mode === 'primary' ? tree.slots : tree.slots.slice(1)
+  const runeSize = compact ? 20 : 26
 
   return (
     <div
       className="panel"
       style={{
         display: 'flex',
-        gap: 18,
+        gap: compact ? 10 : 18,
         border: `1px solid ${accentColor ?? 'var(--border)'}`,
-        padding: 12,
-        minWidth: 240,
+        padding: compact ? 8 : 12,
+        minWidth: compact ? 160 : 240,
       }}
     >
       <div>
@@ -48,7 +51,7 @@ export function RuneTreeColumn({
           const isKeystoneRow = mode === 'primary' && i === 0
           const rowIndex = isKeystoneRow ? -1 : mode === 'primary' ? i - 1 : i
           return (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div key={i} style={{ display: 'flex', gap: compact ? 6 : 8, marginBottom: compact ? 6 : 8 }}>
               {slot.runes.map((rune) => {
                 const selected = isKeystoneRow
                   ? rune.id === keystoneId
@@ -96,8 +99,8 @@ export function RuneTreeColumn({
                       <img
                         src={runeIconUrl(rune.icon)}
                         alt={rune.name}
-                        width={isKeystoneRow ? 40 : 26}
-                        height={isKeystoneRow ? 40 : 26}
+                        width={isKeystoneRow ? 40 : runeSize}
+                        height={isKeystoneRow ? 40 : runeSize}
                         style={{ borderRadius: '50%', filter: selected ? 'none' : 'grayscale(1) brightness(1.3)' }}
                       />
                     </button>

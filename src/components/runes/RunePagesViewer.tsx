@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGameData } from '../../state/GameDataContext'
-import type { RunePage } from '../../types/runes'
+import type { RunePage, ShardSelection } from '../../types/runes'
 import { groupRunePages } from '../../lib/runeRules'
 import { RuneTreeColumn } from './RuneTreeColumn'
 import { StatShardRow } from './StatShardRow'
@@ -8,6 +8,14 @@ import { runeIconUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
 import { treeAccentColor } from '../../lib/runeTreeColors'
 import { OFFENSE_SHARDS, FLEX_SHARDS, DEFENSE_SHARDS } from '../../data/statShards'
+
+function sameIds(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((id) => b.includes(id))
+}
+
+function sameShards(a: ShardSelection, b: ShardSelection): boolean {
+  return sameIds(a.offense, b.offense) && sameIds(a.flex, b.flex) && sameIds(a.defense, b.defense)
+}
 
 export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
   const { runeTrees } = useGameData()
@@ -50,61 +58,111 @@ export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
         })}
       </div>
 
-      {primaryTree && (
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          <RuneTreeColumn
-            tree={primaryTree}
-            mode="primary"
-            keystoneId={activeGroup.keystoneId}
-            preferredKeystone={activeGroup.preferredKeystone}
-            selectedRuneIds={activeGroup.primaryRuneIds}
-            preferredRuneIds={activeGroup.preferredPrimaryRuneIds}
-            readOnly
-            accentColor={treeAccentColor(primaryTree.key)}
-          />
-          {activeGroup.secondaryTrees.map(({ treeId, runeIds, preferredRuneIds, shards, preferredShards }) => {
-            const tree = runeTrees.find((t) => t.id === treeId)
-            if (!tree) return null
-            const accentColor = treeAccentColor(tree.key)
+      {primaryTree &&
+        (() => {
+          const secondaryTrees = activeGroup.secondaryTrees
+            .map((entry) => ({ ...entry, tree: runeTrees.find((t) => t.id === entry.treeId) }))
+            .filter((entry) => Boolean(entry.tree))
+
+          if (secondaryTrees.length === 0) {
             return (
-              <RuneTreeColumn
-                key={treeId}
-                tree={tree}
-                mode="secondary"
-                selectedRuneIds={runeIds}
-                preferredRuneIds={preferredRuneIds}
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <RuneTreeColumn
+                  tree={primaryTree}
+                  mode="primary"
+                  keystoneId={activeGroup.keystoneId}
+                  preferredKeystone={activeGroup.preferredKeystone}
+                  selectedRuneIds={activeGroup.primaryRuneIds}
+                  preferredRuneIds={activeGroup.preferredPrimaryRuneIds}
+                  readOnly
+                  accentColor={treeAccentColor(primaryTree.key)}
+                />
+              </div>
+            )
+          }
+
+          // The tree carrying an explicit preferred rune pick leads row one; otherwise just the first one does.
+          const leadIndex = Math.max(
+            secondaryTrees.findIndex((e) => e.preferredRuneIds.length > 0),
+            0,
+          )
+          const lead = secondaryTrees[leadIndex]
+          const rest = secondaryTrees.filter((_, i) => i !== leadIndex)
+          const leadAccent = treeAccentColor(lead.tree!.key)
+
+          const shardBlock = (shards: ShardSelection, preferredShards: ShardSelection, accentColor?: string) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }}>
+              <StatShardRow
+                options={OFFENSE_SHARDS}
+                selectedIds={shards.offense}
+                preferredIds={preferredShards.offense}
                 readOnly
                 accentColor={accentColor}
-                extra={
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }}>
-                    <StatShardRow
-                      options={OFFENSE_SHARDS}
-                      selectedIds={shards.offense}
-                      preferredIds={preferredShards.offense}
-                      readOnly
-                      accentColor={accentColor}
-                    />
-                    <StatShardRow
-                      options={FLEX_SHARDS}
-                      selectedIds={shards.flex}
-                      preferredIds={preferredShards.flex}
-                      readOnly
-                      accentColor={accentColor}
-                    />
-                    <StatShardRow
-                      options={DEFENSE_SHARDS}
-                      selectedIds={shards.defense}
-                      preferredIds={preferredShards.defense}
-                      readOnly
-                      accentColor={accentColor}
-                    />
-                  </div>
-                }
               />
-            )
-          })}
-        </div>
-      )}
+              <StatShardRow
+                options={FLEX_SHARDS}
+                selectedIds={shards.flex}
+                preferredIds={preferredShards.flex}
+                readOnly
+                accentColor={accentColor}
+              />
+              <StatShardRow
+                options={DEFENSE_SHARDS}
+                selectedIds={shards.defense}
+                preferredIds={preferredShards.defense}
+                readOnly
+                accentColor={accentColor}
+              />
+            </div>
+          )
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <RuneTreeColumn
+                  tree={primaryTree}
+                  mode="primary"
+                  keystoneId={activeGroup.keystoneId}
+                  preferredKeystone={activeGroup.preferredKeystone}
+                  selectedRuneIds={activeGroup.primaryRuneIds}
+                  preferredRuneIds={activeGroup.preferredPrimaryRuneIds}
+                  readOnly
+                  accentColor={treeAccentColor(primaryTree.key)}
+                />
+                <RuneTreeColumn
+                  tree={lead.tree!}
+                  mode="secondary"
+                  selectedRuneIds={lead.runeIds}
+                  preferredRuneIds={lead.preferredRuneIds}
+                  readOnly
+                  accentColor={leadAccent}
+                  extra={shardBlock(lead.shards, lead.preferredShards, leadAccent)}
+                />
+              </div>
+              {rest.length > 0 && (
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {rest.map((entry) => {
+                    const accentColor = treeAccentColor(entry.tree!.key)
+                    const shardsDiffer = !sameShards(entry.shards, lead.shards)
+                    return (
+                      <RuneTreeColumn
+                        key={entry.treeId}
+                        tree={entry.tree!}
+                        mode="secondary"
+                        compact
+                        selectedRuneIds={entry.runeIds}
+                        preferredRuneIds={entry.preferredRuneIds}
+                        readOnly
+                        accentColor={accentColor}
+                        extra={shardsDiffer ? shardBlock(entry.shards, entry.preferredShards, accentColor) : undefined}
+                      />
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })()}
     </div>
   )
 }
