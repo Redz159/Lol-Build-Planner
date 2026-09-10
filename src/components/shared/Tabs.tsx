@@ -6,8 +6,18 @@ interface Tab {
   content: ReactNode
 }
 
-export function Tabs({ tabs }: { tabs: Tab[] }) {
-  const [active, setActive] = useState(tabs[0]?.key)
+interface Props {
+  tabs: Tab[]
+  activeKey?: string
+  onActiveKeyChange?: (key: string) => void
+}
+
+// Uncontrolled by default (tracks its own active tab); pass activeKey/onActiveKeyChange to
+// let a parent drive which tab is shown, e.g. to reset other state when it changes.
+export function Tabs({ tabs, activeKey, onActiveKeyChange }: Props) {
+  const [uncontrolledActive, setUncontrolledActive] = useState(tabs[0]?.key)
+  const active = activeKey ?? uncontrolledActive
+  const setActive = onActiveKeyChange ?? setUncontrolledActive
   const activeTab = tabs.find((t) => t.key === active)
 
   return (

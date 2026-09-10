@@ -1,7 +1,8 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
-import type { Build } from '../types/build'
+import type { Build, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import { normalizeBuildItems, normalizeItemExclusions } from '../types/items'
+import { ROLES } from './loadouts'
 import { newId } from './id'
 
 const STORAGE_KEY = 'lolbp:collection'
@@ -51,24 +52,33 @@ function normalizeRunePage(p: Partial<RunePage>): RunePage {
   }
 }
 
-// Older saved builds had a single `runes` selection instead of `runePages`, and item data
-// under a freeform `itemSlots` array / `customTags` instead of the fixed-slot `items` map —
-// any shape mismatch there is simply reset rather than migrated.
-function migrateBuild(build: Build & { runes?: LegacyRuneSelection }): Build {
-  const withItems: Build = {
-    ...build,
-    items: normalizeBuildItems((build as { items?: unknown }).items),
-    itemExclusions: normalizeItemExclusions((build as { itemExclusions?: unknown }).itemExclusions),
-  }
+function normalizeRunePages(value: unknown): RunePage[] {
+  return Array.isArray(value) ? value.map(normalizeRunePage) : []
+}
 
-  if (Array.isArray(withItems.runePages)) {
-    return { ...withItems, runePages: withItems.runePages.map(normalizeRunePage) }
+function normalizeRoles(value: unknown): Role[] {
+  if (!Array.isArray(value)) return []
+  return ROLES.filter((r) => value.includes(r))
+}
+
+// `raw` is untrusted data straight from JSON.parse (localStorage or an imported file),
+// potentially from a pre-loadouts schema version where runePages/items/itemExclusions sat
+// directly on the build, or (older still) a single `runes` selection instead of `runePages`.
+function migrateLegacyFlatBuild(raw: any): Loadout {
+  const items = normalizeBuildItems(raw.items)
+  const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
+
+  if (Array.isArray(raw.runePages)) {
+    return { id: newId(), roles: [], runePages: normalizeRunePages(raw.runePages), items, itemExclusions }
   }
-  const { runes, ...rest } = withItems as Build & { runes?: LegacyRuneSelection }
-  if (!runes || !runes.primaryTreeId) return { ...rest, runePages: [] }
+  const runes = raw.runes as LegacyRuneSelection | undefined
+  if (!runes || !runes.primaryTreeId) return { id: newId(), roles: [], runePages: [], items, itemExclusions }
 
   return {
-    ...rest,
+    id: newId(),
+    roles: [],
+    items,
+    itemExclusions,
     runePages: [
       {
         id: newId(),
@@ -93,6 +103,29 @@ function migrateBuild(build: Build & { runes?: LegacyRuneSelection }): Build {
         ],
       },
     ],
+  }
+}
+
+export function migrateBuild(raw: any): Build {
+  const parsedLoadouts: Loadout[] = Array.isArray(raw.loadouts)
+    ? raw.loadouts.map((l: any) => ({
+        id: l?.id ?? newId(),
+        roles: normalizeRoles(l?.roles),
+        runePages: normalizeRunePages(l?.runePages),
+        items: normalizeBuildItems(l?.items),
+        itemExclusions: normalizeItemExclusions(l?.itemExclusions),
+      }))
+    : []
+  const loadouts = parsedLoadouts.length > 0 ? parsedLoadouts : [migrateLegacyFlatBuild(raw)]
+
+  return {
+    id: raw.id ?? newId(),
+    champion: raw.champion,
+    title: raw.title,
+    favorite: raw.favorite ?? false,
+    createdAt: raw.createdAt ?? new Date().toISOString(),
+    updatedAt: raw.updatedAt ?? new Date().toISOString(),
+    loadouts,
   }
 }
 

@@ -4,7 +4,7 @@ import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { newId } from '../../lib/id'
 import type { Build } from '../../types/build'
-import { emptyBuildItems } from '../../types/items'
+import { emptyLoadout } from '../../lib/loadouts'
 import { ChampionSelect } from './ChampionSelect'
 
 export function NewBuildButton() {
@@ -37,9 +37,7 @@ export function NewBuildButton() {
       id: newId(),
       champion: { id: champion.id, name: champion.name },
       title: title.trim() || champion.name,
-      runePages: [],
-      items: emptyBuildItems(),
-      itemExclusions: [],
+      loadouts: [emptyLoadout()],
       favorite: false,
       createdAt: now,
       updatedAt: now,

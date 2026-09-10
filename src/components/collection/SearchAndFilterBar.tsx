@@ -1,10 +1,16 @@
+import { ROLES, ROLE_LABELS } from '../../lib/loadouts'
+import type { Role } from '../../types/build'
+
 export type SortKey = 'champion' | 'createdAt' | 'updatedAt'
+export type RoleFilter = Role | 'fill'
 
 interface Props {
   search: string
   onSearchChange: (value: string) => void
   favoritesOnly: boolean
   onFavoritesOnlyChange: (value: boolean) => void
+  roleFilter: RoleFilter
+  onRoleFilterChange: (value: RoleFilter) => void
   sortKey: SortKey
   onSortKeyChange: (value: SortKey) => void
 }
@@ -14,6 +20,8 @@ export function SearchAndFilterBar({
   onSearchChange,
   favoritesOnly,
   onFavoritesOnlyChange,
+  roleFilter,
+  onRoleFilterChange,
   sortKey,
   onSortKeyChange,
 }: Props) {
@@ -33,6 +41,14 @@ export function SearchAndFilterBar({
         />
         Favorites only
       </label>
+      <select value={roleFilter} onChange={(e) => onRoleFilterChange(e.target.value as RoleFilter)}>
+        <option value="fill">Fill (All)</option>
+        {ROLES.map((role) => (
+          <option key={role} value={role}>
+            {ROLE_LABELS[role]}
+          </option>
+        ))}
+      </select>
       <select value={sortKey} onChange={(e) => onSortKeyChange(e.target.value as SortKey)}>
         <option value="champion">Champion name</option>
         <option value="createdAt">Date created</option>

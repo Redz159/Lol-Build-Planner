@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCollection } from '../state/CollectionContext'
 import { useGameData } from '../state/GameDataContext'
@@ -8,7 +8,8 @@ import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
-import type { Build } from '../types/build'
+import { ROLES, ROLE_LABELS, assignRole, loadoutLabel, removeLoadout, splitLoadout } from '../lib/loadouts'
+import type { Build, Loadout, Role } from '../types/build'
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -25,11 +26,39 @@ export function BuildDetailPage() {
   const [titleDraft, setTitleDraft] = useState(build?.title ?? '')
   const [preEditSnapshot, setPreEditSnapshot] = useState<Build | null>(null)
   const [selectedKeystoneId, setSelectedKeystoneId] = useState<number | null>(null)
+  const [activeLoadoutId, setActiveLoadoutId] = useState<string | undefined>(build?.loadouts[0]?.id)
+
+  useEffect(() => {
+    if (build && !build.loadouts.some((l) => l.id === activeLoadoutId)) {
+      setActiveLoadoutId(build.loadouts[0]?.id)
+    }
+  }, [build, activeLoadoutId])
 
   if (!build) return <div style={{ padding: 24 }}>Build not found. <Link to="/">Back</Link></div>
 
+  const activeLoadout = build.loadouts.find((l) => l.id === activeLoadoutId) ?? build.loadouts[0]
+
   const save = (patch: Partial<typeof build>) => {
     updateBuild({ ...build, ...patch, updatedAt: new Date().toISOString() })
+  }
+
+  const saveLoadout = (patch: Partial<Loadout>) => {
+    save({ loadouts: build.loadouts.map((l) => (l.id === activeLoadout.id ? { ...l, ...patch } : l)) })
+  }
+
+  const toggleRole = (role: Role, checked: boolean) => {
+    const next = assignRole(build, activeLoadout.id, role, checked)
+    save(next)
+  }
+
+  const addVariant = () => {
+    const { build: next, newLoadoutId } = splitLoadout(build, activeLoadout.id)
+    save(next)
+    setActiveLoadoutId(newLoadoutId)
+  }
+
+  const deleteVariant = () => {
+    save(removeLoadout(build, activeLoadout.id))
   }
 
   const enterEdit = () => {
@@ -132,7 +161,62 @@ export function BuildDetailPage() {
           Delete
         </button>
       </div>
+
+      {build.loadouts.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+          {build.loadouts.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => setActiveLoadoutId(l.id)}
+              style={
+                l.id === activeLoadout.id
+                  ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' }
+                  : undefined
+              }
+            >
+              {loadoutLabel(l)}
+            </button>
+          ))}
+          {mode === 'edit' && (
+            <button type="button" onClick={deleteVariant} style={{ color: 'var(--danger)' }}>
+              Delete variant
+            </button>
+          )}
+        </div>
+      )}
+
+      {mode === 'edit' && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            marginBottom: 20,
+            fontSize: 13,
+            color: 'var(--text-dim)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>Applies to:</span>
+          {ROLES.map((role) => (
+            <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <input
+                type="checkbox"
+                checked={activeLoadout.roles.includes(role)}
+                onChange={(e) => toggleRole(role, e.target.checked)}
+              />
+              {ROLE_LABELS[role]}
+            </label>
+          ))}
+          <button type="button" onClick={addVariant} style={{ marginLeft: 'auto' }}>
+            + New variant
+          </button>
+        </div>
+      )}
+
       <Tabs
+        key={activeLoadout.id}
         tabs={[
           {
             key: 'runes',
@@ -140,14 +224,14 @@ export function BuildDetailPage() {
             content:
               mode === 'edit' ? (
                 <RunePagesEditor
-                  pages={build.runePages}
-                  onChange={(runePages) => save({ runePages })}
+                  pages={activeLoadout.runePages}
+                  onChange={(runePages) => saveLoadout({ runePages })}
                   initialKeystoneId={selectedKeystoneId}
                   onGroupSelect={setSelectedKeystoneId}
                 />
               ) : (
                 <RunePagesViewer
-                  pages={build.runePages}
+                  pages={activeLoadout.runePages}
                   selectedKeystoneId={selectedKeystoneId}
                   onSelectKeystoneId={setSelectedKeystoneId}
                 />
@@ -156,7 +240,7 @@ export function BuildDetailPage() {
           {
             key: 'items',
             label: 'Items',
-            content: <ItemsEditor build={build} mode={mode} onChange={(patch) => save(patch)} />,
+            content: <ItemsEditor loadout={activeLoadout} mode={mode} onChange={(patch) => saveLoadout(patch)} />,
           },
         ]}
       />

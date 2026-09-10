@@ -2,20 +2,23 @@ import { useMemo, useState } from 'react'
 import { useCollection } from '../state/CollectionContext'
 import { useGameData } from '../state/GameDataContext'
 import { BuildCard } from '../components/collection/BuildCard'
-import { SearchAndFilterBar, type SortKey } from '../components/collection/SearchAndFilterBar'
+import { SearchAndFilterBar, type RoleFilter, type SortKey } from '../components/collection/SearchAndFilterBar'
 import { NewBuildButton } from '../components/collection/NewBuildButton'
 import { ImportBuildButton } from '../components/collection/ImportBuildButton'
+import { buildRoles } from '../lib/loadouts'
 
 export function CollectionPage() {
   const { builds } = useCollection()
   const { loading, error } = useGameData()
   const [search, setSearch] = useState('')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('fill')
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
 
   const visibleBuilds = useMemo(() => {
     const filtered = builds.filter((b) => {
       if (favoritesOnly && !b.favorite) return false
+      if (roleFilter !== 'fill' && !buildRoles(b).includes(roleFilter)) return false
       const q = search.trim().toLowerCase()
       if (!q) return true
       return b.title.toLowerCase().includes(q) || b.champion.name.toLowerCase().includes(q)
@@ -25,7 +28,7 @@ export function CollectionPage() {
       if (sortKey === 'createdAt') return b.createdAt.localeCompare(a.createdAt)
       return b.updatedAt.localeCompare(a.updatedAt)
     })
-  }, [builds, search, favoritesOnly, sortKey])
+  }, [builds, search, favoritesOnly, roleFilter, sortKey])
 
   if (loading)
     return <div style={{ padding: 32, color: 'var(--text-dim)' }}>Loading game data...</div>
@@ -45,6 +48,8 @@ export function CollectionPage() {
         onSearchChange={setSearch}
         favoritesOnly={favoritesOnly}
         onFavoritesOnlyChange={setFavoritesOnly}
+        roleFilter={roleFilter}
+        onRoleFilterChange={setRoleFilter}
         sortKey={sortKey}
         onSortKeyChange={setSortKey}
       />

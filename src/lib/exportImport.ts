@@ -1,5 +1,5 @@
 import type { Build } from '../types/build'
-import { normalizeBuildItems, normalizeItemExclusions } from '../types/items'
+import { migrateBuild } from './storage'
 
 export function exportBuild(build: Build): void {
   const blob = new Blob([JSON.stringify(build, null, 2)], { type: 'application/json' })
@@ -13,13 +13,9 @@ export function exportBuild(build: Build): void {
 
 export async function importBuildFile(file: File): Promise<Build> {
   const text = await file.text()
-  const parsed = JSON.parse(text) as Build
-  if (!parsed.id || !parsed.champion || !Array.isArray(parsed.runePages)) {
+  const parsed = JSON.parse(text)
+  if (!parsed.id || !parsed.champion || (!Array.isArray(parsed.runePages) && !Array.isArray(parsed.loadouts))) {
     throw new Error('Invalid build file')
   }
-  return {
-    ...parsed,
-    items: normalizeBuildItems((parsed as { items?: unknown }).items),
-    itemExclusions: normalizeItemExclusions((parsed as { itemExclusions?: unknown }).itemExclusions),
-  }
+  return migrateBuild(parsed)
 }

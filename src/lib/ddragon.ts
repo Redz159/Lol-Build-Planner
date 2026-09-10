@@ -30,7 +30,7 @@ export async function getChampions(): Promise<DDragonChampion[]> {
 interface RawDDragonItem extends DDragonItem {
   gold: { total: number; purchasable: boolean }
   maps: Record<string, boolean>
-  into?: string[]
+  into: string[]
   requiredChampion?: string
   hideFromAll?: boolean
 }
