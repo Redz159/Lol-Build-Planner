@@ -26,6 +26,10 @@ export function roleIconUrl(role: Role): string {
   return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-${ROLE_ICON_KEYS[role]}.svg`
 }
 
+// Same "Fill" queue icon shown in the client's role picker, from a different plugin bundle
+// than the individual position icons above.
+export const FILL_ICON_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-fill.png'
+
 export function emptyLoadout(roles: Role[] = []): Loadout {
   return { id: newId(), roles, runePages: [], items: emptyBuildItems(), itemExclusions: [] }
 }
@@ -42,6 +46,12 @@ export function loadoutLabel(loadout: Loadout): string {
 export function buildRoles(build: Build): Role[] {
   const present = new Set(build.loadouts.flatMap((l) => l.roles))
   return ROLES.filter((r) => present.has(r))
+}
+
+// The id of whichever loadout currently owns a role, if any — used to grey out that role's
+// checkbox on every other loadout, since a role can only live in one loadout at a time.
+export function roleOwnerLoadoutId(build: Build, role: Role): string | undefined {
+  return build.loadouts.find((l) => l.roles.includes(role))?.id
 }
 
 // A loadout left with no roles is dropped (its content discarded) unless it's the only

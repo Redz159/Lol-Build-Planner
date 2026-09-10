@@ -8,7 +8,17 @@ import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
-import { ROLES, assignRole, loadoutLabel, removeLoadout, splitLoadout } from '../lib/loadouts'
+import {
+  FILL_ICON_URL,
+  ROLES,
+  ROLE_LABELS,
+  assignRole,
+  buildRoles,
+  loadoutLabel,
+  removeLoadout,
+  roleOwnerLoadoutId,
+  splitLoadout,
+} from '../lib/loadouts'
 import { RoleIcon } from '../components/shared/RoleIcon'
 import type { Build, Loadout, Role } from '../types/build'
 
@@ -121,6 +131,13 @@ export function BuildDetailPage() {
             <h1 style={{ margin: 0, fontSize: 28 }}>
               {build.title} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({build.champion.name})</span>
             </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {buildRoles(build).length === 0 ? (
+                <img src={FILL_ICON_URL} alt="Fill" title="Fill" width={18} height={18} />
+              ) : (
+                buildRoles(build).map((role) => <RoleIcon key={role} role={role} size={18} />)
+              )}
+            </div>
             {mode === 'edit' && (
               <button type="button" onClick={() => setEditingTitle(true)}>
                 Rename
@@ -178,7 +195,11 @@ export function BuildDetailPage() {
                 ...(l.id === activeLoadout.id ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}),
               }}
             >
-              {l.roles.length === 0 ? 'Fill' : l.roles.map((role) => <RoleIcon key={role} role={role} size={16} />)}
+              {l.roles.length === 0 ? (
+                <img src={FILL_ICON_URL} alt="Fill" width={16} height={16} />
+              ) : (
+                l.roles.map((role) => <RoleIcon key={role} role={role} size={16} />)
+              )}
             </button>
           ))}
           {mode === 'edit' && (
@@ -202,16 +223,30 @@ export function BuildDetailPage() {
           }}
         >
           <span>Applies to:</span>
-          {ROLES.map((role) => (
-            <label key={role} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <input
-                type="checkbox"
-                checked={activeLoadout.roles.includes(role)}
-                onChange={(e) => toggleRole(role, e.target.checked)}
-              />
-              <RoleIcon role={role} size={18} />
-            </label>
-          ))}
+          {ROLES.map((role) => {
+            const ownerId = roleOwnerLoadoutId(build, role)
+            const takenElsewhere = ownerId !== undefined && ownerId !== activeLoadout.id
+            return (
+              <label
+                key={role}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  cursor: takenElsewhere ? 'not-allowed' : undefined,
+                }}
+                title={takenElsewhere ? `${ROLE_LABELS[role]} is already assigned to another variant` : undefined}
+              >
+                <input
+                  type="checkbox"
+                  checked={activeLoadout.roles.includes(role)}
+                  disabled={takenElsewhere}
+                  onChange={(e) => toggleRole(role, e.target.checked)}
+                />
+                <RoleIcon role={role} size={18} dim={takenElsewhere} />
+              </label>
+            )
+          })}
           <button type="button" onClick={addVariant} style={{ marginLeft: 'auto' }}>
             + New variant
           </button>

@@ -3,7 +3,7 @@ import type { Build } from '../../types/build'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { championImageUrl } from '../../lib/ddragon'
-import { buildRoles } from '../../lib/loadouts'
+import { FILL_ICON_URL, buildRoles } from '../../lib/loadouts'
 import { RoleIcon } from '../shared/RoleIcon'
 
 export function BuildCard({ build }: { build: Build }) {
@@ -38,18 +38,7 @@ export function BuildCard({ build }: { build: Build }) {
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
           {roles.length === 0 ? (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                padding: '2px 7px',
-                borderRadius: 9,
-                border: '1px solid var(--border-strong)',
-                color: 'var(--text-dim)',
-              }}
-            >
-              Fill
-            </span>
+            <img src={FILL_ICON_URL} alt="Fill" title="Fill" width={16} height={16} />
           ) : (
             roles.map((role) => <RoleIcon key={role} role={role} size={16} />)
           )}

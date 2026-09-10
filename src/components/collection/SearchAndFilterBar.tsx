@@ -1,4 +1,4 @@
-import { ROLES } from '../../lib/loadouts'
+import { FILL_ICON_URL, ROLES } from '../../lib/loadouts'
 import { RoleIcon } from '../shared/RoleIcon'
 import type { Role } from '../../types/build'
 
@@ -47,9 +47,13 @@ export function SearchAndFilterBar({
           type="button"
           onClick={() => onRoleFilterChange('fill')}
           title="Fill (All)"
-          style={roleFilter === 'fill' ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : undefined}
+          style={{
+            display: 'flex',
+            padding: '5px 7px',
+            ...(roleFilter === 'fill' ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}),
+          }}
         >
-          All
+          <img src={FILL_ICON_URL} alt="Fill (All)" width={16} height={16} />
         </button>
         {ROLES.map((role) => (
           <button
