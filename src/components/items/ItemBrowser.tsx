@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { ITEM_SLOT_IDS, type BuildItems, type ItemSlotId } from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, itemMatchesFilters } from '../../lib/itemAttributes'
@@ -23,6 +23,17 @@ function placementCount(buildItems: BuildItems, itemId: string): number {
 export function ItemBrowser({ items, buildItems, activeSlotId, onFastToggle, onOpenPopup }: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Set<string>>(new Set())
+
+  // Boots is the only slot where a non-matching item can never be placed, so jumping into
+  // fast-add for it pre-filters the browser down to boots; leaving it clears that back out,
+  // unless the user has since changed the filter selection themselves.
+  useEffect(() => {
+    if (activeSlotId === 'boots') {
+      setFilters(new Set(['attr:boots']))
+    } else {
+      setFilters((prev) => (prev.size === 1 && prev.has('attr:boots') ? new Set() : prev))
+    }
+  }, [activeSlotId])
 
   const toggleFilter = (id: string) => {
     setFilters((prev) => {
