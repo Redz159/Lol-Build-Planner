@@ -3,7 +3,8 @@ import type { Build } from '../../types/build'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { championImageUrl } from '../../lib/ddragon'
-import { ROLE_LABELS, buildRoles } from '../../lib/loadouts'
+import { buildRoles } from '../../lib/loadouts'
+import { RoleIcon } from '../shared/RoleIcon'
 
 export function BuildCard({ build }: { build: Build }) {
   const { champions } = useGameData()
@@ -35,7 +36,7 @@ export function BuildCard({ build }: { build: Build }) {
         >
           {build.title}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6, alignItems: 'center' }}>
           {roles.length === 0 ? (
             <span
               style={{
@@ -50,21 +51,7 @@ export function BuildCard({ build }: { build: Build }) {
               Fill
             </span>
           ) : (
-            roles.map((role) => (
-              <span
-                key={role}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: '2px 7px',
-                  borderRadius: 9,
-                  border: '1px solid var(--gold)',
-                  color: 'var(--gold-bright)',
-                }}
-              >
-                {ROLE_LABELS[role]}
-              </span>
-            ))
+            roles.map((role) => <RoleIcon key={role} role={role} size={16} />)
           )}
         </div>
         <small style={{ color: 'var(--text-dim)' }}>{new Date(build.updatedAt).toLocaleDateString()}</small>

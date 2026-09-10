@@ -1,4 +1,5 @@
-import { ROLES, ROLE_LABELS } from '../../lib/loadouts'
+import { ROLES } from '../../lib/loadouts'
+import { RoleIcon } from '../shared/RoleIcon'
 import type { Role } from '../../types/build'
 
 export type SortKey = 'champion' | 'createdAt' | 'updatedAt'
@@ -41,14 +42,30 @@ export function SearchAndFilterBar({
         />
         Favorites only
       </label>
-      <select value={roleFilter} onChange={(e) => onRoleFilterChange(e.target.value as RoleFilter)}>
-        <option value="fill">Fill (All)</option>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <button
+          type="button"
+          onClick={() => onRoleFilterChange('fill')}
+          title="Fill (All)"
+          style={roleFilter === 'fill' ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : undefined}
+        >
+          All
+        </button>
         {ROLES.map((role) => (
-          <option key={role} value={role}>
-            {ROLE_LABELS[role]}
-          </option>
+          <button
+            key={role}
+            type="button"
+            onClick={() => onRoleFilterChange(role)}
+            style={{
+              display: 'flex',
+              padding: '5px 7px',
+              ...(roleFilter === role ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}),
+            }}
+          >
+            <RoleIcon role={role} size={16} />
+          </button>
         ))}
-      </select>
+      </div>
       <select value={sortKey} onChange={(e) => onSortKeyChange(e.target.value as SortKey)}>
         <option value="champion">Champion name</option>
         <option value="createdAt">Date created</option>

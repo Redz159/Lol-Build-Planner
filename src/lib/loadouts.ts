@@ -12,6 +12,20 @@ export const ROLE_LABELS: Record<Role, string> = {
   support: 'Support',
 }
 
+const ROLE_ICON_KEYS: Record<Role, string> = {
+  top: 'top',
+  jungle: 'jungle',
+  mid: 'middle',
+  adc: 'bottom',
+  support: 'utility',
+}
+
+// Riot's own champion-select position icons, mirrored on CommunityDragon — Data Dragon
+// itself doesn't ship these (same reasoning as runeTreeIconUrl in lib/ddragon.ts).
+export function roleIconUrl(role: Role): string {
+  return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-${ROLE_ICON_KEYS[role]}.svg`
+}
+
 export function emptyLoadout(roles: Role[] = []): Loadout {
   return { id: newId(), roles, runePages: [], items: emptyBuildItems(), itemExclusions: [] }
 }

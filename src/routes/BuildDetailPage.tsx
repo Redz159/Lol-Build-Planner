@@ -8,7 +8,8 @@ import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
-import { ROLES, ROLE_LABELS, assignRole, loadoutLabel, removeLoadout, splitLoadout } from '../lib/loadouts'
+import { ROLES, assignRole, loadoutLabel, removeLoadout, splitLoadout } from '../lib/loadouts'
+import { RoleIcon } from '../components/shared/RoleIcon'
 import type { Build, Loadout, Role } from '../types/build'
 
 export function BuildDetailPage() {
@@ -169,13 +170,15 @@ export function BuildDetailPage() {
               key={l.id}
               type="button"
               onClick={() => setActiveLoadoutId(l.id)}
-              style={
-                l.id === activeLoadout.id
-                  ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' }
-                  : undefined
-              }
+              title={loadoutLabel(l)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                ...(l.id === activeLoadout.id ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}),
+              }}
             >
-              {loadoutLabel(l)}
+              {l.roles.length === 0 ? 'Fill' : l.roles.map((role) => <RoleIcon key={role} role={role} size={16} />)}
             </button>
           ))}
           {mode === 'edit' && (
@@ -206,7 +209,7 @@ export function BuildDetailPage() {
                 checked={activeLoadout.roles.includes(role)}
                 onChange={(e) => toggleRole(role, e.target.checked)}
               />
-              {ROLE_LABELS[role]}
+              <RoleIcon role={role} size={18} />
             </label>
           ))}
           <button type="button" onClick={addVariant} style={{ marginLeft: 'auto' }}>
