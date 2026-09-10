@@ -32,6 +32,7 @@ interface RawDDragonItem extends DDragonItem {
   maps: Record<string, boolean>
   into?: string[]
   requiredChampion?: string
+  hideFromAll?: boolean
 }
 
 // ARAM-only starter items (World Atlas, Celestial Opposition, Dream Maker, Zaz'Zak's
@@ -63,7 +64,7 @@ export async function getItems(): Promise<DDragonItem[]> {
   const bestByName = new Map<string, [string, RawDDragonItem]>()
   for (const [id, item] of Object.entries(raw.data)) {
     if (!item.gold.purchasable || !item.maps['11'] || Number(id) >= 100000) continue
-    if (item.requiredChampion || ARAM_STARTER_ITEM_IDS.has(id)) continue
+    if (item.requiredChampion || item.hideFromAll || ARAM_STARTER_ITEM_IDS.has(id)) continue
     const existing = bestByName.get(item.name)
     if (!existing || Number(id) < Number(existing[0])) bestByName.set(item.name, [id, item])
   }
