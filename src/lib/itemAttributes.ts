@@ -15,7 +15,7 @@ export function isAntiHeal(item: DDragonItem): boolean {
 }
 
 export function isStarterItem(item: DDragonItem): boolean {
-  return item.starter
+  return item.gold.total <= 500
 }
 
 export interface FilterOption {

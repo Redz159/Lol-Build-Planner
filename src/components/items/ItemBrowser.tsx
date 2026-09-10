@@ -8,6 +8,12 @@ import './items.css'
 
 const ALL_FILTER_OPTIONS = [...ATTRIBUTE_FILTERS, ...STAT_FILTERS]
 
+const SLOT_AUTO_FILTER: Partial<Record<ItemSlotId, string>> = {
+  boots: 'attr:boots',
+  starter: 'attr:starter',
+}
+const ALL_AUTO_FILTER_IDS = new Set(Object.values(SLOT_AUTO_FILTER))
+
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
@@ -25,14 +31,15 @@ export function ItemBrowser({ items, buildItems, activeSlotId, onFastToggle, onO
   const [filters, setFilters] = useState<Set<string>>(new Set())
   const [filterMode, setFilterMode] = useState<FilterMode>('any')
 
-  // Boots is the only slot where a non-matching item can never be placed, so jumping into
-  // fast-add for it pre-filters the browser down to boots; leaving it clears that back out,
-  // unless the user has since changed the filter selection themselves.
+  // Boots and Starter are slots where a non-matching item can never be placed, so jumping
+  // into fast-add for one pre-filters the browser down to it; leaving it clears that back
+  // out, unless the user has since changed the filter selection themselves.
   useEffect(() => {
-    if (activeSlotId === 'boots') {
-      setFilters(new Set(['attr:boots']))
+    const autoFilterId = activeSlotId ? SLOT_AUTO_FILTER[activeSlotId] : undefined
+    if (autoFilterId) {
+      setFilters(new Set([autoFilterId]))
     } else {
-      setFilters((prev) => (prev.size === 1 && prev.has('attr:boots') ? new Set() : prev))
+      setFilters((prev) => (prev.size === 1 && ALL_AUTO_FILTER_IDS.has([...prev][0]) ? new Set() : prev))
     }
   }, [activeSlotId])
 
