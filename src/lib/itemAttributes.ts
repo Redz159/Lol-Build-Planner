@@ -36,7 +36,15 @@ export const STAT_FILTERS: FilterOption[] = ALL_STAT_CATEGORIES.map((category) =
   test: (item) => getAutoStatTags(item.tags).some((c) => c.id === category.id),
 }))
 
-export function itemMatchesFilters(item: DDragonItem, selected: ReadonlySet<string>, options: FilterOption[]): boolean {
+export type FilterMode = 'any' | 'all'
+
+export function itemMatchesFilters(
+  item: DDragonItem,
+  selected: ReadonlySet<string>,
+  options: FilterOption[],
+  mode: FilterMode = 'any',
+): boolean {
   if (selected.size === 0) return true
-  return options.some((opt) => selected.has(opt.id) && opt.test(item))
+  const selectedOptions = options.filter((opt) => selected.has(opt.id))
+  return mode === 'any' ? selectedOptions.some((opt) => opt.test(item)) : selectedOptions.every((opt) => opt.test(item))
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { ITEM_SLOT_IDS, type BuildItems, type ItemSlotId } from '../../types/items'
-import { ATTRIBUTE_FILTERS, STAT_FILTERS, itemMatchesFilters } from '../../lib/itemAttributes'
+import { ATTRIBUTE_FILTERS, STAT_FILTERS, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
@@ -23,6 +23,7 @@ function placementCount(buildItems: BuildItems, itemId: string): number {
 export function ItemBrowser({ items, buildItems, activeSlotId, onFastToggle, onOpenPopup }: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Set<string>>(new Set())
+  const [filterMode, setFilterMode] = useState<FilterMode>('any')
 
   // Boots is the only slot where a non-matching item can never be placed, so jumping into
   // fast-add for it pre-filters the browser down to boots; leaving it clears that back out,
@@ -47,9 +48,11 @@ export function ItemBrowser({ items, buildItems, activeSlotId, onFastToggle, onO
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase()
     return items.filter(
-      (item) => (!query || item.name.toLowerCase().includes(query)) && itemMatchesFilters(item, filters, ALL_FILTER_OPTIONS),
+      (item) =>
+        (!query || item.name.toLowerCase().includes(query)) &&
+        itemMatchesFilters(item, filters, ALL_FILTER_OPTIONS, filterMode),
     )
-  }, [items, search, filters])
+  }, [items, search, filters, filterMode])
 
   return (
     <div>
@@ -61,7 +64,13 @@ export function ItemBrowser({ items, buildItems, activeSlotId, onFastToggle, onO
         style={{ width: '100%', marginBottom: 10 }}
       />
       <div style={{ marginBottom: 10 }}>
-        <ItemFilterPanel selected={filters} onToggle={toggleFilter} onClear={() => setFilters(new Set())} />
+        <ItemFilterPanel
+          selected={filters}
+          mode={filterMode}
+          onToggle={toggleFilter}
+          onModeChange={setFilterMode}
+          onClear={() => setFilters(new Set())}
+        />
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {visible.map((item) => {
