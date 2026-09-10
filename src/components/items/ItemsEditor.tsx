@@ -4,7 +4,7 @@ import type { DDragonItem } from '../../types/ddragon'
 import { ITEM_SLOT_IDS, type ItemSlotId } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
-import { isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
+import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
@@ -32,6 +32,8 @@ export function ItemsEditor({ build, mode, onChange }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [popupItemId, activeSlotId])
 
+  const builtinExclusions = useMemo(() => builtinExclusionPairs(items), [items])
+
   const excludedPlacementIds = useMemo(() => {
     const previewedPlacementIds = new Set(Object.values(preview))
     const previewedItemIds = new Set<string>()
@@ -47,12 +49,14 @@ export function ItemsEditor({ build, mode, onChange }: Props) {
       for (const placement of build.items[slotId]) {
         if (previewedPlacementIds.has(placement.id)) continue
         const sameItemElsewhere = previewedItemIds.has(placement.itemId)
-        const manuallyExcluded = [...previewedItemIds].some((pid) => isExcludedPair(build.itemExclusions, pid, placement.itemId))
-        if (sameItemElsewhere || manuallyExcluded) result.add(placement.id)
+        const excluded = [...previewedItemIds].some(
+          (pid) => isExcludedPair(build.itemExclusions, pid, placement.itemId) || isExcludedPair(builtinExclusions, pid, placement.itemId),
+        )
+        if (sameItemElsewhere || excluded) result.add(placement.id)
       }
     }
     return result
-  }, [preview, build.items, build.itemExclusions])
+  }, [preview, build.items, build.itemExclusions, builtinExclusions])
 
   const toggleItemInSlot = (itemId: string, slotId: ItemSlotId) => {
     const current = build.items[slotId]
@@ -142,6 +146,7 @@ export function ItemsEditor({ build, mode, onChange }: Props) {
           items={items}
           buildItems={build.items}
           itemExclusions={build.itemExclusions}
+          builtinExclusions={builtinExclusions}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}
           onToggleExclusion={(otherId) => toggleExclusion(popupItem.id, otherId)}
           onClose={() => setPopupItemId(null)}

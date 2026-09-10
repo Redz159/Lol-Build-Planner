@@ -9,12 +9,22 @@ interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
   itemExclusions: ItemExclusionPair[]
+  builtinExclusions: ItemExclusionPair[]
   onToggleSlot: (slotId: ItemSlotId) => void
   onToggleExclusion: (otherItemId: string) => void
   onClose: () => void
 }
 
-export function ItemAssignPopup({ item, items, buildItems, itemExclusions, onToggleSlot, onToggleExclusion, onClose }: Props) {
+export function ItemAssignPopup({
+  item,
+  items,
+  buildItems,
+  itemExclusions,
+  builtinExclusions,
+  onToggleSlot,
+  onToggleExclusion,
+  onClose,
+}: Props) {
   const otherItemIds = [
     ...new Set(
       ITEM_SLOT_IDS.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)).filter((id) => id !== item.id),
@@ -82,11 +92,13 @@ export function ItemAssignPopup({ item, items, buildItems, itemExclusions, onTog
             <div>
               {otherItemIds.map((otherId) => {
                 const other = items.find((i) => i.id === otherId)
+                const builtin = isExcludedPair(builtinExclusions, item.id, otherId)
                 return (
                   <label key={otherId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
                     <input
                       type="checkbox"
-                      checked={isExcludedPair(itemExclusions, item.id, otherId)}
+                      checked={builtin || isExcludedPair(itemExclusions, item.id, otherId)}
+                      disabled={builtin}
                       onChange={() => onToggleExclusion(otherId)}
                     />
                     {other && (
@@ -99,6 +111,7 @@ export function ItemAssignPopup({ item, items, buildItems, itemExclusions, onTog
                       />
                     )}
                     {other?.name ?? otherId}
+                    {builtin && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(game rule)</span>}
                   </label>
                 )
               })}
