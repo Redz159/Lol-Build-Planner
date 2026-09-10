@@ -30,6 +30,16 @@ export async function getChampions(): Promise<DDragonChampion[]> {
 interface RawDDragonItem extends DDragonItem {
   gold: { total: number; purchasable: boolean }
   maps: Record<string, boolean>
+  into?: string[]
+}
+
+// Starter items have no more than one upgrade path and cost at most 500g, distinguishing
+// them from cheap basic components (Long Sword, Ruby Crystal, ...) which feed many recipes.
+function isStarter(item: RawDDragonItem): boolean {
+  if (item.tags.includes('Boots') || item.tags.includes('Trinket')) return false
+  if (item.gold.total > 500) return false
+  if (item.into && item.into.length > 1) return false
+  return item.tags.includes('Lane') || item.tags.includes('Jungle') || item.tags.includes('GoldPer')
 }
 
 export async function getItems(): Promise<DDragonItem[]> {
@@ -46,8 +56,9 @@ export async function getItems(): Promise<DDragonItem[]> {
       image: item.image,
       tags: item.tags,
       gold: { total: item.gold.total },
+      starter: isStarter(item),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.gold.total - b.gold.total)
 }
 
 export async function getRuneTrees(): Promise<DDragonRuneTree[]> {

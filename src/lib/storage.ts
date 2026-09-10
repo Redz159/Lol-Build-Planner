@@ -1,6 +1,7 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
 import type { Build } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
+import { normalizeBuildItems, normalizeItemExclusions } from '../types/items'
 import { newId } from './id'
 
 const STORAGE_KEY = 'lolbp:collection'
@@ -50,12 +51,20 @@ function normalizeRunePage(p: Partial<RunePage>): RunePage {
   }
 }
 
-// Older saved builds had a single `runes` selection instead of `runePages`.
+// Older saved builds had a single `runes` selection instead of `runePages`, and item data
+// under a freeform `itemSlots` array / `customTags` instead of the fixed-slot `items` map —
+// any shape mismatch there is simply reset rather than migrated.
 function migrateBuild(build: Build & { runes?: LegacyRuneSelection }): Build {
-  if (Array.isArray(build.runePages)) {
-    return { ...build, runePages: build.runePages.map(normalizeRunePage) }
+  const withItems: Build = {
+    ...build,
+    items: normalizeBuildItems((build as { items?: unknown }).items),
+    itemExclusions: normalizeItemExclusions((build as { itemExclusions?: unknown }).itemExclusions),
   }
-  const { runes, ...rest } = build
+
+  if (Array.isArray(withItems.runePages)) {
+    return { ...withItems, runePages: withItems.runePages.map(normalizeRunePage) }
+  }
+  const { runes, ...rest } = withItems as Build & { runes?: LegacyRuneSelection }
   if (!runes || !runes.primaryTreeId) return { ...rest, runePages: [] }
 
   return {

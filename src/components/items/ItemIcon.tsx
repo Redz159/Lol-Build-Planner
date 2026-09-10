@@ -1,22 +1,24 @@
-import type { ItemOption } from '../../types/items'
+import type { MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { itemImageUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
 
 interface Props {
-  option: ItemOption
-  item: DDragonItem | undefined
-  selected: boolean
-  excluded: boolean
-  onClick: () => void
+  item: DDragonItem
+  size?: number
+  selected?: boolean
+  excluded?: boolean
+  badge?: number
+  title?: string
+  onClick?: (e: MouseEvent) => void
 }
 
-export function ItemOptionIcon({ option, item, selected, excluded, onClick }: Props) {
+export function ItemIcon({ item, size = 44, selected, excluded, badge, title, onClick }: Props) {
   const button = (
     <button
       type="button"
       onClick={onClick}
-      aria-label={item?.name ?? option.itemId}
+      aria-label={item.name}
       style={{
         position: 'relative',
         border: selected ? '2px solid var(--gold)' : '1px solid var(--border-strong)',
@@ -25,46 +27,42 @@ export function ItemOptionIcon({ option, item, selected, excluded, onClick }: Pr
         opacity: excluded ? 0.3 : 1,
         background: 'var(--bg-panel)',
         boxShadow: selected ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
+        lineHeight: 0,
       }}
     >
-      {item && (
-        <img
-          src={itemImageUrl(item.image.full)}
-          alt={item.name}
-          width={44}
-          height={44}
-          style={{ borderRadius: 4, display: 'block' }}
-        />
-      )}
-      {option.situational && (
+      <img
+        src={itemImageUrl(item.image.full)}
+        alt={item.name}
+        width={size}
+        height={size}
+        style={{ borderRadius: 4, display: 'block' }}
+      />
+      {!!badge && (
         <span
           style={{
             position: 'absolute',
-            top: -5,
-            right: -5,
+            top: -6,
+            right: -6,
             fontSize: 10,
-            background: '#e0a83d',
-            color: '#1a1408',
+            background: 'var(--accent)',
+            color: '#0a0e14',
             fontWeight: 700,
             borderRadius: '50%',
-            width: 15,
-            height: 15,
-            lineHeight: '15px',
+            width: 16,
+            height: 16,
+            lineHeight: '16px',
             boxShadow: 'var(--shadow-sm)',
           }}
-          title="Situational"
         >
-          !
+          {badge}
         </span>
       )}
     </button>
   )
 
-  if (!item) return button
-
   return (
     <Tooltip
-      title={item.name}
+      title={title ?? item.name}
       extra={<div className="tooltip-gold">{item.gold.total}g</div>}
       descriptionHtml={item.description}
     >

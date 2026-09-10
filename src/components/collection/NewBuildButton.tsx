@@ -4,6 +4,7 @@ import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { newId } from '../../lib/id'
 import type { Build } from '../../types/build'
+import { emptyBuildItems } from '../../types/items'
 import { ChampionSelect } from './ChampionSelect'
 
 export function NewBuildButton() {
@@ -37,8 +38,8 @@ export function NewBuildButton() {
       champion: { id: champion.id, name: champion.name },
       title: title.trim() || champion.name,
       runePages: [],
-      itemSlots: [],
-      customTags: [],
+      items: emptyBuildItems(),
+      itemExclusions: [],
       favorite: false,
       createdAt: now,
       updatedAt: now,

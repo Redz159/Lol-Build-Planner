@@ -29,6 +29,9 @@ const CATEGORY_BY_RAW_TAG: Record<string, StatCategory> = {
   Tenacity: { id: 'tenacity', label: 'Tenacity', short: 'TEN', color: '#c98a4f' },
 }
 
+// Deduped list of every stat category an item can carry, for filter UIs.
+export const ALL_STAT_CATEGORIES: StatCategory[] = [...new Map(Object.values(CATEGORY_BY_RAW_TAG).map((c) => [c.id, c])).values()]
+
 export function getAutoStatTags(rawTags: string[]): StatCategory[] {
   const byId = new Map<string, StatCategory>()
   for (const raw of rawTags) {

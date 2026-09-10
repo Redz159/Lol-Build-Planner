@@ -1,0 +1,23 @@
+.item-tile {
+  position: relative;
+  display: inline-block;
+}
+
+.item-tile-action {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  padding: 0;
+  font-size: 11px;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.item-tile:hover .item-tile-action,
+.item-tile-action:focus-visible {
+  opacity: 1;
+}

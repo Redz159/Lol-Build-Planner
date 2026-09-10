@@ -5,7 +5,7 @@ import { useGameData } from '../state/GameDataContext'
 import { Tabs } from '../components/shared/Tabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
-import { ItemSlotList } from '../components/items/ItemSlotList'
+import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
 import type { Build } from '../types/build'
@@ -156,7 +156,7 @@ export function BuildDetailPage() {
           {
             key: 'items',
             label: 'Items',
-            content: <ItemSlotList build={build} mode={mode} onChange={(patch) => save(patch)} />,
+            content: <ItemsEditor build={build} mode={mode} onChange={(patch) => save(patch)} />,
           },
         ]}
       />
