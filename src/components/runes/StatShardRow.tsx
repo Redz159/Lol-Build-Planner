@@ -52,7 +52,11 @@ export function StatShardRow({ options, selectedIds, preferredIds, readOnly, acc
                 alt={opt.name}
                 width={22}
                 height={22}
-                style={{ borderRadius: '50%', filter: selected ? 'none' : 'grayscale(1) brightness(1.3)' }}
+                style={{
+                  display: 'block',
+                  borderRadius: '50%',
+                  filter: selected ? 'none' : 'grayscale(1) brightness(1.3)',
+                }}
               />
             </button>
           </Tooltip>

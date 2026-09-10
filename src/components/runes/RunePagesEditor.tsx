@@ -81,7 +81,13 @@ export function RunePagesEditor({ pages, onChange }: Props) {
                   cursor: 'grab',
                 }}
               >
-                <img src={runeIconUrl(keystone.icon)} alt={keystone.name} width={38} height={38} style={{ borderRadius: '50%' }} />
+                <img
+                  src={runeIconUrl(keystone.icon)}
+                  alt={keystone.name}
+                  width={38}
+                  height={38}
+                  style={{ display: 'block', borderRadius: '50%' }}
+                />
               </button>
             </Tooltip>
           )

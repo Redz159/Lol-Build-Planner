@@ -28,7 +28,7 @@ export function RuneTreeSelector({ runeTrees, selectedId, disabledId, onSelect }
               boxShadow: tree.id === selectedId ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
             }}
           >
-            <img src={runeIconUrl(tree.icon)} alt={tree.name} width={38} height={38} />
+            <img src={runeIconUrl(tree.icon)} alt={tree.name} width={38} height={38} style={{ display: 'block' }} />
           </button>
         </Tooltip>
       ))}

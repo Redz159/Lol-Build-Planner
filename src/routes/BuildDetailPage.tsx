@@ -8,6 +8,7 @@ import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemSlotList } from '../components/items/ItemSlotList'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
+import type { Build } from '../types/build'
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -22,11 +23,30 @@ export function BuildDetailPage() {
   )
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(build?.title ?? '')
+  const [preEditSnapshot, setPreEditSnapshot] = useState<Build | null>(null)
 
   if (!build) return <div style={{ padding: 24 }}>Build not found. <Link to="/">Back</Link></div>
 
   const save = (patch: Partial<typeof build>) => {
     updateBuild({ ...build, ...patch, updatedAt: new Date().toISOString() })
+  }
+
+  const enterEdit = () => {
+    setPreEditSnapshot(structuredClone(build))
+    setMode('edit')
+  }
+
+  const doneEditing = () => {
+    setPreEditSnapshot(null)
+    setEditingTitle(false)
+    setMode('view')
+  }
+
+  const cancelEditing = () => {
+    if (preEditSnapshot) updateBuild(preEditSnapshot)
+    setPreEditSnapshot(null)
+    setEditingTitle(false)
+    setMode('view')
   }
 
   return (
@@ -78,9 +98,14 @@ export function BuildDetailPage() {
           </>
         )}
         <div style={{ flex: 1 }} />
+        {mode === 'edit' && (
+          <button type="button" onClick={cancelEditing} style={{ color: 'var(--danger)' }}>
+            ✕ Cancel
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => setMode(mode === 'view' ? 'edit' : 'view')}
+          onClick={mode === 'view' ? enterEdit : doneEditing}
           style={
             mode === 'edit'
               ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' }
