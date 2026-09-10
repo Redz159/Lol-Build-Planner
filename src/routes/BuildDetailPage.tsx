@@ -1,18 +1,22 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCollection } from '../state/CollectionContext'
+import { useGameData } from '../state/GameDataContext'
 import { Tabs } from '../components/shared/Tabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemSlotList } from '../components/items/ItemSlotList'
 import { exportBuild } from '../lib/exportImport'
+import { championImageUrl } from '../lib/ddragon'
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
   const { builds, updateBuild, deleteBuild, duplicateBuild } = useCollection()
+  const { champions } = useGameData()
   const navigate = useNavigate()
   const location = useLocation()
   const build = builds.find((b) => b.id === buildId)
+  const champion = champions.find((c) => c.id === build?.champion.id)
   const [mode, setMode] = useState<'view' | 'edit'>(
     (location.state as { startInEdit?: boolean } | null)?.startInEdit ? 'edit' : 'view',
   )
@@ -54,6 +58,15 @@ export function BuildDetailPage() {
           </>
         ) : (
           <>
+            {champion && (
+              <img
+                src={championImageUrl(champion.image.full)}
+                alt={champion.name}
+                width={40}
+                height={40}
+                style={{ borderRadius: 8, border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-sm)' }}
+              />
+            )}
             <h1 style={{ margin: 0, fontSize: 28 }}>
               {build.title} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({build.champion.name})</span>
             </h1>

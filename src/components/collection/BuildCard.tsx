@@ -6,7 +6,7 @@ import { championImageUrl } from '../../lib/ddragon'
 
 export function BuildCard({ build }: { build: Build }) {
   const { champions } = useGameData()
-  const { toggleFavorite } = useCollection()
+  const { toggleFavorite, deleteBuild } = useCollection()
   const champion = champions.find((c) => c.id === build.champion.id)
 
   return (
@@ -35,17 +35,27 @@ export function BuildCard({ build }: { build: Build }) {
         </div>
         <small style={{ color: 'var(--text-dim)' }}>{new Date(build.updatedAt).toLocaleDateString()}</small>
       </Link>
-      <div style={{ marginTop: 10 }}>
+      <div style={{ marginTop: 10, display: 'flex', gap: 6 }}>
         <button
           type="button"
           onClick={() => toggleFavorite(build.id)}
           style={
             build.favorite
-              ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)', width: '100%' }
-              : { width: '100%' }
+              ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)', flex: 1 }
+              : { flex: 1 }
           }
         >
           {build.favorite ? '★ Favorite' : '☆ Favorite'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm(`Delete "${build.title}"?`)) deleteBuild(build.id)
+          }}
+          title="Delete build"
+          style={{ color: 'var(--danger)' }}
+        >
+          🗑
         </button>
       </div>
     </div>
