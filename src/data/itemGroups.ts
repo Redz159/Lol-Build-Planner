@@ -37,7 +37,7 @@ export const ITEM_GROUPS: string[][] = [
   ['Health Potion', 'Refillable Potion'],
   ['Mercurial Scimitar', 'Quicksilver Sash'],
   ['Lifeline', 'Spectral Cutlass'],
-  ['Sheen', 'Bloodsong', 'Dusk and Dawn', 'Essence Reaver', 'Iceborn Gauntlet', 'Lich Bane', 'Trinity Force'],
+  ['Sheen', 'Dusk and Dawn', 'Essence Reaver', 'Iceborn Gauntlet', 'Lich Bane', 'Trinity Force'],
   [
     'Bloodsong',
     'Bounty of Worlds',
