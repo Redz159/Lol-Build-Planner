@@ -68,3 +68,11 @@ export function itemImageUrl(fullImageName: string): string {
 export function runeIconUrl(icon: string): string {
   return `${CDN}/cdn/img/${icon}`
 }
+
+const WIKI_IMG_CDN = 'https://wiki.leagueoflegends.com/en-us/images/thumb'
+
+// The official rune tree crest icons ddragon ships are only 32x32 and look blurry once
+// upscaled. The League wiki hosts a sharper 85x85 flat-style version of the same crests.
+export function runeTreeIconUrl(treeKey: string): string {
+  return `${WIKI_IMG_CDN}/${treeKey}_icon.png/64px-${treeKey}_icon.png`
+}

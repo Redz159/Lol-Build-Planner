@@ -15,6 +15,8 @@ import { Tooltip } from '../shared/Tooltip'
 interface Props {
   pages: RunePage[]
   onChange: (pages: RunePage[]) => void
+  initialKeystoneId?: number | null
+  onGroupSelect?: (keystoneId: number) => void
 }
 
 type Selection = { kind: 'group'; keystoneId: number } | { kind: 'draft'; pageId: string }
@@ -25,10 +27,17 @@ function sameSelection(a: Selection, b: Selection): boolean {
   return false
 }
 
-export function RunePagesEditor({ pages, onChange }: Props) {
+export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSelect }: Props) {
   const { runeTrees } = useGameData()
-  const [selected, setSelected] = useState<Selection | null>(null)
+  const [selected, setSelected] = useState<Selection | null>(
+    initialKeystoneId != null ? { kind: 'group', keystoneId: initialKeystoneId } : null,
+  )
   const dragGroupIndexRef = useRef<number | null>(null)
+
+  const select = (next: Selection) => {
+    setSelected(next)
+    if (next.kind === 'group') onGroupSelect?.(next.keystoneId)
+  }
 
   const groups = useMemo(() => groupRunePages(pages), [pages])
   const draftPages = pages.filter((p) => !p.keystoneId)
@@ -71,7 +80,7 @@ export function RunePagesEditor({ pages, onChange }: Props) {
                   if (from === null || from === groupIndex) return
                   onChange(reorderPageGroups(pages, groups[from].keystoneId, group.keystoneId))
                 }}
-                onClick={() => setSelected({ kind: 'group', keystoneId: group.keystoneId })}
+                onClick={() => select({ kind: 'group', keystoneId: group.keystoneId })}
                 style={{
                   border: isActive ? '3px solid var(--gold)' : '1px solid var(--border-strong)',
                   borderRadius: '50%',
@@ -98,7 +107,7 @@ export function RunePagesEditor({ pages, onChange }: Props) {
             <Tooltip key={page.id} title="Rune page without a keystone yet">
               <button
                 type="button"
-                onClick={() => setSelected({ kind: 'draft', pageId: page.id })}
+                onClick={() => select({ kind: 'draft', pageId: page.id })}
                 style={{
                   border: isActive ? '2px solid var(--gold)' : '1px dashed var(--border-strong)',
                   borderRadius: '50%',
@@ -122,7 +131,7 @@ export function RunePagesEditor({ pages, onChange }: Props) {
             onClick={() => {
               const page = createRunePage()
               onChange([...pages, page])
-              setSelected({ kind: 'draft', pageId: page.id })
+              select({ kind: 'draft', pageId: page.id })
             }}
             style={{
               border: '1px dashed var(--border-strong)',
@@ -148,7 +157,7 @@ export function RunePagesEditor({ pages, onChange }: Props) {
           onChange={(next) => {
             onChange(pages.map((p) => (p.id === page.id ? next : p)))
             if (next.keystoneId !== page.keystoneId) {
-              setSelected(
+              select(
                 next.keystoneId
                   ? { kind: 'group', keystoneId: next.keystoneId }
                   : { kind: 'draft', pageId: next.id },
@@ -161,7 +170,7 @@ export function RunePagesEditor({ pages, onChange }: Props) {
             const next = [...pages]
             next.splice(idx + 1, 0, duplicate)
             onChange(next)
-            setSelected({ kind: 'draft', pageId: duplicate.id })
+            select({ kind: 'draft', pageId: duplicate.id })
           }}
           onRemove={() => onChange(pages.filter((p) => p.id !== page.id))}
           onSetPreferredKeystone={(preferred) => onChange(setPreferredKeystone(pages, page.id, preferred))}

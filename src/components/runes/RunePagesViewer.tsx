@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useGameData } from '../../state/GameDataContext'
 import type { RunePage, ShardSelection } from '../../types/runes'
 import { groupRunePages } from '../../lib/runeRules'
@@ -17,10 +16,15 @@ function sameShards(a: ShardSelection, b: ShardSelection): boolean {
   return sameIds(a.offense, b.offense) && sameIds(a.flex, b.flex) && sameIds(a.defense, b.defense)
 }
 
-export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
+interface Props {
+  pages: RunePage[]
+  selectedKeystoneId: number | null
+  onSelectKeystoneId: (keystoneId: number) => void
+}
+
+export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId }: Props) {
   const { runeTrees } = useGameData()
   const groups = groupRunePages(pages)
-  const [selectedKeystoneId, setSelectedKeystoneId] = useState<number | null>(null)
 
   if (runeTrees.length === 0) return null
   if (groups.length === 0) {
@@ -42,7 +46,7 @@ export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
             <Tooltip key={group.keystoneId} title={keystone.name}>
               <button
                 type="button"
-                onClick={() => setSelectedKeystoneId(group.keystoneId)}
+                onClick={() => onSelectKeystoneId(group.keystoneId)}
                 style={{
                   border: selected ? '3px solid var(--gold)' : '1px solid var(--border-strong)',
                   borderRadius: '50%',

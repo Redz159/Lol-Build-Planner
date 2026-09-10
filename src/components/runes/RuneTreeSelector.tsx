@@ -1,6 +1,7 @@
 import type { DDragonRuneTree } from '../../types/ddragon'
-import { runeIconUrl } from '../../lib/ddragon'
+import { runeTreeIconUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
+import { treeAccentColor } from '../../lib/runeTreeColors'
 
 interface Props {
   runeTrees: DDragonRuneTree[]
@@ -12,26 +13,45 @@ interface Props {
 export function RuneTreeSelector({ runeTrees, selectedId, disabledId, onSelect }: Props) {
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      {runeTrees.map((tree) => (
-        <Tooltip key={tree.id} title={tree.name}>
-          <button
-            type="button"
-            disabled={tree.id === disabledId}
-            onClick={() => onSelect(tree.id)}
-            aria-label={tree.name}
-            style={{
-              border: tree.id === selectedId ? '2px solid var(--gold)' : '1px solid var(--border-strong)',
-              borderRadius: 8,
-              padding: 5,
-              opacity: tree.id === disabledId ? 0.3 : 1,
-              background: 'var(--bg-panel)',
-              boxShadow: tree.id === selectedId ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
-            }}
-          >
-            <img src={runeIconUrl(tree.icon)} alt={tree.name} width={38} height={38} style={{ display: 'block' }} />
-          </button>
-        </Tooltip>
-      ))}
+      {runeTrees.map((tree) => {
+        const disabled = tree.id === disabledId
+        const selected = tree.id === selectedId
+        const accent = treeAccentColor(tree.key)
+        return (
+          <Tooltip key={tree.id} title={tree.name}>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onSelect(tree.id)}
+              aria-label={tree.name}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 46,
+                height: 46,
+                border: selected ? `2px solid ${accent}` : `1px solid ${disabled ? 'var(--border-strong)' : `${accent}55`}`,
+                borderRadius: 10,
+                opacity: disabled ? 0.35 : 1,
+                background: selected ? `linear-gradient(160deg, ${accent}40, ${accent}14)` : 'var(--bg-panel)',
+                boxShadow: selected ? `0 0 10px ${accent}66, var(--shadow-sm)` : 'var(--shadow-sm)',
+              }}
+            >
+              <img
+                src={runeTreeIconUrl(tree.key)}
+                alt={tree.name}
+                width={32}
+                height={32}
+                style={{
+                  display: 'block',
+                  filter: disabled ? 'grayscale(1)' : 'none',
+                  opacity: selected || disabled ? 1 : 0.75,
+                }}
+              />
+            </button>
+          </Tooltip>
+        )
+      })}
     </div>
   )
 }

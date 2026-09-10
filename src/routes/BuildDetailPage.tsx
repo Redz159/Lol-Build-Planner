@@ -24,6 +24,7 @@ export function BuildDetailPage() {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState(build?.title ?? '')
   const [preEditSnapshot, setPreEditSnapshot] = useState<Build | null>(null)
+  const [selectedKeystoneId, setSelectedKeystoneId] = useState<number | null>(null)
 
   if (!build) return <div style={{ padding: 24 }}>Build not found. <Link to="/">Back</Link></div>
 
@@ -138,9 +139,18 @@ export function BuildDetailPage() {
             label: 'Runes',
             content:
               mode === 'edit' ? (
-                <RunePagesEditor pages={build.runePages} onChange={(runePages) => save({ runePages })} />
+                <RunePagesEditor
+                  pages={build.runePages}
+                  onChange={(runePages) => save({ runePages })}
+                  initialKeystoneId={selectedKeystoneId}
+                  onGroupSelect={setSelectedKeystoneId}
+                />
               ) : (
-                <RunePagesViewer pages={build.runePages} />
+                <RunePagesViewer
+                  pages={build.runePages}
+                  selectedKeystoneId={selectedKeystoneId}
+                  onSelectKeystoneId={setSelectedKeystoneId}
+                />
               ),
           },
           {
