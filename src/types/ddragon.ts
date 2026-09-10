@@ -12,6 +12,7 @@ export interface DDragonItem {
   image: { full: string }
   tags: string[]
   gold: { total: number }
+  into: string[]
 }
 
 export interface DDragonRune {

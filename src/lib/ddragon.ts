@@ -30,7 +30,14 @@ export async function getChampions(): Promise<DDragonChampion[]> {
 interface RawDDragonItem extends DDragonItem {
   gold: { total: number; purchasable: boolean }
   maps: Record<string, boolean>
+  into?: string[]
+  requiredChampion?: string
 }
+
+// ARAM's support-only alternate starter relics (World Atlas, Celestial Opposition, Dream
+// Maker, Zaz'Zak's Realmspike, Solstice Sleigh, Bloodsong) are flagged as available on map
+// 11 too, even though they can't actually be bought on Summoner's Rift.
+const ARAM_STARTER_ITEM_IDS = new Set(['3865', '3869', '3870', '3871', '3876', '3877'])
 
 export async function getItems(): Promise<DDragonItem[]> {
   const raw = await cachedFetch<{ data: Record<string, RawDDragonItem> }>(
@@ -43,6 +50,7 @@ export async function getItems(): Promise<DDragonItem[]> {
   const bestByName = new Map<string, [string, RawDDragonItem]>()
   for (const [id, item] of Object.entries(raw.data)) {
     if (!item.gold.purchasable || !item.maps['11'] || Number(id) >= 100000) continue
+    if (item.requiredChampion || ARAM_STARTER_ITEM_IDS.has(id)) continue
     const existing = bestByName.get(item.name)
     if (!existing || Number(id) < Number(existing[0])) bestByName.set(item.name, [id, item])
   }
@@ -54,6 +62,7 @@ export async function getItems(): Promise<DDragonItem[]> {
       image: item.image,
       tags: item.tags,
       gold: { total: item.gold.total },
+      into: item.into ?? [],
     }))
     .sort((a, b) => a.gold.total - b.gold.total)
 }

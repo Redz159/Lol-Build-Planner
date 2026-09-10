@@ -18,6 +18,16 @@ export function isStarterItem(item: DDragonItem): boolean {
   return item.gold.total <= 500
 }
 
+// A component still builds into something further (basic materials like Long Sword as
+// well as epic components like Chain Vest); a legendary item is a finished, non-boots build.
+export function isComponent(item: DDragonItem): boolean {
+  return item.into.length > 0
+}
+
+export function isLegendaryItem(item: DDragonItem): boolean {
+  return item.into.length === 0 && item.gold.total > 500 && !isBoots(item) && !item.tags.includes('Trinket')
+}
+
 export interface FilterOption {
   id: string
   label: string
@@ -28,6 +38,8 @@ export const ATTRIBUTE_FILTERS: FilterOption[] = [
   { id: 'attr:starter', label: 'Starter Item', test: isStarterItem },
   { id: 'attr:boots', label: 'Boots', test: isBoots },
   { id: 'attr:antiheal', label: 'Anti-heal', test: isAntiHeal },
+  { id: 'attr:component', label: 'Component', test: isComponent },
+  { id: 'attr:legendary', label: 'Legendary Item', test: isLegendaryItem },
 ]
 
 export const STAT_FILTERS: FilterOption[] = ALL_STAT_CATEGORIES.map((category) => ({
