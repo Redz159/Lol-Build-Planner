@@ -25,11 +25,10 @@ export function ItemAssignPopup({
   onToggleExclusion,
   onClose,
 }: Props) {
-  const otherItemIds = [
-    ...new Set(
-      ITEM_SLOT_IDS.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)).filter((id) => id !== item.id),
-    ),
-  ]
+  const otherItemIds = [...new Set(ITEM_SLOT_IDS.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)))].filter(
+    (id) => id !== item.id,
+  )
+  const otherItems = otherItemIds.map((id) => items.find((i) => i.id === id)).filter((i): i is DDragonItem => !!i)
 
   return (
     <div
@@ -84,33 +83,24 @@ export function ItemAssignPopup({
           ))}
         </div>
 
-        {otherItemIds.length > 0 && (
+        {otherItems.length > 0 && (
           <>
             <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
               Excludes
             </div>
             <div>
-              {otherItemIds.map((otherId) => {
-                const other = items.find((i) => i.id === otherId)
-                const builtin = isExcludedPair(builtinExclusions, item.id, otherId)
+              {otherItems.map((other) => {
+                const builtin = isExcludedPair(builtinExclusions, item.id, other.id)
                 return (
-                  <label key={otherId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                  <label key={other.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
                     <input
                       type="checkbox"
-                      checked={builtin || isExcludedPair(itemExclusions, item.id, otherId)}
+                      checked={builtin || isExcludedPair(itemExclusions, item.id, other.id)}
                       disabled={builtin}
-                      onChange={() => onToggleExclusion(otherId)}
+                      onChange={() => onToggleExclusion(other.id)}
                     />
-                    {other && (
-                      <img
-                        src={itemImageUrl(other.image.full)}
-                        alt=""
-                        width={18}
-                        height={18}
-                        style={{ borderRadius: 3 }}
-                      />
-                    )}
-                    {other?.name ?? otherId}
+                    <img src={itemImageUrl(other.image.full)} alt="" width={18} height={18} style={{ borderRadius: 3 }} />
+                    {other.name}
                     {builtin && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(game rule)</span>}
                   </label>
                 )
