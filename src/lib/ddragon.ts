@@ -34,10 +34,23 @@ interface RawDDragonItem extends DDragonItem {
   requiredChampion?: string
 }
 
-// ARAM's support-only alternate starter relics (World Atlas, Celestial Opposition, Dream
-// Maker, Zaz'Zak's Realmspike, Solstice Sleigh, Bloodsong) are flagged as available on map
-// 11 too, even though they can't actually be bought on Summoner's Rift.
-const ARAM_STARTER_ITEM_IDS = new Set(['3865', '3869', '3870', '3871', '3876', '3877'])
+// ARAM-only starter items (World Atlas, Celestial Opposition, Dream Maker, Zaz'Zak's
+// Realmspike, Solstice Sleigh, Bloodsong, Guardian's Horn/Orb/Blade/Hammer, Cappa Juice)
+// are flagged as available on map 11 too, even though they can't actually be bought on
+// Summoner's Rift.
+const ARAM_STARTER_ITEM_IDS = new Set([
+  '3865',
+  '3869',
+  '3870',
+  '3871',
+  '3876',
+  '3877',
+  '2051',
+  '3112',
+  '3177',
+  '3184',
+  '2141',
+])
 
 export async function getItems(): Promise<DDragonItem[]> {
   const raw = await cachedFetch<{ data: Record<string, RawDDragonItem> }>(
