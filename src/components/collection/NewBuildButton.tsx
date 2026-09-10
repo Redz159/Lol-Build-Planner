@@ -4,6 +4,7 @@ import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { newId } from '../../lib/id'
 import type { Build } from '../../types/build'
+import { ChampionSelect } from './ChampionSelect'
 
 export function NewBuildButton() {
   const { champions } = useGameData()
@@ -12,7 +13,7 @@ export function NewBuildButton() {
   const [open, setOpen] = useState(false)
   const [championId, setChampionId] = useState('')
   const [title, setTitle] = useState('')
-  const championRef = useRef<HTMLSelectElement>(null)
+  const championRef = useRef<HTMLInputElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -55,24 +56,13 @@ export function NewBuildButton() {
         New build
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <select
+        <ChampionSelect
           ref={championRef}
+          champions={champions}
           value={championId}
-          onChange={(e) => setChampionId(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              titleRef.current?.focus()
-            }
-          }}
-        >
-          <option value="">Select champion...</option>
-          {champions.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setChampionId}
+          onConfirm={() => titleRef.current?.focus()}
+        />
         <input
           ref={titleRef}
           type="text"
