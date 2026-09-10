@@ -33,17 +33,17 @@ export function RuneTreeColumn({
   onSelectRune,
 }: Props) {
   const rows = mode === 'primary' ? tree.slots : tree.slots.slice(1)
-  const runeSize = compact ? 20 : 26
+  const runeSize = compact ? 24 : 26
 
   return (
     <div
       className="panel"
       style={{
         display: 'flex',
-        gap: compact ? 10 : 18,
+        gap: compact ? 14 : 18,
         border: `1px solid ${accentColor ?? 'var(--border)'}`,
-        padding: compact ? 8 : 12,
-        minWidth: compact ? 160 : 240,
+        padding: compact ? 10 : 12,
+        minWidth: compact ? 220 : 240,
       }}
     >
       <div>
@@ -51,7 +51,7 @@ export function RuneTreeColumn({
           const isKeystoneRow = mode === 'primary' && i === 0
           const rowIndex = isKeystoneRow ? -1 : mode === 'primary' ? i - 1 : i
           return (
-            <div key={i} style={{ display: 'flex', gap: compact ? 6 : 8, marginBottom: compact ? 6 : 8 }}>
+            <div key={i} style={{ display: 'flex', gap: compact ? 7 : 8, marginBottom: compact ? 7 : 8 }}>
               {slot.runes.map((rune) => {
                 const selected = isKeystoneRow
                   ? rune.id === keystoneId

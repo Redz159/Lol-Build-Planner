@@ -90,28 +90,26 @@ export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
           const rest = secondaryTrees.filter((_, i) => i !== leadIndex)
           const leadAccent = treeAccentColor(lead.tree!.key)
 
-          const shardBlock = (shards: ShardSelection, preferredShards: ShardSelection, accentColor?: string) => (
+          // Shard rings always use the same neutral color, regardless of which secondary tree they belong to.
+          const shardBlock = (shards: ShardSelection, preferredShards: ShardSelection) => (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-start' }}>
               <StatShardRow
                 options={OFFENSE_SHARDS}
                 selectedIds={shards.offense}
                 preferredIds={preferredShards.offense}
                 readOnly
-                accentColor={accentColor}
               />
               <StatShardRow
                 options={FLEX_SHARDS}
                 selectedIds={shards.flex}
                 preferredIds={preferredShards.flex}
                 readOnly
-                accentColor={accentColor}
               />
               <StatShardRow
                 options={DEFENSE_SHARDS}
                 selectedIds={shards.defense}
                 preferredIds={preferredShards.defense}
                 readOnly
-                accentColor={accentColor}
               />
             </div>
           )
@@ -136,7 +134,7 @@ export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
                   preferredRuneIds={lead.preferredRuneIds}
                   readOnly
                   accentColor={leadAccent}
-                  extra={shardBlock(lead.shards, lead.preferredShards, leadAccent)}
+                  extra={shardBlock(lead.shards, lead.preferredShards)}
                 />
               </div>
               {rest.length > 0 && (
@@ -154,7 +152,7 @@ export function RunePagesViewer({ pages }: { pages: RunePage[] }) {
                         preferredRuneIds={entry.preferredRuneIds}
                         readOnly
                         accentColor={accentColor}
-                        extra={shardsDiffer ? shardBlock(entry.shards, entry.preferredShards, accentColor) : undefined}
+                        extra={shardsDiffer ? shardBlock(entry.shards, entry.preferredShards) : undefined}
                       />
                     )
                   })}
