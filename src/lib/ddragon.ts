@@ -37,8 +37,16 @@ export async function getItems(): Promise<DDragonItem[]> {
     `ddragon:${DDRAGON_VERSION}:items`,
     `${CDN}/cdn/${DDRAGON_VERSION}/data/en_US/item.json`,
   )
-  return Object.entries(raw.data)
-    .filter(([, item]) => item.gold.purchasable && item.maps['11'])
+  // Other game modes (Arena, ...) reuse an existing item's name under their own six-digit
+  // id, incorrectly flagged as available on map 11 too; drop those so items aren't listed
+  // twice, and so mode-exclusive items whose real SR id was retired don't show up at all.
+  const bestByName = new Map<string, [string, RawDDragonItem]>()
+  for (const [id, item] of Object.entries(raw.data)) {
+    if (!item.gold.purchasable || !item.maps['11'] || Number(id) >= 100000) continue
+    const existing = bestByName.get(item.name)
+    if (!existing || Number(id) < Number(existing[0])) bestByName.set(item.name, [id, item])
+  }
+  return Array.from(bestByName.values())
     .map(([id, item]) => ({
       id,
       name: item.name,
