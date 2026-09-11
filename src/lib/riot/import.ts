@@ -6,12 +6,25 @@ import { buildLoadoutForRole, classifyGameItems, findParticipant, roleForPartici
 import { ROLES } from '../loadouts'
 
 export interface ImportProgress {
-  stage: 'account' | 'match-list' | 'match-details' | 'done'
-  current: number
-  total: number
+  stage: 'account' | 'scanning' | 'done'
+  scanned: number
+  found: number
+  target: number
 }
 
 const REQUEST_DELAY_MS = 90
+const PAGE_SIZE = 100
+// Riot's match list has no champion filter (see client.ts), so every candidate match costs a
+// full match-detail fetch just to check who was played — this bounds worst case for a champion
+// the player rarely picks, rather than scanning their whole history.
+const MAX_MATCHES_TO_SCAN = 300
+
+interface RoleGameEntry {
+  participant: NonNullable<ReturnType<typeof findParticipant>>
+  starterItems?: number[]
+  bootsItem?: number
+  coreItemsInOrder?: number[]
+}
 
 export async function importBuildFromRiot(
   regionHost: string,
@@ -23,63 +36,68 @@ export async function importBuildFromRiot(
   items: DDragonItem[],
   onProgress: (p: ImportProgress) => void,
 ): Promise<Build> {
-  onProgress({ stage: 'account', current: 0, total: 1 })
+  onProgress({ stage: 'account', scanned: 0, found: 0, target: sampleSize })
   const account = await getAccountByRiotId(regionHost, gameName, tagLine)
   await sleep(REQUEST_DELAY_MS)
 
-  onProgress({ stage: 'match-list', current: 0, total: 1 })
-  const matchIds = await getMatchIdsByPuuid(regionHost, account.puuid, Number(champion.key), sampleSize)
-  await sleep(REQUEST_DELAY_MS)
+  const championId = Number(champion.key)
+  const byRole = new Map<Role, RoleGameEntry[]>()
+  let scanned = 0
+  let found = 0
+  let start = 0
 
-  if (matchIds.length === 0) {
-    throw new Error(`No recent ${champion.name} games found for ${gameName}#${tagLine} in this region.`)
-  }
+  while (found < sampleSize && scanned < MAX_MATCHES_TO_SCAN) {
+    const page = await getMatchIdsByPuuid(regionHost, account.puuid, start, PAGE_SIZE)
+    await sleep(REQUEST_DELAY_MS)
+    if (page.length === 0) break
+    start += page.length
 
-  const byRole = new Map<Role, { participant: ReturnType<typeof findParticipant>; starterItems?: number[]; bootsItem?: number; coreItemsInOrder?: number[] }[]>()
-
-  for (let i = 0; i < matchIds.length; i++) {
-    onProgress({ stage: 'match-details', current: i, total: matchIds.length })
-    const matchId = matchIds[i]
-    try {
-      const match = await getMatch(regionHost, matchId)
-      await sleep(REQUEST_DELAY_MS)
-      const participant = findParticipant(match, account.puuid)
-      if (!participant || participant.championId !== Number(champion.key)) continue
-      const role = roleForParticipant(participant)
-      if (!role) continue
-
-      let classified: { starterItems?: number[]; bootsItem?: number; coreItemsInOrder?: number[] } = {}
+    for (const matchId of page) {
+      if (found >= sampleSize || scanned >= MAX_MATCHES_TO_SCAN) break
+      scanned++
+      onProgress({ stage: 'scanning', scanned, found, target: sampleSize })
       try {
-        const timeline = await getMatchTimeline(regionHost, matchId)
+        const match = await getMatch(regionHost, matchId)
         await sleep(REQUEST_DELAY_MS)
-        classified = classifyGameItems(timeline, participant.participantId, items)
-      } catch {
-        // Timeline can 404/fail independently of the match itself — still keep the game for
-        // rune aggregation, just without item data.
-      }
+        const participant = findParticipant(match, account.puuid)
+        if (!participant || participant.championId !== championId) continue
+        found++
+        onProgress({ stage: 'scanning', scanned, found, target: sampleSize })
 
-      const list = byRole.get(role) ?? []
-      list.push({ participant, ...classified })
-      byRole.set(role, list)
-    } catch {
-      // One bad match shouldn't abort the whole import — skip and keep going.
-      continue
+        const role = roleForParticipant(participant)
+        if (!role) continue
+
+        let classified: { starterItems?: number[]; bootsItem?: number; coreItemsInOrder?: number[] } = {}
+        try {
+          const timeline = await getMatchTimeline(regionHost, matchId)
+          await sleep(REQUEST_DELAY_MS)
+          classified = classifyGameItems(timeline, participant.participantId, items)
+        } catch {
+          // Timeline can 404/fail independently of the match itself — still keep the game for
+          // rune aggregation, just without item data.
+        }
+
+        const list = byRole.get(role) ?? []
+        list.push({ participant, ...classified })
+        byRole.set(role, list)
+      } catch {
+        // One bad match shouldn't abort the whole import — skip and keep going.
+        continue
+      }
     }
+    if (page.length < PAGE_SIZE) break
   }
 
-  onProgress({ stage: 'done', current: matchIds.length, total: matchIds.length })
+  onProgress({ stage: 'done', scanned, found, target: sampleSize })
 
-  const loadouts = ROLES.filter((r) => byRole.has(r)).map((role) => {
-    const games = byRole.get(role)!.filter((g): g is typeof g & { participant: NonNullable<typeof g.participant> } => !!g.participant)
-    return buildLoadoutForRole(
-      role,
-      games.map((g) => ({ participant: g.participant, starterItems: g.starterItems, bootsItem: g.bootsItem, coreItemsInOrder: g.coreItemsInOrder })),
-      runeTrees,
-    )
-  })
+  if (found === 0) {
+    throw new Error(`Checked ${scanned} recent games for ${gameName}#${tagLine} but found none played as ${champion.name}.`)
+  }
+
+  const loadouts = ROLES.filter((r) => byRole.has(r)).map((role) => buildLoadoutForRole(role, byRole.get(role)!, runeTrees))
 
   if (loadouts.length === 0) {
-    throw new Error(`Found ${matchIds.length} ${champion.name} games, but none had a usable role (ARAM/remakes are skipped).`)
+    throw new Error(`Found ${found} ${champion.name} games, but none had a usable role (ARAM/remakes are skipped).`)
   }
 
   const now = new Date().toISOString()

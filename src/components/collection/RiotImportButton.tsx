@@ -8,8 +8,7 @@ import { ChampionSelect } from './ChampionSelect'
 
 const STAGE_LABEL: Record<ImportProgress['stage'], string> = {
   account: 'Looking up account...',
-  'match-list': 'Finding recent games...',
-  'match-details': 'Reading match',
+  scanning: 'Checking games',
   done: 'Building loadout...',
 }
 
@@ -44,7 +43,7 @@ export function RiotImportButton() {
   const submit = async () => {
     if (!champion) return
     setError(null)
-    setProgress({ stage: 'account', current: 0, total: 1 })
+    setProgress({ stage: 'account', scanned: 0, found: 0, target: sampleSize })
     try {
       const host = RIOT_REGIONS.find((r) => r.id === region)!.host
       const build = await importBuildFromRiot(
@@ -117,7 +116,7 @@ export function RiotImportButton() {
         {progress && (
           <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             {STAGE_LABEL[progress.stage]}
-            {progress.stage === 'match-details' ? ` ${progress.current + 1}/${progress.total}` : ''}
+            {progress.stage === 'scanning' ? ` (${progress.scanned} checked, ${progress.found}/${progress.target} found)` : ''}
           </span>
         )}
       </div>

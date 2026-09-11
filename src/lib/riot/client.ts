@@ -24,8 +24,12 @@ export function getAccountByRiotId(host: string, gameName: string, tagLine: stri
   return proxyFetch(host, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
 }
 
-export function getMatchIdsByPuuid(host: string, puuid: string, championId: number, count: number): Promise<string[]> {
-  return proxyFetch(host, `/lol/match/v5/matches/by-puuid/${puuid}/ids?champion=${championId}&count=${count}`)
+// Riot's match-v5 list endpoint has no champion filter — despite some docs/tools implying
+// otherwise, a `champion` query param is silently ignored (verified against live data: it
+// returns the same ids regardless). Champion has to be filtered client-side per match, so
+// callers page through recent matches with `start`/`count` and check each one themselves.
+export function getMatchIdsByPuuid(host: string, puuid: string, start: number, count: number): Promise<string[]> {
+  return proxyFetch(host, `/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`)
 }
 
 export function getMatch(host: string, matchId: string): Promise<RiotMatch> {

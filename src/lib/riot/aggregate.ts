@@ -44,16 +44,22 @@ function bump(map: Map<number, number>, id: number): void {
 // Reconstructs the order items actually remained in a player's inventory, from the match
 // timeline's purchase/sell/destroy/undo events for one participant — final item0..item6 slots
 // only reflect end-of-game inventory position, not build order or intermediate boots tiers.
-// Riot fires ITEM_DESTROYED both when a component is consumed into an upgrade (should drop
-// the component) and when a consumable like a potion is fully used up (should NOT drop the
-// purchase record — we still want to know it was bought) — only the former should strip the
-// entry, so consumables are exempted from that removal.
-function reconstructBuildOrder(timeline: RiotTimeline, participantId: number, items: DDragonItem[]): { itemId: number; timestamp: number }[] {
-  const isConsumable = (itemId: number) => items.find((i) => i.id === String(itemId))?.tags.includes('Consumable') ?? false
+//
+// A real "combine into a finished item" transaction always logs the components' ITEM_DESTROYED
+// paired with the finished item's ITEM_PURCHASED at the exact same timestamp (verified against
+// live match data). Passive in-game auto-upgrades — the Tear line (Manamune -> Muramana,
+// Archangel's Staff -> Seraph's Embrace, Winter's Approach -> Fimbulwinter) and the jungler
+// boots line — fire a lone ITEM_DESTROYED with no matching purchase, since Riot never logs a
+// "purchase" for the evolved form at all (it's not buyable — Data Dragon marks it
+// non-purchasable and our item list excludes it). A potion being fully drunk is the same lone-
+// destroy shape. In every one of those cases the original purchased entry should just stay, so
+// only a destroy paired with a same-tick purchase actually removes anything.
+function reconstructBuildOrder(timeline: RiotTimeline, participantId: number): { itemId: number; timestamp: number }[] {
   const events = timeline.info.frames
     .flatMap((f) => f.events)
     .filter((e) => e.participantId === participantId)
     .sort((a, b) => a.timestamp - b.timestamp)
+  const purchaseTimestamps = new Set(events.filter((e) => e.type === 'ITEM_PURCHASED').map((e) => e.timestamp))
 
   const sequence: { itemId: number; timestamp: number }[] = []
   const removeLast = (itemId: number) => {
@@ -67,7 +73,7 @@ function reconstructBuildOrder(timeline: RiotTimeline, participantId: number, it
   for (const e of events) {
     if (e.type === 'ITEM_PURCHASED' && e.itemId) sequence.push({ itemId: e.itemId, timestamp: e.timestamp })
     else if (e.type === 'ITEM_SOLD' && e.itemId) removeLast(e.itemId)
-    else if (e.type === 'ITEM_DESTROYED' && e.itemId && !isConsumable(e.itemId)) removeLast(e.itemId)
+    else if (e.type === 'ITEM_DESTROYED' && e.itemId && purchaseTimestamps.has(e.timestamp)) removeLast(e.itemId)
     else if (e.type === 'ITEM_UNDO') {
       if (e.beforeId) removeLast(e.beforeId)
       if (e.afterId) sequence.push({ itemId: e.afterId, timestamp: e.timestamp })
@@ -254,7 +260,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
 // the same item-attribute rules the rest of the app uses (isBoots, isStarterItem, etc.), so an
 // imported build reads consistently with a hand-built one.
 export function classifyGameItems(timeline: RiotTimeline, participantId: number, items: DDragonItem[]): Omit<RoleGameData, 'participant'> {
-  const sequence = reconstructBuildOrder(timeline, participantId, items)
+  const sequence = reconstructBuildOrder(timeline, participantId)
   const starterItems: number[] = []
   let bootsItem: number | undefined
   const coreItemsInOrder: number[] = []
