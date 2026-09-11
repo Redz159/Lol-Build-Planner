@@ -14,7 +14,6 @@ import {
   ROLE_LABELS,
   applySupportStarterDefault,
   assignRole,
-  buildRoles,
   loadoutLabel,
   removeLoadout,
   roleOwnerLoadoutId,
@@ -136,11 +135,16 @@ export function BuildDetailPage() {
               {build.title} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({build.champion.name})</span>
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {buildRoles(build).length === 0 ? (
-                <img src={FILL_ICON_URL} alt="Fill" title="Fill" width={18} height={18} />
-              ) : (
-                buildRoles(build).map((role) => <RoleIcon key={role} role={role} size={18} />)
-              )}
+              {build.loadouts.map((l, i) => (
+                <span key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {i > 0 && <span style={{ color: 'var(--gold)' }}>/</span>}
+                  {l.roles.length === 0 ? (
+                    <img src={FILL_ICON_URL} alt="Fill" title="Fill" width={18} height={18} />
+                  ) : (
+                    l.roles.map((role) => <RoleIcon key={role} role={role} size={18} />)
+                  )}
+                </span>
+              ))}
             </div>
             {mode === 'edit' && (
               <button type="button" onClick={() => setEditingTitle(true)}>
