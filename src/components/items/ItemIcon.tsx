@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import type { DragEvent, MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { itemImageUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
@@ -11,14 +11,32 @@ interface Props {
   badge?: number
   title?: string
   note?: string
+  draggable?: boolean
+  onDragStart?: (e: DragEvent<HTMLButtonElement>) => void
+  onDragEnd?: (e: DragEvent<HTMLButtonElement>) => void
   onClick?: (e: MouseEvent) => void
 }
 
-export function ItemIcon({ item, size = 44, selected, excluded, badge, title, note, onClick }: Props) {
+export function ItemIcon({
+  item,
+  size = 44,
+  selected,
+  excluded,
+  badge,
+  title,
+  note,
+  draggable,
+  onDragStart,
+  onDragEnd,
+  onClick,
+}: Props) {
   const button = (
     <button
       type="button"
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       aria-label={item.name}
       style={{
         position: 'relative',
@@ -29,6 +47,7 @@ export function ItemIcon({ item, size = 44, selected, excluded, badge, title, no
         background: 'var(--bg-panel)',
         boxShadow: selected ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
         lineHeight: 0,
+        cursor: draggable ? 'grab' : undefined,
       }}
     >
       <img

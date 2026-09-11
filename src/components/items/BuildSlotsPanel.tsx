@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react'
+import { useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { ITEM_SLOT_LABELS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
@@ -16,6 +16,8 @@ interface Props {
   onTogglePreview: (slotId: ItemSlotId, placementId: string) => void
   onRemovePlacement: (slotId: ItemSlotId, placementId: string) => void
   onOpenPopup: (item: DDragonItem) => void
+  onDragStartPlacement: (slotId: ItemSlotId, placementId: string, itemId: string) => void
+  onDropOnSlot: (slotId: ItemSlotId) => void
   excludedPlacementIds: Set<string>
 }
 
@@ -31,8 +33,11 @@ export function BuildSlotsPanel({
   onTogglePreview,
   onRemovePlacement,
   onOpenPopup,
+  onDragStartPlacement,
+  onDropOnSlot,
   excludedPlacementIds,
 }: Props) {
+  const [dragOverSlotId, setDragOverSlotId] = useState<ItemSlotId | null>(null)
   const isEmpty = slotIds.every((slotId) => buildItems[slotId].length === 0)
   if (mode === 'view' && isEmpty) {
     return <div style={{ color: 'var(--text-dim)' }}>No items in this build yet.</div>
@@ -57,14 +62,34 @@ export function BuildSlotsPanel({
         const placements = buildItems[slotId]
         if (mode === 'view' && placements.length === 0) return null
         const active = activeSlotId === slotId
+        const dragOver = mode === 'edit' && dragOverSlotId === slotId
         return (
           <div
             key={slotId}
             className="panel"
+            onDragOver={
+              mode === 'edit'
+                ? (e: DragEvent) => {
+                    e.preventDefault()
+                    if (dragOverSlotId !== slotId) setDragOverSlotId(slotId)
+                  }
+                : undefined
+            }
+            onDragLeave={mode === 'edit' ? () => setDragOverSlotId((prev) => (prev === slotId ? null : prev)) : undefined}
+            onDrop={
+              mode === 'edit'
+                ? (e: DragEvent) => {
+                    e.preventDefault()
+                    setDragOverSlotId(null)
+                    onDropOnSlot(slotId)
+                  }
+                : undefined
+            }
             style={{
               padding: 14,
               marginBottom: 12,
-              borderColor: active ? 'var(--gold)' : undefined,
+              borderColor: active || dragOver ? 'var(--gold)' : undefined,
+              boxShadow: dragOver ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : undefined,
             }}
           >
             <div style={{ marginBottom: 8 }}>
@@ -116,6 +141,11 @@ export function BuildSlotsPanel({
                         selected={preview[slotId] === placement.id}
                         excluded={excludedPlacementIds.has(placement.id)}
                         note={itemNotes[item.id]}
+                        draggable={mode === 'edit'}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = 'move'
+                          onDragStartPlacement(slotId, placement.id, item.id)
+                        }}
                         onClick={handleClick}
                       />
                       {mode === 'edit' && (

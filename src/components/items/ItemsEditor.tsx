@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_IDS, type ItemSlotId } from '../../types/items'
+import { ITEM_SLOT_IDS, type BuildItems, type ItemSlotId } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
@@ -87,6 +87,55 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     })
   }
 
+  // Drag-and-drop: a ref (not state) so a drag gesture doesn't trigger re-renders of its own.
+  // `from: null` means the drag started in the item browser rather than an existing placement.
+  const dragRef = useRef<{ itemId: string; from: { slotId: ItemSlotId; placementId: string } | null } | null>(null)
+
+  const startDragFromSlot = (slotId: ItemSlotId, placementId: string, itemId: string) => {
+    dragRef.current = { itemId, from: { slotId, placementId } }
+  }
+
+  const startDragFromBrowser = (itemId: string) => {
+    dragRef.current = { itemId, from: null }
+  }
+
+  const addItemToSlot = (itemId: string, slotId: ItemSlotId) => {
+    const item = items.find((i) => i.id === itemId)
+    if (!item) return
+    if (slotId === 'boots' && !isBoots(item)) return
+    if (loadout.items[slotId].some((p) => p.itemId === itemId)) return
+    onChange({ items: { ...loadout.items, [slotId]: [...loadout.items[slotId], { id: newId(), itemId }] } })
+  }
+
+  const moveItemToSlot = (itemId: string, from: { slotId: ItemSlotId; placementId: string }, toSlotId: ItemSlotId) => {
+    const item = items.find((i) => i.id === itemId)
+    if (!item) return
+    if (toSlotId === 'boots' && !isBoots(item)) return
+    const alreadyInTarget = loadout.items[toSlotId].some((p) => p.itemId === itemId)
+    const nextItems: BuildItems = { ...loadout.items, [from.slotId]: loadout.items[from.slotId].filter((p) => p.id !== from.placementId) }
+    if (!alreadyInTarget) nextItems[toSlotId] = [...nextItems[toSlotId], { id: newId(), itemId }]
+    onChange({ items: nextItems })
+  }
+
+  const dropOnSlot = (toSlotId: ItemSlotId) => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (!drag) return
+    if (drag.from) {
+      if (drag.from.slotId === toSlotId) return
+      moveItemToSlot(drag.itemId, drag.from, toSlotId)
+    } else {
+      addItemToSlot(drag.itemId, toSlotId)
+    }
+  }
+
+  const dropOnBrowser = () => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (!drag?.from) return
+    removePlacement(drag.from.slotId, drag.from.placementId)
+  }
+
   const togglePreview = (slotId: ItemSlotId, placementId: string) => {
     setPreview((prev) => {
       if (prev[slotId] === placementId) {
@@ -125,6 +174,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         onTogglePreview={togglePreview}
         onRemovePlacement={() => {}}
         onOpenPopup={() => {}}
+        onDragStartPlacement={() => {}}
+        onDropOnSlot={() => {}}
         excludedPlacementIds={excludedPlacementIds}
       />
     )
@@ -146,6 +197,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             onTogglePreview={togglePreview}
             onRemovePlacement={removePlacement}
             onOpenPopup={(item) => setPopupItemId(item.id)}
+            onDragStartPlacement={startDragFromSlot}
+            onDropOnSlot={dropOnSlot}
             excludedPlacementIds={excludedPlacementIds}
           />
         </div>
@@ -158,6 +211,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             activeSlotId={activeSlotId}
             onFastToggle={fastToggle}
             onOpenPopup={(item) => setPopupItemId(item.id)}
+            onDragStartItem={startDragFromBrowser}
+            onDropToBrowser={dropOnBrowser}
           />
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Role } from '../../types/build'
 import { ITEM_SLOT_IDS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
@@ -23,16 +23,29 @@ interface Props {
   activeSlotId: ItemSlotId | null
   onFastToggle: (item: DDragonItem) => void
   onOpenPopup: (item: DDragonItem) => void
+  onDragStartItem: (itemId: string) => void
+  onDropToBrowser: () => void
 }
 
 function placementCount(buildItems: BuildItems, itemId: string): number {
   return ITEM_SLOT_IDS.reduce((n, slotId) => n + buildItems[slotId].filter((p) => p.itemId === itemId).length, 0)
 }
 
-export function ItemBrowser({ items, buildItems, itemNotes, roles, activeSlotId, onFastToggle, onOpenPopup }: Props) {
+export function ItemBrowser({
+  items,
+  buildItems,
+  itemNotes,
+  roles,
+  activeSlotId,
+  onFastToggle,
+  onOpenPopup,
+  onDragStartItem,
+  onDropToBrowser,
+}: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Set<string>>(new Set())
   const [filterMode, setFilterMode] = useState<FilterMode>('any')
+  const [dragOver, setDragOver] = useState(false)
 
   // Boots and Starter are slots where a non-matching item can never be placed, so jumping
   // into fast-add for one pre-filters the browser down to it; leaving it clears that back
@@ -66,7 +79,23 @@ export function ItemBrowser({ items, buildItems, itemNotes, roles, activeSlotId,
   }, [items, search, filters, filterMode, roles])
 
   return (
-    <div>
+    <div
+      onDragOver={(e: DragEvent) => {
+        e.preventDefault()
+        if (!dragOver) setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e: DragEvent) => {
+        e.preventDefault()
+        setDragOver(false)
+        onDropToBrowser()
+      }}
+      style={{
+        borderRadius: 10,
+        outline: dragOver ? '2px dashed var(--gold)' : undefined,
+        outlineOffset: 4,
+      }}
+    >
       <input
         type="text"
         placeholder="Search items..."
@@ -94,6 +123,11 @@ export function ItemBrowser({ items, buildItems, itemNotes, roles, activeSlotId,
                 badge={count > 0 ? count : undefined}
                 title={activeSlotId ? `${item.name} — click to toggle in active slot` : item.name}
                 note={itemNotes[item.id]}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'copy'
+                  onDragStartItem(item.id)
+                }}
                 onClick={() => (activeSlotId ? onFastToggle(item) : onOpenPopup(item))}
               />
               {activeSlotId && (
