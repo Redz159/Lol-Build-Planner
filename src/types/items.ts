@@ -48,3 +48,15 @@ export function normalizeItemExclusions(value: unknown): ItemExclusionPair[] {
     (p): p is ItemExclusionPair => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string' && typeof p[1] === 'string',
   )
 }
+
+// Freeform per-item notes, keyed by item id, shown as an addition to that item's tooltip.
+export type ItemNotes = Record<string, string>
+
+export function normalizeItemNotes(value: unknown): ItemNotes {
+  const result: ItemNotes = {}
+  if (!value || typeof value !== 'object') return result
+  for (const [itemId, note] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof note === 'string' && note.trim() !== '') result[itemId] = note
+  }
+  return result
+}

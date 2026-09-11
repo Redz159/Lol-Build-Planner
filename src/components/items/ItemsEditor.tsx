@@ -102,6 +102,13 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     onChange({ itemExclusions: toggleExclusionPair(loadout.itemExclusions, itemId, otherItemId) })
   }
 
+  const setItemNote = (itemId: string, note: string) => {
+    const next = { ...loadout.itemNotes }
+    if (note.trim() === '') delete next[itemId]
+    else next[itemId] = note
+    onChange({ itemNotes: next })
+  }
+
   const popupItem = popupItemId ? items.find((i) => i.id === popupItemId) : undefined
 
   if (mode === 'view') {
@@ -109,6 +116,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
       <BuildSlotsPanel
         items={items}
         buildItems={loadout.items}
+        itemNotes={loadout.itemNotes}
         slotIds={visibleSlotIds}
         mode="view"
         activeSlotId={null}
@@ -116,6 +124,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         preview={preview}
         onTogglePreview={togglePreview}
         onRemovePlacement={() => {}}
+        onOpenPopup={() => {}}
         excludedPlacementIds={excludedPlacementIds}
       />
     )
@@ -128,6 +137,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           <BuildSlotsPanel
             items={items}
             buildItems={loadout.items}
+            itemNotes={loadout.itemNotes}
             slotIds={visibleSlotIds}
             mode="edit"
             activeSlotId={activeSlotId}
@@ -135,6 +145,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             preview={preview}
             onTogglePreview={togglePreview}
             onRemovePlacement={removePlacement}
+            onOpenPopup={(item) => setPopupItemId(item.id)}
             excludedPlacementIds={excludedPlacementIds}
           />
         </div>
@@ -142,6 +153,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           <ItemBrowser
             items={items}
             buildItems={loadout.items}
+            itemNotes={loadout.itemNotes}
             roles={loadout.roles}
             activeSlotId={activeSlotId}
             onFastToggle={fastToggle}
@@ -157,8 +169,10 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           slotIds={visibleSlotIds}
           itemExclusions={loadout.itemExclusions}
           builtinExclusions={builtinExclusions}
+          note={loadout.itemNotes[popupItem.id] ?? ''}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}
           onToggleExclusion={(otherId) => toggleExclusion(popupItem.id, otherId)}
+          onNoteChange={(note) => setItemNote(popupItem.id, note)}
           onClose={() => setPopupItemId(null)}
         />
       )}

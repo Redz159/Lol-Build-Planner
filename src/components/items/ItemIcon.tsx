@@ -10,10 +10,11 @@ interface Props {
   excluded?: boolean
   badge?: number
   title?: string
+  note?: string
   onClick?: (e: MouseEvent) => void
 }
 
-export function ItemIcon({ item, size = 44, selected, excluded, badge, title, onClick }: Props) {
+export function ItemIcon({ item, size = 44, selected, excluded, badge, title, note, onClick }: Props) {
   const button = (
     <button
       type="button"
@@ -57,13 +58,38 @@ export function ItemIcon({ item, size = 44, selected, excluded, badge, title, on
           {badge}
         </span>
       )}
+      {!!note && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            bottom: -6,
+            right: -6,
+            fontSize: 9,
+            background: 'var(--bg-panel)',
+            border: '1px solid var(--gold)',
+            borderRadius: '50%',
+            width: 15,
+            height: 15,
+            lineHeight: '13px',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          📝
+        </span>
+      )}
     </button>
   )
 
   return (
     <Tooltip
       title={title ?? item.name}
-      extra={<div className="tooltip-gold">{item.gold.total}g</div>}
+      extra={
+        <>
+          <div className="tooltip-gold">{item.gold.total}g</div>
+          {note && <div className="tooltip-note">{note}</div>}
+        </>
+      }
       descriptionHtml={item.description}
     >
       {button}

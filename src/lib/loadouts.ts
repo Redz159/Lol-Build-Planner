@@ -32,7 +32,7 @@ export function roleIconUrl(role: Role): string {
 export const FILL_ICON_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-fill.png'
 
 export function emptyLoadout(roles: Role[] = []): Loadout {
-  return { id: newId(), roles, runePages: [], items: emptyBuildItems(), itemExclusions: [] }
+  return { id: newId(), roles, runePages: [], items: emptyBuildItems(), itemExclusions: [], itemNotes: {} }
 }
 
 export function loadoutLabel(loadout: Loadout): string {
@@ -99,7 +99,13 @@ export function applySupportStarterDefault(build: Build, loadoutId: string, allI
 export function splitLoadout(build: Build, loadoutId: string): { build: Build; newLoadoutId: string } {
   const source = build.loadouts.find((l) => l.id === loadoutId)
   const clone: Loadout = source
-    ? { ...emptyLoadout(), runePages: source.runePages, items: source.items, itemExclusions: source.itemExclusions }
+    ? {
+        ...emptyLoadout(),
+        runePages: source.runePages,
+        items: source.items,
+        itemExclusions: source.itemExclusions,
+        itemNotes: source.itemNotes,
+      }
     : emptyLoadout()
   return { build: { ...build, loadouts: [...build.loadouts, clone] }, newLoadoutId: clone.id }
 }

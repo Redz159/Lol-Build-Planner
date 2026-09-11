@@ -1,12 +1,13 @@
 import type { MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_LABELS, type BuildItems, type ItemSlotId } from '../../types/items'
+import { ITEM_SLOT_LABELS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
 
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
+  itemNotes: ItemNotes
   slotIds: readonly ItemSlotId[]
   mode: 'view' | 'edit'
   activeSlotId: ItemSlotId | null
@@ -14,12 +15,14 @@ interface Props {
   preview: Partial<Record<ItemSlotId, string>>
   onTogglePreview: (slotId: ItemSlotId, placementId: string) => void
   onRemovePlacement: (slotId: ItemSlotId, placementId: string) => void
+  onOpenPopup: (item: DDragonItem) => void
   excludedPlacementIds: Set<string>
 }
 
 export function BuildSlotsPanel({
   items,
   buildItems,
+  itemNotes,
   slotIds,
   mode,
   activeSlotId,
@@ -27,6 +30,7 @@ export function BuildSlotsPanel({
   preview,
   onTogglePreview,
   onRemovePlacement,
+  onOpenPopup,
   excludedPlacementIds,
 }: Props) {
   const isEmpty = slotIds.every((slotId) => buildItems[slotId].length === 0)
@@ -95,8 +99,12 @@ export function BuildSlotsPanel({
                   const item = items.find((i) => i.id === placement.itemId)
                   if (!item) return null
                   const handleClick = (e: MouseEvent) => {
-                    if (mode === 'edit' && (e.ctrlKey || e.metaKey)) {
-                      onRemovePlacement(slotId, placement.id)
+                    if (mode === 'edit') {
+                      if (e.ctrlKey || e.metaKey) {
+                        onRemovePlacement(slotId, placement.id)
+                        return
+                      }
+                      onOpenPopup(item)
                       return
                     }
                     onTogglePreview(slotId, placement.id)
@@ -107,6 +115,7 @@ export function BuildSlotsPanel({
                         item={item}
                         selected={preview[slotId] === placement.id}
                         excluded={excludedPlacementIds.has(placement.id)}
+                        note={itemNotes[item.id]}
                         onClick={handleClick}
                       />
                       {mode === 'edit' && (

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Role } from '../../types/build'
-import { ITEM_SLOT_IDS, type BuildItems, type ItemSlotId } from '../../types/items'
+import { ITEM_SLOT_IDS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, isItemVisibleForRoles, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
@@ -18,6 +18,7 @@ const ALL_AUTO_FILTER_IDS = new Set(Object.values(SLOT_AUTO_FILTER))
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
+  itemNotes: ItemNotes
   roles: Role[]
   activeSlotId: ItemSlotId | null
   onFastToggle: (item: DDragonItem) => void
@@ -28,7 +29,7 @@ function placementCount(buildItems: BuildItems, itemId: string): number {
   return ITEM_SLOT_IDS.reduce((n, slotId) => n + buildItems[slotId].filter((p) => p.itemId === itemId).length, 0)
 }
 
-export function ItemBrowser({ items, buildItems, roles, activeSlotId, onFastToggle, onOpenPopup }: Props) {
+export function ItemBrowser({ items, buildItems, itemNotes, roles, activeSlotId, onFastToggle, onOpenPopup }: Props) {
   const [search, setSearch] = useState('')
   const [filters, setFilters] = useState<Set<string>>(new Set())
   const [filterMode, setFilterMode] = useState<FilterMode>('any')
@@ -92,6 +93,7 @@ export function ItemBrowser({ items, buildItems, roles, activeSlotId, onFastTogg
                 size={40}
                 badge={count > 0 ? count : undefined}
                 title={activeSlotId ? `${item.name} — click to toggle in active slot` : item.name}
+                note={itemNotes[item.id]}
                 onClick={() => (activeSlotId ? onFastToggle(item) : onOpenPopup(item))}
               />
               {activeSlotId && (

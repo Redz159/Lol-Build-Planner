@@ -46,6 +46,15 @@
   margin-bottom: 6px;
 }
 
+.tooltip-note {
+  color: var(--text);
+  font-style: italic;
+  border-top: 1px solid var(--border);
+  margin-bottom: 6px;
+  padding-top: 6px;
+  white-space: pre-wrap;
+}
+
 .tooltip-desc {
   color: var(--text-dim);
 }

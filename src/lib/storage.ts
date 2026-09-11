@@ -1,7 +1,7 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
 import type { Build, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
-import { normalizeBuildItems, normalizeItemExclusions } from '../types/items'
+import { normalizeBuildItems, normalizeItemExclusions, normalizeItemNotes } from '../types/items'
 import { ROLES } from './loadouts'
 import { newId } from './id'
 
@@ -67,18 +67,20 @@ function normalizeRoles(value: unknown): Role[] {
 function migrateLegacyFlatBuild(raw: any): Loadout {
   const items = normalizeBuildItems(raw.items)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
+  const itemNotes = normalizeItemNotes(raw.itemNotes)
 
   if (Array.isArray(raw.runePages)) {
-    return { id: newId(), roles: [], runePages: normalizeRunePages(raw.runePages), items, itemExclusions }
+    return { id: newId(), roles: [], runePages: normalizeRunePages(raw.runePages), items, itemExclusions, itemNotes }
   }
   const runes = raw.runes as LegacyRuneSelection | undefined
-  if (!runes || !runes.primaryTreeId) return { id: newId(), roles: [], runePages: [], items, itemExclusions }
+  if (!runes || !runes.primaryTreeId) return { id: newId(), roles: [], runePages: [], items, itemExclusions, itemNotes }
 
   return {
     id: newId(),
     roles: [],
     items,
     itemExclusions,
+    itemNotes,
     runePages: [
       {
         id: newId(),
@@ -114,6 +116,7 @@ export function migrateBuild(raw: any): Build {
         runePages: normalizeRunePages(l?.runePages),
         items: normalizeBuildItems(l?.items),
         itemExclusions: normalizeItemExclusions(l?.itemExclusions),
+        itemNotes: normalizeItemNotes(l?.itemNotes),
       }))
     : []
   const loadouts = parsedLoadouts.length > 0 ? parsedLoadouts : [migrateLegacyFlatBuild(raw)]

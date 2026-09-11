@@ -11,8 +11,10 @@ interface Props {
   slotIds: readonly ItemSlotId[]
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
+  note: string
   onToggleSlot: (slotId: ItemSlotId) => void
   onToggleExclusion: (otherItemId: string) => void
+  onNoteChange: (note: string) => void
   onClose: () => void
 }
 
@@ -23,8 +25,10 @@ export function ItemAssignPopup({
   slotIds,
   itemExclusions,
   builtinExclusions,
+  note,
   onToggleSlot,
   onToggleExclusion,
+  onNoteChange,
   onClose,
 }: Props) {
   const otherItemIds = [...new Set(slotIds.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)))].filter(
@@ -84,6 +88,17 @@ export function ItemAssignPopup({
             </label>
           ))}
         </div>
+
+        <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
+          Note
+        </div>
+        <textarea
+          value={note}
+          onChange={(e) => onNoteChange(e.target.value)}
+          placeholder="Shown on this item's tooltip..."
+          rows={3}
+          style={{ width: '100%', resize: 'vertical', marginBottom: 14, fontFamily: 'inherit', fontSize: 13 }}
+        />
 
         {otherItems.length > 0 && (
           <>
