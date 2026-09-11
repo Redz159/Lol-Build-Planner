@@ -2,7 +2,7 @@ import type { Loadout, Role } from '../../types/build'
 import type { DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import type { ItemExclusionPair, ItemPlacement } from '../../types/items'
 import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../../types/items'
-import { isBoots, isLegendaryItem, isStarterItem } from '../itemAttributes'
+import { isBoots, isStarterItem } from '../itemAttributes'
 import { newId } from '../id'
 import type { RiotMatch, RiotParticipant, RiotTimeline } from './types'
 
@@ -256,6 +256,17 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   }
 }
 
+// isLegendaryItem (used everywhere else in the app) requires an item have no further upgrade
+// at all — correct for e.g. the browser's "Legendary Item" filter, but some items (Whispering
+// Circlet -> Diadem of Songs, same auto-upgrade-via-passive shape as the Tear line) list an
+// `into` target that's non-purchasable and thus never reachable in our item pool. For import
+// purposes those are effectively finished too: nothing the player could actually still buy.
+function isCoreImportItem(item: DDragonItem, purchasableItems: DDragonItem[]): boolean {
+  if (isBoots(item) || item.tags.includes('Trinket') || item.gold.total <= 500) return false
+  if (item.into.length === 0) return true
+  return item.into.every((intoId) => !purchasableItems.some((i) => i.id === intoId))
+}
+
 // Classifies one game's reconstructed purchase sequence into starter/boots/core buckets using
 // the same item-attribute rules the rest of the app uses (isBoots, isStarterItem, etc.), so an
 // imported build reads consistently with a hand-built one.
@@ -272,7 +283,7 @@ export function classifyGameItems(timeline: RiotTimeline, participantId: number,
       bootsItem = itemId
     } else if (timestamp <= STARTER_PHASE_MS && isStarterItem(item) && !item.tags.includes('Trinket')) {
       starterItems.push(itemId)
-    } else if (isLegendaryItem(item)) {
+    } else if (isCoreImportItem(item, items)) {
       coreItemsInOrder.push(itemId)
     }
   }
