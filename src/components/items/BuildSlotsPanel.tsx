@@ -1,12 +1,13 @@
 import type { MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_IDS, ITEM_SLOT_LABELS, type BuildItems, type ItemSlotId } from '../../types/items'
+import { ITEM_SLOT_LABELS, type BuildItems, type ItemSlotId } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
 
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
+  slotIds: readonly ItemSlotId[]
   mode: 'view' | 'edit'
   activeSlotId: ItemSlotId | null
   onSetActiveSlot: (slotId: ItemSlotId | null) => void
@@ -19,6 +20,7 @@ interface Props {
 export function BuildSlotsPanel({
   items,
   buildItems,
+  slotIds,
   mode,
   activeSlotId,
   onSetActiveSlot,
@@ -27,7 +29,7 @@ export function BuildSlotsPanel({
   onRemovePlacement,
   excludedPlacementIds,
 }: Props) {
-  const isEmpty = ITEM_SLOT_IDS.every((slotId) => buildItems[slotId].length === 0)
+  const isEmpty = slotIds.every((slotId) => buildItems[slotId].length === 0)
   if (mode === 'view' && isEmpty) {
     return <div style={{ color: 'var(--text-dim)' }}>No items in this build yet.</div>
   }
@@ -47,7 +49,7 @@ export function BuildSlotsPanel({
           </button>
         </div>
       )}
-      {ITEM_SLOT_IDS.map((slotId) => {
+      {slotIds.map((slotId) => {
         const placements = buildItems[slotId]
         if (mode === 'view' && placements.length === 0) return null
         const active = activeSlotId === slotId

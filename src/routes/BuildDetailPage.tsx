@@ -12,6 +12,7 @@ import {
   FILL_ICON_URL,
   ROLES,
   ROLE_LABELS,
+  applySupportStarterDefault,
   assignRole,
   buildRoles,
   loadoutLabel,
@@ -25,7 +26,7 @@ import type { Build, Loadout, Role } from '../types/build'
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
   const { builds, updateBuild, deleteBuild, duplicateBuild } = useCollection()
-  const { champions } = useGameData()
+  const { champions, items } = useGameData()
   const navigate = useNavigate()
   const location = useLocation()
   const build = builds.find((b) => b.id === buildId)
@@ -58,7 +59,10 @@ export function BuildDetailPage() {
   }
 
   const toggleRole = (role: Role, checked: boolean) => {
-    const next = assignRole(build, activeLoadout.id, role, checked)
+    let next = assignRole(build, activeLoadout.id, role, checked)
+    if (role === 'support' && checked) {
+      next = applySupportStarterDefault(next, activeLoadout.id, items)
+    }
     save(next)
   }
 

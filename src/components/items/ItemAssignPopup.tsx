@@ -1,5 +1,5 @@
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_IDS, ITEM_SLOT_LABELS, type BuildItems, type ItemExclusionPair, type ItemSlotId } from '../../types/items'
+import { ITEM_SLOT_LABELS, type BuildItems, type ItemExclusionPair, type ItemSlotId } from '../../types/items'
 import { isBoots } from '../../lib/itemAttributes'
 import { isExcludedPair } from '../../lib/itemExclusions'
 import { itemImageUrl } from '../../lib/ddragon'
@@ -8,6 +8,7 @@ interface Props {
   item: DDragonItem
   items: DDragonItem[]
   buildItems: BuildItems
+  slotIds: readonly ItemSlotId[]
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
   onToggleSlot: (slotId: ItemSlotId) => void
@@ -19,13 +20,14 @@ export function ItemAssignPopup({
   item,
   items,
   buildItems,
+  slotIds,
   itemExclusions,
   builtinExclusions,
   onToggleSlot,
   onToggleExclusion,
   onClose,
 }: Props) {
-  const otherItemIds = [...new Set(ITEM_SLOT_IDS.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)))].filter(
+  const otherItemIds = [...new Set(slotIds.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)))].filter(
     (id) => id !== item.id,
   )
   const otherItems = otherItemIds.map((id) => items.find((i) => i.id === id)).filter((i): i is DDragonItem => !!i)
@@ -71,7 +73,7 @@ export function ItemAssignPopup({
           Add to slot
         </div>
         <div style={{ marginBottom: 14 }}>
-          {ITEM_SLOT_IDS.filter((slotId) => slotId !== 'boots' || isBoots(item)).map((slotId) => (
+          {slotIds.filter((slotId) => slotId !== 'boots' || isBoots(item)).map((slotId) => (
             <label key={slotId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
               <input
                 type="checkbox"

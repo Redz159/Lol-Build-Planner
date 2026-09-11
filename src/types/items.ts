@@ -1,6 +1,6 @@
 import { newId } from '../lib/id'
 
-export const ITEM_SLOT_IDS = ['starter', 'item1', 'boots', 'item2', 'item3', 'item4', 'item5'] as const
+export const ITEM_SLOT_IDS = ['starter', 'item1', 'boots', 'item2', 'item3', 'item4', 'item5', 'item6'] as const
 export type ItemSlotId = (typeof ITEM_SLOT_IDS)[number]
 
 export const ITEM_SLOT_LABELS: Record<ItemSlotId, string> = {
@@ -11,6 +11,7 @@ export const ITEM_SLOT_LABELS: Record<ItemSlotId, string> = {
   item3: '3rd Item',
   item4: '4th Item',
   item5: '5th Item',
+  item6: '6th Item',
 }
 
 export interface ItemPlacement {
@@ -21,7 +22,7 @@ export interface ItemPlacement {
 export type BuildItems = Record<ItemSlotId, ItemPlacement[]>
 
 export function emptyBuildItems(): BuildItems {
-  return { starter: [], item1: [], boots: [], item2: [], item3: [], item4: [], item5: [] }
+  return { starter: [], item1: [], boots: [], item2: [], item3: [], item4: [], item5: [], item6: [] }
 }
 
 // `value` is untrusted data straight from JSON.parse (localStorage or an imported file),

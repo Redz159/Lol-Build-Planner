@@ -22,6 +22,12 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Partial<Record<ItemSlotId, string>>>({})
 
+  // The 6th item slot is an ADC-only bonus slot, hidden everywhere else.
+  const visibleSlotIds = useMemo(
+    () => ITEM_SLOT_IDS.filter((slotId) => slotId !== 'item6' || loadout.roles.includes('adc')),
+    [loadout.roles],
+  )
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -103,6 +109,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
       <BuildSlotsPanel
         items={items}
         buildItems={loadout.items}
+        slotIds={visibleSlotIds}
         mode="view"
         activeSlotId={null}
         onSetActiveSlot={() => {}}
@@ -121,6 +128,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           <BuildSlotsPanel
             items={items}
             buildItems={loadout.items}
+            slotIds={visibleSlotIds}
             mode="edit"
             activeSlotId={activeSlotId}
             onSetActiveSlot={setActiveSlotId}
@@ -134,6 +142,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           <ItemBrowser
             items={items}
             buildItems={loadout.items}
+            roles={loadout.roles}
             activeSlotId={activeSlotId}
             onFastToggle={fastToggle}
             onOpenPopup={(item) => setPopupItemId(item.id)}
@@ -145,6 +154,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           item={popupItem}
           items={items}
           buildItems={loadout.items}
+          slotIds={visibleSlotIds}
           itemExclusions={loadout.itemExclusions}
           builtinExclusions={builtinExclusions}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}

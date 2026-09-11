@@ -1,4 +1,5 @@
 import type { Build, Loadout, Role } from '../types/build'
+import type { DDragonItem } from '../types/ddragon'
 import { emptyBuildItems } from '../types/items'
 import { newId } from './id'
 
@@ -73,6 +74,24 @@ export function assignRole(build: Build, loadoutId: string, role: Role, checked:
     loadouts = loadouts.map((l) => (l.id === loadoutId ? { ...l, roles: [...l.roles, role] } : l))
   }
   return { ...build, loadouts: pruneEmptyLoadouts(loadouts, previousOwnerId) }
+}
+
+const SUPPORT_STARTER_ITEM_NAMES = ['World Atlas', 'Health Potion']
+
+// When Support is freshly assigned to a loadout that has no starter items chosen yet, default
+// its starter slot to the support starter kit (World Atlas + Health Potion) so the user isn't
+// starting from blank. Leaves an existing starter pick alone.
+export function applySupportStarterDefault(build: Build, loadoutId: string, allItems: DDragonItem[]): Build {
+  return {
+    ...build,
+    loadouts: build.loadouts.map((l) => {
+      if (l.id !== loadoutId || l.items.starter.length > 0) return l
+      const starter = SUPPORT_STARTER_ITEM_NAMES.map((name) => allItems.find((i) => i.name === name))
+        .filter((item): item is DDragonItem => !!item)
+        .map((item) => ({ id: newId(), itemId: item.id }))
+      return starter.length > 0 ? { ...l, items: { ...l.items, starter } } : l
+    }),
+  }
 }
 
 // "+ New variant": clones a loadout's rune/item content into a new roles-less loadout, ready
