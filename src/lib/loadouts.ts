@@ -54,22 +54,25 @@ export function roleOwnerLoadoutId(build: Build, role: Role): string | undefined
   return build.loadouts.find((l) => l.roles.includes(role))?.id
 }
 
-// A loadout left with no roles is dropped (its content discarded) unless it's the only
-// loadout left, in which case it becomes the build's implicit "Fill" set instead.
-function pruneEmptyLoadouts(loadouts: Loadout[]): Loadout[] {
-  if (loadouts.length <= 1) return loadouts
-  const kept = loadouts.filter((l) => l.roles.length > 0)
-  return kept.length > 0 ? kept : loadouts.slice(0, 1)
+// If reassigning a role stripped it from its previous owner and left that loadout with no
+// roles at all, drop it (its content discarded) — but only that loadout, never an unrelated
+// loadout that was already role-less (e.g. an intentional "Fill" variant).
+function pruneEmptyLoadouts(loadouts: Loadout[], emptiedLoadoutId?: string): Loadout[] {
+  if (loadouts.length <= 1 || !emptiedLoadoutId) return loadouts
+  const emptied = loadouts.find((l) => l.id === emptiedLoadoutId)
+  if (!emptied || emptied.roles.length > 0) return loadouts
+  return loadouts.filter((l) => l.id !== emptiedLoadoutId)
 }
 
 // Each role can belong to at most one loadout at a time: checking it here removes it from
 // wherever it currently lives first, unchecking just removes it from the target loadout.
 export function assignRole(build: Build, loadoutId: string, role: Role, checked: boolean): Build {
+  const previousOwnerId = roleOwnerLoadoutId(build, role)
   let loadouts = build.loadouts.map((l) => ({ ...l, roles: l.roles.filter((r) => r !== role) }))
   if (checked) {
     loadouts = loadouts.map((l) => (l.id === loadoutId ? { ...l, roles: [...l.roles, role] } : l))
   }
-  return { ...build, loadouts: pruneEmptyLoadouts(loadouts) }
+  return { ...build, loadouts: pruneEmptyLoadouts(loadouts, previousOwnerId) }
 }
 
 // "+ New variant": clones a loadout's rune/item content into a new roles-less loadout, ready
