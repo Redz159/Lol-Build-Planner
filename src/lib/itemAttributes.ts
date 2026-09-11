@@ -65,15 +65,18 @@ export function isDoransItem(item: DDragonItem): boolean {
 
 // Role-gated visibility for the item browser. Support items, jungle starters, and upgraded
 // boots are each hidden unless a matching role is selected (an "any" match across a loadout's
-// roles — having just one qualifying role is enough); Doran's items are the reverse, hidden
-// only once every selected role is jungle or support. A roles-less "Fill" loadout could apply
-// to any role, so it's unrestricted and sees everything.
+// roles — having just one qualifying role is enough); Doran's items and non-upgraded boots
+// are the reverse, hidden only once every selected role is one that excludes them (jungle or
+// support for Doran's, mid alone for base/tier-2 boots — a mid loadout goes straight for the
+// upgraded line). A roles-less "Fill" loadout could apply to any role, so it's unrestricted
+// and sees everything.
 export function isItemVisibleForRoles(item: DDragonItem, roles: Role[]): boolean {
   if (roles.length === 0) return true
   if (isSupportItem(item)) return roles.includes('support')
   if (isJungleStarterItem(item)) return roles.includes('jungle')
   if (isUpgradedBoots(item)) return roles.includes('mid')
-  if (isDoransItem(item)) return !(roles.length > 0 && roles.every((r) => r === 'jungle' || r === 'support'))
+  if (isDoransItem(item)) return !roles.every((r) => r === 'jungle' || r === 'support')
+  if (isBoots(item)) return !roles.every((r) => r === 'mid')
   return true
 }
 
