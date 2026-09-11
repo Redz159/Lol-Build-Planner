@@ -10,8 +10,7 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: flex-end;
   pointer-events: none;
   animation: tooltip-in 0.12s ease-out;
 }
@@ -40,8 +39,16 @@
   color: var(--text);
 }
 
+.tooltip-bubble:has(+ .tooltip-note-bubble) {
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .tooltip-note-bubble {
   max-width: 200px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .tooltip-note-text {
