@@ -1,6 +1,6 @@
 import type { Build, Loadout, Role } from '../types/build'
 import type { DDragonItem } from '../types/ddragon'
-import { emptyBuildItems } from '../types/items'
+import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../types/items'
 import { newId } from './id'
 
 export const ROLES: Role[] = ['top', 'jungle', 'mid', 'adc', 'support']
@@ -32,7 +32,8 @@ export function roleIconUrl(role: Role): string {
 export const FILL_ICON_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-fill.png'
 
 export function emptyLoadout(roles: Role[] = []): Loadout {
-  return { id: newId(), roles, runePages: [], items: emptyBuildItems(), itemExclusions: [], itemNotes: {} }
+  const itemSlots = DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
+  return { id: newId(), roles, runePages: [], itemSlots, items: emptyBuildItems(itemSlots), itemExclusions: [], itemNotes: {} }
 }
 
 export function loadoutLabel(loadout: Loadout): string {
@@ -79,17 +80,20 @@ export function assignRole(build: Build, loadoutId: string, role: Role, checked:
 const SUPPORT_STARTER_ITEM_NAMES = ['World Atlas', 'Health Potion']
 
 // When Support is freshly assigned to a loadout that has no starter items chosen yet, default
-// its starter slot to the support starter kit (World Atlas + Health Potion) so the user isn't
-// starting from blank. Leaves an existing starter pick alone.
+// its starter-kind slot to the support starter kit (World Atlas + Health Potion) so the user
+// isn't starting from blank. Leaves an existing starter pick alone, and does nothing if the
+// loadout's starter slot has been deleted or renamed away (which clears its kind).
 export function applySupportStarterDefault(build: Build, loadoutId: string, allItems: DDragonItem[]): Build {
   return {
     ...build,
     loadouts: build.loadouts.map((l) => {
-      if (l.id !== loadoutId || l.items.starter.length > 0) return l
+      if (l.id !== loadoutId) return l
+      const starterSlot = l.itemSlots.find((s) => s.kind === 'starter')
+      if (!starterSlot || l.items[starterSlot.id].length > 0) return l
       const starter = SUPPORT_STARTER_ITEM_NAMES.map((name) => allItems.find((i) => i.name === name))
         .filter((item): item is DDragonItem => !!item)
         .map((item) => ({ id: newId(), itemId: item.id }))
-      return starter.length > 0 ? { ...l, items: { ...l.items, starter } } : l
+      return starter.length > 0 ? { ...l, items: { ...l.items, [starterSlot.id]: starter } } : l
     }),
   }
 }
@@ -102,6 +106,7 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
     ? {
         ...emptyLoadout(),
         runePages: source.runePages,
+        itemSlots: source.itemSlots,
         items: source.items,
         itemExclusions: source.itemExclusions,
         itemNotes: source.itemNotes,

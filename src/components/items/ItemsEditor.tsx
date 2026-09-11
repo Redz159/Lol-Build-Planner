@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_IDS, type BuildItems, type ItemSlotId } from '../../types/items'
+import { type BuildItems, type ItemSlot } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
@@ -18,15 +18,18 @@ interface Props {
 
 export function ItemsEditor({ loadout, mode, onChange }: Props) {
   const { items } = useGameData()
-  const [activeSlotId, setActiveSlotId] = useState<ItemSlotId | null>(null)
+  const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
-  const [preview, setPreview] = useState<Partial<Record<ItemSlotId, string>>>({})
+  const [preview, setPreview] = useState<Partial<Record<string, string>>>({})
 
-  // The 6th item slot is an ADC-only bonus slot, hidden everywhere else.
-  const visibleSlotIds = useMemo(
-    () => ITEM_SLOT_IDS.filter((slotId) => slotId !== 'item6' || loadout.roles.includes('adc')),
-    [loadout.roles],
+  // The 6th item slot (or any future adc-bonus slot) is an ADC-only bonus slot, hidden
+  // everywhere else; every other slot is always visible once it exists.
+  const visibleSlots = useMemo(
+    () => loadout.itemSlots.filter((slot) => slot.kind !== 'adc-bonus' || loadout.roles.includes('adc')),
+    [loadout.itemSlots, loadout.roles],
   )
+
+  const findSlot = (slotId: string): ItemSlot | undefined => loadout.itemSlots.find((s) => s.id === slotId)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -43,16 +46,16 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   const excludedPlacementIds = useMemo(() => {
     const previewedPlacementIds = new Set(Object.values(preview))
     const previewedItemIds = new Set<string>()
-    for (const slotId of ITEM_SLOT_IDS) {
-      const placementId = preview[slotId]
+    for (const slot of loadout.itemSlots) {
+      const placementId = preview[slot.id]
       if (!placementId) continue
-      const placement = loadout.items[slotId].find((p) => p.id === placementId)
+      const placement = loadout.items[slot.id]?.find((p) => p.id === placementId)
       if (placement) previewedItemIds.add(placement.itemId)
     }
     const result = new Set<string>()
     if (previewedItemIds.size === 0) return result
-    for (const slotId of ITEM_SLOT_IDS) {
-      for (const placement of loadout.items[slotId]) {
+    for (const slot of loadout.itemSlots) {
+      for (const placement of loadout.items[slot.id] ?? []) {
         if (previewedPlacementIds.has(placement.id)) continue
         const sameItemElsewhere = previewedItemIds.has(placement.itemId)
         const excluded = [...previewedItemIds].some(
@@ -62,10 +65,10 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
       }
     }
     return result
-  }, [preview, loadout.items, loadout.itemExclusions, builtinExclusions])
+  }, [preview, loadout.itemSlots, loadout.items, loadout.itemExclusions, builtinExclusions])
 
-  const toggleItemInSlot = (itemId: string, slotId: ItemSlotId) => {
-    const current = loadout.items[slotId]
+  const toggleItemInSlot = (itemId: string, slotId: string) => {
+    const current = loadout.items[slotId] ?? []
     const exists = current.some((p) => p.itemId === itemId)
     const next = exists ? current.filter((p) => p.itemId !== itemId) : [...current, { id: newId(), itemId }]
     onChange({ items: { ...loadout.items, [slotId]: next } })
@@ -73,12 +76,12 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
 
   const fastToggle = (item: DDragonItem) => {
     if (!activeSlotId) return
-    if (activeSlotId === 'boots' && !isBoots(item)) return
+    if (findSlot(activeSlotId)?.kind === 'boots' && !isBoots(item)) return
     toggleItemInSlot(item.id, activeSlotId)
   }
 
-  const removePlacement = (slotId: ItemSlotId, placementId: string) => {
-    onChange({ items: { ...loadout.items, [slotId]: loadout.items[slotId].filter((p) => p.id !== placementId) } })
+  const removePlacement = (slotId: string, placementId: string) => {
+    onChange({ items: { ...loadout.items, [slotId]: (loadout.items[slotId] ?? []).filter((p) => p.id !== placementId) } })
     setPreview((prev) => {
       if (prev[slotId] !== placementId) return prev
       const next = { ...prev }
@@ -89,9 +92,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
 
   // Drag-and-drop: a ref (not state) so a drag gesture doesn't trigger re-renders of its own.
   // `from: null` means the drag started in the item browser rather than an existing placement.
-  const dragRef = useRef<{ itemId: string; from: { slotId: ItemSlotId; placementId: string } | null } | null>(null)
+  const dragRef = useRef<{ itemId: string; from: { slotId: string; placementId: string } | null } | null>(null)
 
-  const startDragFromSlot = (slotId: ItemSlotId, placementId: string, itemId: string) => {
+  const startDragFromSlot = (slotId: string, placementId: string, itemId: string) => {
     dragRef.current = { itemId, from: { slotId, placementId } }
   }
 
@@ -99,25 +102,29 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     dragRef.current = { itemId, from: null }
   }
 
-  const addItemToSlot = (itemId: string, slotId: ItemSlotId) => {
+  const addItemToSlot = (itemId: string, slotId: string) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
-    if (slotId === 'boots' && !isBoots(item)) return
-    if (loadout.items[slotId].some((p) => p.itemId === itemId)) return
-    onChange({ items: { ...loadout.items, [slotId]: [...loadout.items[slotId], { id: newId(), itemId }] } })
+    if (findSlot(slotId)?.kind === 'boots' && !isBoots(item)) return
+    const current = loadout.items[slotId] ?? []
+    if (current.some((p) => p.itemId === itemId)) return
+    onChange({ items: { ...loadout.items, [slotId]: [...current, { id: newId(), itemId }] } })
   }
 
-  const moveItemToSlot = (itemId: string, from: { slotId: ItemSlotId; placementId: string }, toSlotId: ItemSlotId) => {
+  const moveItemToSlot = (itemId: string, from: { slotId: string; placementId: string }, toSlotId: string) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
-    if (toSlotId === 'boots' && !isBoots(item)) return
-    const alreadyInTarget = loadout.items[toSlotId].some((p) => p.itemId === itemId)
-    const nextItems: BuildItems = { ...loadout.items, [from.slotId]: loadout.items[from.slotId].filter((p) => p.id !== from.placementId) }
-    if (!alreadyInTarget) nextItems[toSlotId] = [...nextItems[toSlotId], { id: newId(), itemId }]
+    if (findSlot(toSlotId)?.kind === 'boots' && !isBoots(item)) return
+    const alreadyInTarget = (loadout.items[toSlotId] ?? []).some((p) => p.itemId === itemId)
+    const nextItems: BuildItems = {
+      ...loadout.items,
+      [from.slotId]: (loadout.items[from.slotId] ?? []).filter((p) => p.id !== from.placementId),
+    }
+    if (!alreadyInTarget) nextItems[toSlotId] = [...(nextItems[toSlotId] ?? []), { id: newId(), itemId }]
     onChange({ items: nextItems })
   }
 
-  const dropOnSlot = (toSlotId: ItemSlotId) => {
+  const dropOnSlot = (toSlotId: string) => {
     const drag = dragRef.current
     dragRef.current = null
     if (!drag) return
@@ -136,7 +143,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     removePlacement(drag.from.slotId, drag.from.placementId)
   }
 
-  const togglePreview = (slotId: ItemSlotId, placementId: string) => {
+  const togglePreview = (slotId: string, placementId: string) => {
     setPreview((prev) => {
       if (prev[slotId] === placementId) {
         const next = { ...prev }
@@ -158,6 +165,31 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     onChange({ itemNotes: next })
   }
 
+  const addSlot = () => {
+    const slot: ItemSlot = { id: newId(), label: 'New Slot' }
+    onChange({ itemSlots: [...loadout.itemSlots, slot], items: { ...loadout.items, [slot.id]: [] } })
+  }
+
+  const renameSlot = (slotId: string, label: string) => {
+    const trimmed = label.trim()
+    const slot = findSlot(slotId)
+    if (!slot || !trimmed || trimmed === slot.label) return
+    onChange({ itemSlots: loadout.itemSlots.map((s) => (s.id === slotId ? { id: s.id, label: trimmed } : s)) })
+  }
+
+  const deleteSlot = (slotId: string) => {
+    const nextItems = { ...loadout.items }
+    delete nextItems[slotId]
+    onChange({ itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId), items: nextItems })
+    if (activeSlotId === slotId) setActiveSlotId(null)
+    setPreview((prev) => {
+      if (!(slotId in prev)) return prev
+      const next = { ...prev }
+      delete next[slotId]
+      return next
+    })
+  }
+
   const popupItem = popupItemId ? items.find((i) => i.id === popupItemId) : undefined
 
   if (mode === 'view') {
@@ -166,7 +198,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         items={items}
         buildItems={loadout.items}
         itemNotes={loadout.itemNotes}
-        slotIds={visibleSlotIds}
+        slots={visibleSlots}
         mode="view"
         activeSlotId={null}
         onSetActiveSlot={() => {}}
@@ -176,6 +208,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         onOpenPopup={() => {}}
         onDragStartPlacement={() => {}}
         onDropOnSlot={() => {}}
+        onAddSlot={() => {}}
+        onRenameSlot={() => {}}
+        onDeleteSlot={() => {}}
         excludedPlacementIds={excludedPlacementIds}
       />
     )
@@ -189,7 +224,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             items={items}
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
-            slotIds={visibleSlotIds}
+            slots={visibleSlots}
             mode="edit"
             activeSlotId={activeSlotId}
             onSetActiveSlot={setActiveSlotId}
@@ -199,6 +234,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             onOpenPopup={(item) => setPopupItemId(item.id)}
             onDragStartPlacement={startDragFromSlot}
             onDropOnSlot={dropOnSlot}
+            onAddSlot={addSlot}
+            onRenameSlot={renameSlot}
+            onDeleteSlot={deleteSlot}
             excludedPlacementIds={excludedPlacementIds}
           />
         </div>
@@ -208,7 +246,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
             roles={loadout.roles}
-            activeSlotId={activeSlotId}
+            activeSlot={activeSlotId ? (findSlot(activeSlotId) ?? null) : null}
             onFastToggle={fastToggle}
             onOpenPopup={(item) => setPopupItemId(item.id)}
             onDragStartItem={startDragFromBrowser}
@@ -221,7 +259,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           item={popupItem}
           items={items}
           buildItems={loadout.items}
-          slotIds={visibleSlotIds}
+          slots={visibleSlots}
           itemExclusions={loadout.itemExclusions}
           builtinExclusions={builtinExclusions}
           note={loadout.itemNotes[popupItem.id] ?? ''}

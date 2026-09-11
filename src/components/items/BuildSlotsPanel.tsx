@@ -1,6 +1,6 @@
 import { useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_LABELS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
+import type { BuildItems, ItemNotes, ItemSlot } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
 
@@ -8,16 +8,19 @@ interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
   itemNotes: ItemNotes
-  slotIds: readonly ItemSlotId[]
+  slots: ItemSlot[]
   mode: 'view' | 'edit'
-  activeSlotId: ItemSlotId | null
-  onSetActiveSlot: (slotId: ItemSlotId | null) => void
-  preview: Partial<Record<ItemSlotId, string>>
-  onTogglePreview: (slotId: ItemSlotId, placementId: string) => void
-  onRemovePlacement: (slotId: ItemSlotId, placementId: string) => void
+  activeSlotId: string | null
+  onSetActiveSlot: (slotId: string | null) => void
+  preview: Partial<Record<string, string>>
+  onTogglePreview: (slotId: string, placementId: string) => void
+  onRemovePlacement: (slotId: string, placementId: string) => void
   onOpenPopup: (item: DDragonItem) => void
-  onDragStartPlacement: (slotId: ItemSlotId, placementId: string, itemId: string) => void
-  onDropOnSlot: (slotId: ItemSlotId) => void
+  onDragStartPlacement: (slotId: string, placementId: string, itemId: string) => void
+  onDropOnSlot: (slotId: string) => void
+  onAddSlot: () => void
+  onRenameSlot: (slotId: string, label: string) => void
+  onDeleteSlot: (slotId: string) => void
   excludedPlacementIds: Set<string>
 }
 
@@ -25,7 +28,7 @@ export function BuildSlotsPanel({
   items,
   buildItems,
   itemNotes,
-  slotIds,
+  slots,
   mode,
   activeSlotId,
   onSetActiveSlot,
@@ -35,34 +38,54 @@ export function BuildSlotsPanel({
   onOpenPopup,
   onDragStartPlacement,
   onDropOnSlot,
+  onAddSlot,
+  onRenameSlot,
+  onDeleteSlot,
   excludedPlacementIds,
 }: Props) {
-  const [dragOverSlotId, setDragOverSlotId] = useState<ItemSlotId | null>(null)
-  const isEmpty = slotIds.every((slotId) => buildItems[slotId].length === 0)
+  const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
+  const [labelDraft, setLabelDraft] = useState('')
+
+  const isEmpty = slots.every((slot) => (buildItems[slot.id] ?? []).length === 0)
   if (mode === 'view' && isEmpty) {
     return <div style={{ color: 'var(--text-dim)' }}>No items in this build yet.</div>
   }
 
+  const activeSlot = slots.find((s) => s.id === activeSlotId)
+
+  const startRename = (slot: ItemSlot) => {
+    setEditingSlotId(slot.id)
+    setLabelDraft(slot.label)
+  }
+
+  const commitRename = () => {
+    if (editingSlotId) onRenameSlot(editingSlotId, labelDraft)
+    setEditingSlotId(null)
+  }
+
   return (
     <div>
-      {mode === 'edit' && activeSlotId && (
+      {mode === 'edit' && activeSlot && (
         <div
           className="panel"
           style={{ padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}
         >
           <span style={{ color: 'var(--gold-bright)' }}>
-            Fast-add: {ITEM_SLOT_LABELS[activeSlotId]} — click items below to add/remove
+            Fast-add: {activeSlot.label} — click items below to add/remove
           </span>
           <button type="button" onClick={() => onSetActiveSlot(null)} style={{ marginLeft: 'auto', padding: '2px 8px' }}>
             Done
           </button>
         </div>
       )}
-      {slotIds.map((slotId) => {
-        const placements = buildItems[slotId]
+      {slots.map((slot) => {
+        const slotId = slot.id
+        const placements = buildItems[slotId] ?? []
         if (mode === 'view' && placements.length === 0) return null
         const active = activeSlotId === slotId
         const dragOver = mode === 'edit' && dragOverSlotId === slotId
+        const editing = editingSlotId === slotId
         return (
           <div
             key={slotId}
@@ -92,8 +115,21 @@ export function BuildSlotsPanel({
               boxShadow: dragOver ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : undefined,
             }}
           >
-            <div style={{ marginBottom: 8 }}>
-              {mode === 'edit' ? (
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {mode === 'edit' && editing ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename()
+                    else if (e.key === 'Escape') setEditingSlotId(null)
+                  }}
+                  style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px', flex: 1, minWidth: 0 }}
+                />
+              ) : mode === 'edit' ? (
                 <button
                   type="button"
                   onClick={() => onSetActiveSlot(active ? null : slotId)}
@@ -107,12 +143,34 @@ export function BuildSlotsPanel({
                     borderColor: active ? 'var(--gold)' : undefined,
                   }}
                 >
-                  {ITEM_SLOT_LABELS[slotId]}
+                  {slot.label}
                 </button>
               ) : (
                 <div style={{ color: 'var(--gold)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  {ITEM_SLOT_LABELS[slotId]}
+                  {slot.label}
                 </div>
+              )}
+              {mode === 'edit' && !editing && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={`Rename ${slot.label}`}
+                    title="Rename slot"
+                    onClick={() => startRename(slot)}
+                    style={{ marginLeft: 'auto', padding: '2px 7px', fontSize: 12 }}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${slot.label}`}
+                    title="Delete slot"
+                    onClick={() => onDeleteSlot(slotId)}
+                    style={{ padding: '2px 7px', fontSize: 12, color: 'var(--danger)' }}
+                  >
+                    ×
+                  </button>
+                </>
               )}
             </div>
 
@@ -167,6 +225,11 @@ export function BuildSlotsPanel({
           </div>
         )
       })}
+      {mode === 'edit' && (
+        <button type="button" onClick={onAddSlot} style={{ width: '100%', padding: '8px 0' }}>
+          + Add slot
+        </button>
+      )}
     </div>
   )
 }

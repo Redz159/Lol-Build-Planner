@@ -1,5 +1,5 @@
 import type { DDragonItem } from '../../types/ddragon'
-import { ITEM_SLOT_LABELS, type BuildItems, type ItemExclusionPair, type ItemSlotId } from '../../types/items'
+import type { BuildItems, ItemExclusionPair, ItemSlot } from '../../types/items'
 import { isBoots } from '../../lib/itemAttributes'
 import { isExcludedPair } from '../../lib/itemExclusions'
 import { itemImageUrl } from '../../lib/ddragon'
@@ -8,11 +8,11 @@ interface Props {
   item: DDragonItem
   items: DDragonItem[]
   buildItems: BuildItems
-  slotIds: readonly ItemSlotId[]
+  slots: ItemSlot[]
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
   note: string
-  onToggleSlot: (slotId: ItemSlotId) => void
+  onToggleSlot: (slotId: string) => void
   onToggleExclusion: (otherItemId: string) => void
   onNoteChange: (note: string) => void
   onClose: () => void
@@ -22,7 +22,7 @@ export function ItemAssignPopup({
   item,
   items,
   buildItems,
-  slotIds,
+  slots,
   itemExclusions,
   builtinExclusions,
   note,
@@ -31,7 +31,7 @@ export function ItemAssignPopup({
   onNoteChange,
   onClose,
 }: Props) {
-  const otherItemIds = [...new Set(slotIds.flatMap((slotId) => buildItems[slotId].map((p) => p.itemId)))].filter(
+  const otherItemIds = [...new Set(slots.flatMap((slot) => (buildItems[slot.id] ?? []).map((p) => p.itemId)))].filter(
     (id) => id !== item.id,
   )
   const otherItems = otherItemIds.map((id) => items.find((i) => i.id === id)).filter((i): i is DDragonItem => !!i)
@@ -77,16 +77,18 @@ export function ItemAssignPopup({
           Add to slot
         </div>
         <div style={{ marginBottom: 14 }}>
-          {slotIds.filter((slotId) => slotId !== 'boots' || isBoots(item)).map((slotId) => (
-            <label key={slotId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-              <input
-                type="checkbox"
-                checked={buildItems[slotId].some((p) => p.itemId === item.id)}
-                onChange={() => onToggleSlot(slotId)}
-              />
-              {ITEM_SLOT_LABELS[slotId]}
-            </label>
-          ))}
+          {slots
+            .filter((slot) => slot.kind !== 'boots' || isBoots(item))
+            .map((slot) => (
+              <label key={slot.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                <input
+                  type="checkbox"
+                  checked={(buildItems[slot.id] ?? []).some((p) => p.itemId === item.id)}
+                  onChange={() => onToggleSlot(slot.id)}
+                />
+                {slot.label}
+              </label>
+            ))}
         </div>
 
         <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>

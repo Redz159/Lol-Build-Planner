@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Role } from '../../types/build'
-import { ITEM_SLOT_IDS, type BuildItems, type ItemNotes, type ItemSlotId } from '../../types/items'
+import type { BuildItems, ItemNotes, ItemSlot, ItemSlotKind } from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, isItemVisibleForRoles, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
@@ -9,18 +9,18 @@ import './items.css'
 
 const ALL_FILTER_OPTIONS = [...ATTRIBUTE_FILTERS, ...STAT_FILTERS]
 
-const SLOT_AUTO_FILTER: Partial<Record<ItemSlotId, string>> = {
+const KIND_AUTO_FILTER: Partial<Record<ItemSlotKind, string>> = {
   boots: 'attr:boots',
   starter: 'attr:starter',
 }
-const ALL_AUTO_FILTER_IDS = new Set(Object.values(SLOT_AUTO_FILTER))
+const ALL_AUTO_FILTER_IDS = new Set(Object.values(KIND_AUTO_FILTER))
 
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
   itemNotes: ItemNotes
   roles: Role[]
-  activeSlotId: ItemSlotId | null
+  activeSlot: ItemSlot | null
   onFastToggle: (item: DDragonItem) => void
   onOpenPopup: (item: DDragonItem) => void
   onDragStartItem: (itemId: string) => void
@@ -28,7 +28,7 @@ interface Props {
 }
 
 function placementCount(buildItems: BuildItems, itemId: string): number {
-  return ITEM_SLOT_IDS.reduce((n, slotId) => n + buildItems[slotId].filter((p) => p.itemId === itemId).length, 0)
+  return Object.values(buildItems).reduce((n, placements) => n + placements.filter((p) => p.itemId === itemId).length, 0)
 }
 
 export function ItemBrowser({
@@ -36,7 +36,7 @@ export function ItemBrowser({
   buildItems,
   itemNotes,
   roles,
-  activeSlotId,
+  activeSlot,
   onFastToggle,
   onOpenPopup,
   onDragStartItem,
@@ -51,13 +51,13 @@ export function ItemBrowser({
   // into fast-add for one pre-filters the browser down to it; leaving it clears that back
   // out, unless the user has since changed the filter selection themselves.
   useEffect(() => {
-    const autoFilterId = activeSlotId ? SLOT_AUTO_FILTER[activeSlotId] : undefined
+    const autoFilterId = activeSlot?.kind ? KIND_AUTO_FILTER[activeSlot.kind] : undefined
     if (autoFilterId) {
       setFilters(new Set([autoFilterId]))
     } else {
       setFilters((prev) => (prev.size === 1 && ALL_AUTO_FILTER_IDS.has([...prev][0]) ? new Set() : prev))
     }
-  }, [activeSlotId])
+  }, [activeSlot])
 
   const toggleFilter = (id: string) => {
     setFilters((prev) => {
@@ -121,16 +121,16 @@ export function ItemBrowser({
                 item={item}
                 size={40}
                 badge={count > 0 ? count : undefined}
-                title={activeSlotId ? `${item.name} — click to toggle in active slot` : item.name}
+                title={activeSlot ? `${item.name} — click to toggle in active slot` : item.name}
                 note={itemNotes[item.id]}
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'copy'
                   onDragStartItem(item.id)
                 }}
-                onClick={() => (activeSlotId ? onFastToggle(item) : onOpenPopup(item))}
+                onClick={() => (activeSlot ? onFastToggle(item) : onOpenPopup(item))}
               />
-              {activeSlotId && (
+              {activeSlot && (
                 <button
                   type="button"
                   className="item-tile-action"

@@ -1,17 +1,49 @@
 import { newId } from '../lib/id'
 
-export const ITEM_SLOT_IDS = ['starter', 'item1', 'boots', 'item2', 'item3', 'item4', 'item5', 'item6'] as const
-export type ItemSlotId = (typeof ITEM_SLOT_IDS)[number]
+// `kind` marks a slot as one of the original built-in slots with special behavior:
+// 'starter'/'boots' auto-filter the item browser to that attribute when the slot is active
+// (boots additionally rejects non-boots items), and 'adc-bonus' hides the slot unless the
+// loadout has the ADC role. Renaming a slot clears its kind — it becomes a plain slot, same
+// as any user-added one. Custom slots never carry a kind.
+export type ItemSlotKind = 'starter' | 'boots' | 'adc-bonus'
 
-export const ITEM_SLOT_LABELS: Record<ItemSlotId, string> = {
-  starter: 'Starter Items',
-  item1: '1st Item',
-  boots: 'Boots',
-  item2: '2nd Item',
-  item3: '3rd Item',
-  item4: '4th Item',
-  item5: '5th Item',
-  item6: '6th Item',
+export interface ItemSlot {
+  id: string
+  label: string
+  kind?: ItemSlotKind
+}
+
+// The slot layout every new loadout starts with, mirroring League's own build panel.
+export const DEFAULT_ITEM_SLOTS: ItemSlot[] = [
+  { id: 'starter', label: 'Starter Items', kind: 'starter' },
+  { id: 'item1', label: '1st Item' },
+  { id: 'boots', label: 'Boots', kind: 'boots' },
+  { id: 'item2', label: '2nd Item' },
+  { id: 'item3', label: '3rd Item' },
+  { id: 'item4', label: '4th Item' },
+  { id: 'item5', label: '5th Item' },
+  { id: 'item6', label: '6th Item', kind: 'adc-bonus' },
+]
+
+const VALID_SLOT_KINDS = new Set<ItemSlotKind>(['starter', 'boots', 'adc-bonus'])
+
+// `value` is untrusted data straight from JSON.parse (localStorage or an imported file). An
+// older schema version has no itemSlots at all, so falling back to the defaults both handles
+// that migration and guards against a build somehow ending up with zero slots.
+export function normalizeItemSlots(value: unknown): ItemSlot[] {
+  if (!Array.isArray(value)) return DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
+  const seenIds = new Set<string>()
+  const result: ItemSlot[] = []
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue
+    const id = (raw as Record<string, unknown>).id
+    const label = (raw as Record<string, unknown>).label
+    if (typeof id !== 'string' || typeof label !== 'string' || seenIds.has(id)) continue
+    seenIds.add(id)
+    const kind = (raw as Record<string, unknown>).kind
+    result.push({ id, label, ...(typeof kind === 'string' && VALID_SLOT_KINDS.has(kind as ItemSlotKind) ? { kind: kind as ItemSlotKind } : {}) })
+  }
+  return result.length > 0 ? result : DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
 }
 
 export interface ItemPlacement {
@@ -19,21 +51,23 @@ export interface ItemPlacement {
   itemId: string
 }
 
-export type BuildItems = Record<ItemSlotId, ItemPlacement[]>
+// Keyed by ItemSlot.id — always kept in sync with a loadout's itemSlots (one entry per slot).
+export type BuildItems = Record<string, ItemPlacement[]>
 
-export function emptyBuildItems(): BuildItems {
-  return { starter: [], item1: [], boots: [], item2: [], item3: [], item4: [], item5: [], item6: [] }
+export function emptyBuildItems(slots: ItemSlot[] = DEFAULT_ITEM_SLOTS): BuildItems {
+  return Object.fromEntries(slots.map((slot) => [slot.id, []]))
 }
 
 // `value` is untrusted data straight from JSON.parse (localStorage or an imported file),
-// potentially from an older schema version — tolerate anything and fall back to empty.
-export function normalizeBuildItems(value: unknown): BuildItems {
-  const result = emptyBuildItems()
+// potentially from an older schema version — tolerate anything and fall back to empty. Only
+// entries matching a known slot are kept, since the two are meant to stay in lockstep.
+export function normalizeBuildItems(value: unknown, slots: ItemSlot[]): BuildItems {
+  const result = emptyBuildItems(slots)
   if (!value || typeof value !== 'object') return result
-  for (const slotId of ITEM_SLOT_IDS) {
-    const raw = (value as Record<string, unknown>)[slotId]
+  for (const slot of slots) {
+    const raw = (value as Record<string, unknown>)[slot.id]
     if (!Array.isArray(raw)) continue
-    result[slotId] = raw
+    result[slot.id] = raw
       .filter((p): p is Partial<ItemPlacement> => !!p && typeof p === 'object' && typeof p.itemId === 'string')
       .map((p) => ({ id: typeof p.id === 'string' ? p.id : newId(), itemId: p.itemId as string }))
   }
