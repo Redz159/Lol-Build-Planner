@@ -5,6 +5,7 @@ import { BuildCard } from '../components/collection/BuildCard'
 import { SearchAndFilterBar, type RoleFilter, type SortKey } from '../components/collection/SearchAndFilterBar'
 import { NewBuildButton } from '../components/collection/NewBuildButton'
 import { ImportBuildButton } from '../components/collection/ImportBuildButton'
+import { RiotImportButton } from '../components/collection/RiotImportButton'
 import { buildRoles } from '../lib/loadouts'
 
 export function CollectionPage() {
@@ -53,9 +54,10 @@ export function CollectionPage() {
         sortKey={sortKey}
         onSortKeyChange={setSortKey}
       />
-      <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
         <NewBuildButton />
         <ImportBuildButton />
+        {import.meta.env.DEV && <RiotImportButton />}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 26 }}>
         {visibleBuilds.map((build) => (
