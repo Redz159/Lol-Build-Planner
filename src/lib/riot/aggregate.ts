@@ -200,29 +200,36 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   // --- Items ---
   const itemSlots = DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
   const buildItems = emptyBuildItems(itemSlots)
-  const placementsFor = (ids: Iterable<number>): ItemPlacement[] => [...new Set(ids)].map((id) => ({ id: newId(), itemId: String(id) }))
+  // Every distinct item seen is kept (like primaryRuneIds' "viable" set), ordered most- to
+  // least-bought rather than first-seen, so the build reads the same way the player's own
+  // choices trended.
+  const placementsByFrequency = (ids: number[]): ItemPlacement[] => {
+    const counts = new Map<number, number>()
+    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1)
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => ({ id: newId(), itemId: String(id) }))
+  }
 
   const starterIds = games.flatMap((g) => g.starterItems ?? [])
-  buildItems.starter = placementsFor(starterIds)
+  buildItems.starter = placementsByFrequency(starterIds)
 
   const bootsIds = games.map((g) => g.bootsItem).filter((id): id is number => id !== undefined)
-  buildItems.boots = placementsFor(bootsIds)
+  buildItems.boots = placementsByFrequency(bootsIds)
 
-  const perPosition: Set<number>[] = CORE_SLOT_IDS.map(() => new Set())
+  const perPosition: number[][] = CORE_SLOT_IDS.map(() => [])
   const gameCoreSets: Set<number>[] = []
   for (const g of games) {
     if (!g.coreItemsInOrder) continue
     const seenThisGame = new Set<number>()
     g.coreItemsInOrder.forEach((itemId, position) => {
       if (position >= CORE_SLOT_IDS.length) return
-      perPosition[position].add(itemId)
+      perPosition[position].push(itemId)
       seenThisGame.add(itemId)
     })
     if (seenThisGame.size > 0) gameCoreSets.push(seenThisGame)
   }
   CORE_SLOT_IDS.forEach((slotId, i) => {
     if (slotId === 'item6' && role !== 'adc') return
-    buildItems[slotId] = placementsFor(perPosition[i])
+    buildItems[slotId] = placementsByFrequency(perPosition[i])
   })
 
   // --- Exclusions: only inferred with a reasonable sample, and only for items that are each
@@ -230,7 +237,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   // rather than coincidental. ---
   const itemExclusions: ItemExclusionPair[] = []
   if (gameCoreSets.length >= 5) {
-    const pool = [...new Set(perPosition.flatMap((s) => [...s]))]
+    const pool = [...new Set(perPosition.flatMap((arr) => arr))]
     const gameCount = (id: number) => gameCoreSets.filter((s) => s.has(id)).length
     for (let i = 0; i < pool.length; i++) {
       for (let j = i + 1; j < pool.length; j++) {

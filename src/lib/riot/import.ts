@@ -3,7 +3,6 @@ import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../../types/
 import { newId } from '../id'
 import { getAccountByRiotId, getMatch, getMatchIdsByPuuid, getMatchTimeline, sleep } from './client'
 import { buildLoadoutForRole, classifyGameItems, findParticipant, roleForParticipant } from './aggregate'
-import { ROLES } from '../loadouts'
 
 export interface ImportProgress {
   stage: 'account' | 'scanning' | 'done'
@@ -94,7 +93,10 @@ export async function importBuildFromRiot(
     throw new Error(`Checked ${scanned} recent games for ${gameName}#${tagLine} but found none played as ${champion.name}.`)
   }
 
-  const loadouts = ROLES.filter((r) => byRole.has(r)).map((role) => buildLoadoutForRole(role, byRole.get(role)!, runeTrees))
+  // Most-played role first, matching the same "most taken" ordering as everything else.
+  const loadouts = [...byRole.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .map(([role, games]) => buildLoadoutForRole(role, games, runeTrees))
 
   if (loadouts.length === 0) {
     throw new Error(`Found ${found} ${champion.name} games, but none had a usable role (ARAM/remakes are skipped).`)
