@@ -91,8 +91,17 @@ export function ItemAssignPopup({
             ))}
         </div>
 
-        <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-          Note
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+          <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>Note</div>
+          {note && (
+            <button
+              type="button"
+              onClick={() => onNoteChange('')}
+              style={{ marginLeft: 'auto', padding: '1px 8px', fontSize: 11 }}
+            >
+              Clear
+            </button>
+          )}
         </div>
         <textarea
           value={note}
