@@ -97,7 +97,7 @@ export function ItemAssignPopup({
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder="Shown on this item's tooltip..."
           rows={3}
-          style={{ width: '100%', resize: 'vertical', marginBottom: 14, fontFamily: 'inherit', fontSize: 13 }}
+          style={{ width: '100%', resize: 'vertical', marginBottom: 14, fontSize: 13 }}
         />
 
         {otherItems.length > 0 && (

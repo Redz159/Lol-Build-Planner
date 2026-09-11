@@ -110,7 +110,7 @@ export function BuildDetailPage() {
       >
         {editingTitle ? (
           <>
-            <input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} />
+            <input type="text" value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} />
             <button
               type="button"
               onClick={() => {

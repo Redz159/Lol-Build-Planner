@@ -87,13 +87,14 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
+textarea:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
 
-input[type='text'],
-input[type='search'],
+input:not([type='checkbox']):not([type='file']),
+textarea,
 select {
   font: inherit;
   color: var(--text);
@@ -104,7 +105,13 @@ select {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-input[type='text']:focus,
+input:not([type='checkbox']):not([type='file'])::placeholder,
+textarea::placeholder {
+  color: var(--text-dim);
+}
+
+input:not([type='checkbox']):not([type='file']):focus,
+textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--gold);

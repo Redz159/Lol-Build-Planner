@@ -65,17 +65,19 @@ export function ItemIcon({ item, size = 44, selected, excluded, badge, title, no
             position: 'absolute',
             bottom: -6,
             right: -6,
-            fontSize: 9,
-            background: 'var(--bg-panel)',
-            border: '1px solid var(--gold)',
+            fontSize: 10,
+            fontWeight: 700,
+            background: 'var(--gold)',
+            color: '#0a0e14',
             borderRadius: '50%',
             width: 15,
             height: 15,
-            lineHeight: '13px',
+            lineHeight: '15px',
+            textAlign: 'center',
             boxShadow: 'var(--shadow-sm)',
           }}
         >
-          📝
+          ?
         </span>
       )}
     </button>
@@ -84,13 +86,9 @@ export function ItemIcon({ item, size = 44, selected, excluded, badge, title, no
   return (
     <Tooltip
       title={title ?? item.name}
-      extra={
-        <>
-          <div className="tooltip-gold">{item.gold.total}g</div>
-          {note && <div className="tooltip-note">{note}</div>}
-        </>
-      }
+      extra={<div className="tooltip-gold">{item.gold.total}g</div>}
       descriptionHtml={item.description}
+      note={note}
     >
       {button}
     </Tooltip>
