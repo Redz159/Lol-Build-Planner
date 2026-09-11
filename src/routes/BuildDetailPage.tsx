@@ -254,7 +254,6 @@ export function BuildDetailPage() {
       )}
 
       <Tabs
-        key={activeLoadout.id}
         tabs={[
           {
             key: 'runes',
@@ -262,6 +261,7 @@ export function BuildDetailPage() {
             content:
               mode === 'edit' ? (
                 <RunePagesEditor
+                  key={activeLoadout.id}
                   pages={activeLoadout.runePages}
                   onChange={(runePages) => saveLoadout({ runePages })}
                   initialKeystoneId={selectedKeystoneId}
@@ -269,6 +269,7 @@ export function BuildDetailPage() {
                 />
               ) : (
                 <RunePagesViewer
+                  key={activeLoadout.id}
                   pages={activeLoadout.runePages}
                   selectedKeystoneId={selectedKeystoneId}
                   onSelectKeystoneId={setSelectedKeystoneId}
@@ -278,7 +279,14 @@ export function BuildDetailPage() {
           {
             key: 'items',
             label: 'Items',
-            content: <ItemsEditor loadout={activeLoadout} mode={mode} onChange={(patch) => saveLoadout(patch)} />,
+            content: (
+              <ItemsEditor
+                key={activeLoadout.id}
+                loadout={activeLoadout}
+                mode={mode}
+                onChange={(patch) => saveLoadout(patch)}
+              />
+            ),
           },
         ]}
       />
