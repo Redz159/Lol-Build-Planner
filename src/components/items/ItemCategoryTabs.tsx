@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { ItemCategory, ItemSlot } from '../../types/items'
 import { allCategorizedPlacements, categoryHasPlacement } from '../../lib/itemCategories'
@@ -16,6 +16,9 @@ interface Props {
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
   onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
+  // Rendered at the far right of the tab row (e.g. the item-set export button) — shown even when
+  // there are no categories to display, unlike the rest of this row.
+  trailing?: ReactNode
 }
 
 function tabStyle(active: boolean, hovered = false): CSSProperties {
@@ -34,7 +37,20 @@ function tabStyle(active: boolean, hovered = false): CSSProperties {
 
 const iconBtnStyle: CSSProperties = { padding: '2px 6px', fontSize: 11 }
 
-export function ItemCategoryTabs({ categories, slots, items, mode, activeId, onSelect, onAdd, onRename, onDelete, onDuplicate, onToggleCategoryItem }: Props) {
+export function ItemCategoryTabs({
+  categories,
+  slots,
+  items,
+  mode,
+  activeId,
+  onSelect,
+  onAdd,
+  onRename,
+  onDelete,
+  onDuplicate,
+  onToggleCategoryItem,
+  trailing,
+}: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -45,7 +61,8 @@ export function ItemCategoryTabs({ categories, slots, items, mode, activeId, onS
   // Category CRUD (rename/duplicate/delete/add, and the cross-category quick-add) is edit-mode
   // only, matching how slot rename/delete works — view mode only ever switches between tabs.
   const editable = mode === 'edit'
-  if (!editable && categories.length === 0) return null
+  // Nothing to show but `trailing` (no categories, and not editing so no "+ Add category" either)
+  // still renders that row — it's the export button's home even before any category exists.
 
   const startRename = (category: ItemCategory) => {
     setEditingId(category.id)
@@ -168,6 +185,7 @@ export function ItemCategoryTabs({ categories, slots, items, mode, activeId, onS
               + Add category
             </button>
           ))}
+        {trailing && <div style={{ marginLeft: 'auto' }}>{trailing}</div>}
       </div>
       {editable && quickAddCategory && (
         <CategoryQuickAddPopup

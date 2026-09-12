@@ -425,6 +425,19 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
       : (loadout.itemNotes[popupItem.id] ?? '')
     : ''
 
+  // Exports whatever item-set is currently on screen — a specific category, the "All" merge, or
+  // the plain item list when there are no categories — same scoping the rest of the editor uses.
+  const exportTitleSuffix = activeCategory ? ` - ${activeCategory.label}` : isAllCategoryView ? ' - All' : ''
+  const exportButton = (
+    <button
+      type="button"
+      onClick={() => setShowExportPopup(true)}
+      style={{ padding: '4px 10px', fontSize: 12, border: '1px solid var(--accent)', color: 'var(--accent)', background: 'transparent' }}
+    >
+      Export item set
+    </button>
+  )
+
   const categoryTabs = (
     <ItemCategoryTabs
       categories={loadout.itemCategories}
@@ -438,23 +451,14 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
       onDelete={deleteItemCategory}
       onDuplicate={duplicateItemCategory}
       onToggleCategoryItem={toggleCategoryItem}
+      trailing={exportButton}
     />
-  )
-
-  // Exports whatever item-set is currently on screen — a specific category, the "All" merge, or
-  // the plain item list when there are no categories — same scoping the rest of the editor uses.
-  const exportTitleSuffix = activeCategory ? ` - ${activeCategory.label}` : isAllCategoryView ? ' - All' : ''
-  const exportButton = (
-    <button type="button" onClick={() => setShowExportPopup(true)} style={{ padding: '4px 10px', fontSize: 12, marginBottom: 12 }}>
-      Export item set
-    </button>
   )
 
   if (mode === 'view') {
     return (
       <div>
         {categoryTabs}
-        {exportButton}
         <BuildSlotsPanel
           items={items}
           buildItems={currentItems}
@@ -492,7 +496,6 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   return (
     <div>
       {categoryTabs}
-      {exportButton}
       {isAllCategoryView ? (
         <>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
