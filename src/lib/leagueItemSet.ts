@@ -1,4 +1,5 @@
 import type { BuildItems, ItemSlot } from '../types/items'
+import { newId } from './id'
 
 // Matches the JSON schema the League client reads from
 // Config/Champions/<Champion>/Recommended/*.json, and accepts via its item-set import dialog.
@@ -65,6 +66,9 @@ export interface ParsedItemSetBlock {
 export interface ParsedItemSet {
   title: string
   blocks: ParsedItemSetBlock[]
+  // Data Dragon numeric champion keys from the set's associatedChampions, if any — used to guess
+  // which champion a freshly-imported build should belong to.
+  associatedChampionKeys: number[]
 }
 
 // `json` is untrusted text the user pasted or loaded from a file — tolerate anything and throw
@@ -95,5 +99,19 @@ export function parseLeagueItemSet(json: string): ParsedItemSet {
   if (blocks.length === 0) throw new Error('That item set has no items in it.')
 
   const title = (raw as Record<string, unknown>).title
-  return { title: typeof title === 'string' ? title : '', blocks }
+  const associatedChampions = (raw as Record<string, unknown>).associatedChampions
+  const associatedChampionKeys = Array.isArray(associatedChampions) ? associatedChampions.filter((n): n is number => typeof n === 'number') : []
+  return { title: typeof title === 'string' ? title : '', blocks, associatedChampionKeys }
+}
+
+// Builds a fresh set of slots (one per block, in order) and their items — for a brand-new build
+// rather than merging into one that already has its own slots (see ItemsEditor's own import,
+// which matches against existing slots instead).
+export function slotsAndItemsFromParsedSet(parsed: ParsedItemSet): { itemSlots: ItemSlot[]; items: BuildItems } {
+  const itemSlots: ItemSlot[] = parsed.blocks.map((block) => ({ id: newId(), label: block.label }))
+  const items: BuildItems = {}
+  parsed.blocks.forEach((block, i) => {
+    items[itemSlots[i].id] = block.itemIds.map((itemId) => ({ id: newId(), itemId }))
+  })
+  return { itemSlots, items }
 }
