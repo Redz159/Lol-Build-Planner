@@ -136,6 +136,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     }
     const result = new Set<string>()
     if (previewedItemIds.size === 0) return result
+    // A "requires" pair only counts while the required item is actually a candidate in this
+    // item-set — a category that never includes it shouldn't be able to satisfy or block on it.
+    const itemIdsInView = new Set(Object.values(currentItems).flatMap((placements) => placements.map((p) => p.itemId)))
     for (const slot of loadout.itemSlots) {
       for (const placement of currentItems[slot.id] ?? []) {
         if (previewedPlacementIds.has(placement.id)) continue
@@ -143,8 +146,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         const excluded = [...previewedItemIds].some(
           (pid) => isExcludedPair(loadout.itemExclusions, pid, placement.itemId) || isExcludedPair(builtinExclusions, pid, placement.itemId),
         )
-        const required = requiredItemIds(loadout.itemRequirements, placement.itemId)
-        const requirementUnmet = required.length > 0 && !required.every((id) => previewedItemIds.has(id))
+        const applicableRequired = requiredItemIds(loadout.itemRequirements, placement.itemId).filter((id) => itemIdsInView.has(id))
+        const requirementUnmet = applicableRequired.length > 0 && !applicableRequired.every((id) => previewedItemIds.has(id))
         if (sameItemElsewhere || excluded || requirementUnmet) result.add(placement.id)
       }
     }
