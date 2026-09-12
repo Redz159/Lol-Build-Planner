@@ -7,20 +7,24 @@ import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { addCategory, deleteCategory, duplicateCategory, mergedCategoryItems, renameCategory, toggleCategoryPlacement } from '../../lib/itemCategories'
+import { buildLeagueItemSet } from '../../lib/leagueItemSet'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ItemCategoryTabs } from './ItemCategoryTabs'
+import { ExportItemSetPopup } from './ExportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
 
 interface Props {
   loadout: Loadout
   mode: 'view' | 'edit'
   onChange: (patch: Partial<Loadout>) => void
+  championKey: string | undefined
+  buildTitle: string
 }
 
-export function ItemsEditor({ loadout, mode, onChange }: Props) {
+export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }: Props) {
   const { items } = useGameData()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
@@ -36,6 +40,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   // back to the first category once any exist, and to plain loadout.items when none do, so a
   // deleted or not-yet-chosen category never leaves the view on a dangling id.
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [showExportPopup, setShowExportPopup] = useState(false)
 
   const openPopup = (item: DDragonItem, slotId?: string) => {
     setPopupItemId(item.id)
@@ -436,10 +441,20 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     />
   )
 
+  // Exports whatever item-set is currently on screen — a specific category, the "All" merge, or
+  // the plain item list when there are no categories — same scoping the rest of the editor uses.
+  const exportTitleSuffix = activeCategory ? ` - ${activeCategory.label}` : isAllCategoryView ? ' - All' : ''
+  const exportButton = (
+    <button type="button" onClick={() => setShowExportPopup(true)} style={{ padding: '4px 10px', fontSize: 12, marginBottom: 12 }}>
+      Export item set
+    </button>
+  )
+
   if (mode === 'view') {
     return (
       <div>
         {categoryTabs}
+        {exportButton}
         <BuildSlotsPanel
           items={items}
           buildItems={currentItems}
@@ -464,6 +479,12 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           hoverOutlines={hoverOutlines}
           onHoverPlacement={setHoveredPlacementId}
         />
+        {showExportPopup && (
+          <ExportItemSetPopup
+            itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems)}
+            onClose={() => setShowExportPopup(false)}
+          />
+        )}
       </div>
     )
   }
@@ -471,6 +492,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   return (
     <div>
       {categoryTabs}
+      {exportButton}
       {isAllCategoryView ? (
         <>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
@@ -568,6 +590,12 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           }
           onToggleNoteGlobal={(makeGlobal) => toggleNoteGlobal(popupItem.id, makeGlobal, popupNote)}
           onClose={closePopup}
+        />
+      )}
+      {showExportPopup && (
+        <ExportItemSetPopup
+          itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems)}
+          onClose={() => setShowExportPopup(false)}
         />
       )}
     </div>

@@ -293,6 +293,8 @@ export function BuildDetailPage() {
                 loadout={activeLoadout}
                 mode={mode}
                 onChange={(patch) => saveLoadout(patch)}
+                championKey={champion?.key}
+                buildTitle={build.title}
               />
             ),
           },
