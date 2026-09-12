@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type MouseEvent } from 'react'
+import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { BuildItems, ItemNotes, ItemSlot } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
@@ -86,6 +86,13 @@ export function BuildSlotsPanel({
         const slotId = slot.id
         const placements = buildItems[slotId] ?? []
         if (mode === 'view' && placements.length === 0) return null
+        // Excluded (greyed-out) placements sort after selectable ones, with a divider between
+        // the two groups — a stable sort keeps each group's own relative order intact.
+        const orderedPlacements =
+          mode === 'view'
+            ? [...placements].sort((a, b) => Number(excludedPlacementIds.has(a.id)) - Number(excludedPlacementIds.has(b.id)))
+            : placements
+        const dividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => excludedPlacementIds.has(p.id)) : -1
         const active = activeSlotId === slotId
         const dragOver = mode === 'edit' && dragOverSlotId === slotId
         const editing = editingSlotId === slotId
@@ -180,10 +187,11 @@ export function BuildSlotsPanel({
             {placements.length === 0 ? (
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>Empty</div>
             ) : (
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {placements.map((placement) => {
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                {orderedPlacements.map((placement, index) => {
                   const item = items.find((i) => i.id === placement.itemId)
                   if (!item) return null
+                  const showDivider = index === dividerIndex && index > 0
                   const handleClick = (e: MouseEvent) => {
                     if (mode === 'edit') {
                       if (e.ctrlKey || e.metaKey) {
@@ -201,74 +209,78 @@ export function BuildSlotsPanel({
                     return e.clientX - rect.left < rect.width / 2 ? 'before' : 'after'
                   }
                   return (
-                    <div
-                      key={placement.id}
-                      className="item-tile"
-                      style={
-                        placementDragOver
-                          ? {
-                              boxShadow:
-                                placementDragOver === 'before'
-                                  ? 'inset 3px 0 0 var(--gold)'
-                                  : 'inset -3px 0 0 var(--gold)',
-                              borderRadius: 8,
-                            }
-                          : undefined
-                      }
-                      onDragOver={
-                        mode === 'edit'
-                          ? (e: DragEvent) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              const side = sideFromEvent(e)
-                              if (dragOverPlacement?.id !== placement.id || dragOverPlacement.side !== side) {
-                                setDragOverPlacement({ id: placement.id, side })
-                              }
-                            }
-                          : undefined
-                      }
-                      onDragLeave={
-                        mode === 'edit'
-                          ? () => setDragOverPlacement((prev) => (prev?.id === placement.id ? null : prev))
-                          : undefined
-                      }
-                      onDrop={
-                        mode === 'edit'
-                          ? (e: DragEvent) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              const side = sideFromEvent(e)
-                              setDragOverPlacement(null)
-                              setDragOverSlotId(null)
-                              onDropOnPlacement(slotId, placement.id, side)
-                            }
-                          : undefined
-                      }
-                    >
-                      <ItemIcon
-                        item={item}
-                        selected={mode === 'view' && preview[slotId] === placement.id}
-                        excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
-                        note={itemNotes[item.id]}
-                        draggable={mode === 'edit'}
-                        onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = 'move'
-                          onDragStartPlacement(slotId, placement.id, item.id)
-                        }}
-                        onClick={handleClick}
-                      />
-                      {mode === 'edit' && (
-                        <button
-                          type="button"
-                          className="item-tile-action"
-                          aria-label={`Remove ${item.name}`}
-                          title="Remove (or Ctrl+click the icon)"
-                          onClick={() => onRemovePlacement(slotId, placement.id)}
-                        >
-                          ×
-                        </button>
+                    <Fragment key={placement.id}>
+                      {showDivider && (
+                        <div aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'var(--gold)', opacity: 0.5 }} />
                       )}
-                    </div>
+                      <div
+                        className="item-tile"
+                        style={
+                          placementDragOver
+                            ? {
+                                boxShadow:
+                                  placementDragOver === 'before'
+                                    ? 'inset 3px 0 0 var(--gold)'
+                                    : 'inset -3px 0 0 var(--gold)',
+                                borderRadius: 8,
+                              }
+                            : undefined
+                        }
+                        onDragOver={
+                          mode === 'edit'
+                            ? (e: DragEvent) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const side = sideFromEvent(e)
+                                if (dragOverPlacement?.id !== placement.id || dragOverPlacement.side !== side) {
+                                  setDragOverPlacement({ id: placement.id, side })
+                                }
+                              }
+                            : undefined
+                        }
+                        onDragLeave={
+                          mode === 'edit'
+                            ? () => setDragOverPlacement((prev) => (prev?.id === placement.id ? null : prev))
+                            : undefined
+                        }
+                        onDrop={
+                          mode === 'edit'
+                            ? (e: DragEvent) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const side = sideFromEvent(e)
+                                setDragOverPlacement(null)
+                                setDragOverSlotId(null)
+                                onDropOnPlacement(slotId, placement.id, side)
+                              }
+                            : undefined
+                        }
+                      >
+                        <ItemIcon
+                          item={item}
+                          selected={mode === 'view' && preview[slotId] === placement.id}
+                          excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
+                          note={itemNotes[item.id]}
+                          draggable={mode === 'edit'}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = 'move'
+                            onDragStartPlacement(slotId, placement.id, item.id)
+                          }}
+                          onClick={handleClick}
+                        />
+                        {mode === 'edit' && (
+                          <button
+                            type="button"
+                            className="item-tile-action"
+                            aria-label={`Remove ${item.name}`}
+                            title="Remove (or Ctrl+click the icon)"
+                            onClick={() => onRemovePlacement(slotId, placement.id)}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </Fragment>
                   )
                 })}
               </div>
