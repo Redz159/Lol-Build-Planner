@@ -1,6 +1,6 @@
 import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import { itemSlotNoteKey, type BuildItems, type ItemNotes, type ItemSlot, type ItemSlotNotes } from '../../types/items'
+import { effectiveItemNote, type BuildItems, type ItemNoteGlobalFlags, type ItemNotes, type ItemSlot, type ItemSlotNotes } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
 
@@ -9,6 +9,7 @@ interface Props {
   buildItems: BuildItems
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
   slots: ItemSlot[]
   mode: 'view' | 'edit'
   activeSlotId: string | null
@@ -31,6 +32,7 @@ export function BuildSlotsPanel({
   buildItems,
   itemNotes,
   itemSlotNotes,
+  itemNoteGlobal,
   slots,
   mode,
   activeSlotId,
@@ -262,7 +264,7 @@ export function BuildSlotsPanel({
                           item={item}
                           selected={mode === 'view' && preview[slotId] === placement.id}
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
-                          note={itemSlotNotes[itemSlotNoteKey(slotId, item.id)] ?? itemNotes[item.id]}
+                          note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
                           draggable={mode === 'edit'}
                           onDragStart={(e) => {
                             e.dataTransfer.effectAllowed = 'move'

@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Role } from '../../types/build'
-import { itemSlotNoteKey, type BuildItems, type ItemNotes, type ItemSlot, type ItemSlotKind, type ItemSlotNotes } from '../../types/items'
+import {
+  effectiveItemNote,
+  type BuildItems,
+  type ItemNoteGlobalFlags,
+  type ItemNotes,
+  type ItemSlot,
+  type ItemSlotKind,
+  type ItemSlotNotes,
+} from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, isItemVisibleForRoles, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
@@ -20,6 +28,7 @@ interface Props {
   buildItems: BuildItems
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
   roles: Role[]
   activeSlot: ItemSlot | null
   onFastToggle: (item: DDragonItem) => void
@@ -37,6 +46,7 @@ export function ItemBrowser({
   buildItems,
   itemNotes,
   itemSlotNotes,
+  itemNoteGlobal,
   roles,
   activeSlot,
   onFastToggle,
@@ -124,7 +134,11 @@ export function ItemBrowser({
                 size={40}
                 badge={count > 0 ? count : undefined}
                 title={activeSlot ? `${item.name} — click to toggle in active slot` : item.name}
-                note={activeSlot ? (itemSlotNotes[itemSlotNoteKey(activeSlot.id, item.id)] ?? itemNotes[item.id]) : itemNotes[item.id]}
+                note={
+                  activeSlot
+                    ? effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, activeSlot.id, item.id)
+                    : itemNotes[item.id]
+                }
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'copy'

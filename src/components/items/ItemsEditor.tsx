@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
-import { type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
+import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
@@ -290,11 +290,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   // popup opened from; only the note *text* shown for a local item still depends on that slot.
   const popupIsGlobalNote = popupItem ? (loadout.itemNoteGlobal[popupItem.id] ?? true) : true
   const popupNote = popupItem
-    ? popupIsGlobalNote
-      ? (loadout.itemNotes[popupItem.id] ?? '')
-      : popupSlotId
-        ? (loadout.itemSlotNotes[itemSlotNoteKey(popupSlotId, popupItem.id)] ?? '')
-        : (loadout.itemNotes[popupItem.id] ?? '')
+    ? popupSlotId
+      ? (effectiveItemNote(loadout.itemNotes, loadout.itemSlotNotes, loadout.itemNoteGlobal, popupSlotId, popupItem.id) ?? '')
+      : (loadout.itemNotes[popupItem.id] ?? '')
     : ''
 
   if (mode === 'view') {
@@ -304,6 +302,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         buildItems={loadout.items}
         itemNotes={loadout.itemNotes}
         itemSlotNotes={loadout.itemSlotNotes}
+        itemNoteGlobal={loadout.itemNoteGlobal}
         slots={visibleSlots}
         mode="view"
         activeSlotId={null}
@@ -332,6 +331,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
+            itemNoteGlobal={loadout.itemNoteGlobal}
             slots={visibleSlots}
             mode="edit"
             activeSlotId={activeSlotId}
@@ -355,6 +355,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
+            itemNoteGlobal={loadout.itemNoteGlobal}
             roles={loadout.roles}
             activeSlot={activeSlotId ? (findSlot(activeSlotId) ?? null) : null}
             onFastToggle={fastToggle}

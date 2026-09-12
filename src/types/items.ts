@@ -129,3 +129,18 @@ export function normalizeItemNoteGlobalFlags(value: unknown): ItemNoteGlobalFlag
   }
   return result
 }
+
+// The note text to actually show for an item placed in a given slot. While the item is global,
+// this is its shared ItemNotes entry regardless of slot; while local, it's that slot's own
+// ItemSlotNotes entry (or nothing at all, even if a global note happens to still be stored) —
+// never falls back to the global note, since that would resurrect a note the slot doesn't have.
+export function effectiveItemNote(
+  itemNotes: ItemNotes,
+  itemSlotNotes: ItemSlotNotes,
+  itemNoteGlobal: ItemNoteGlobalFlags,
+  slotId: string,
+  itemId: string,
+): string | undefined {
+  const isGlobal = itemNoteGlobal[itemId] ?? true
+  return isGlobal ? itemNotes[itemId] : itemSlotNotes[itemSlotNoteKey(slotId, itemId)]
+}
