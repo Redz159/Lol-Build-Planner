@@ -7,6 +7,8 @@ import { itemImageUrl } from '../../lib/ddragon'
 
 export type ItemRelationMode = 'exclude' | 'require'
 
+const RELATION_SWITCH_HALF_WIDTH = 52
+
 interface Props {
   item: DDragonItem
   items: DDragonItem[]
@@ -138,37 +140,66 @@ export function ItemAssignPopup({
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                {relationMode === 'exclude' ? 'Excludes' : 'Only include when'}
+                {relationMode === 'exclude' ? 'Excludes' : 'Requires'}
               </div>
-              <div style={{ display: 'flex', marginLeft: 'auto', fontSize: 11 }}>
-                <button
-                  type="button"
-                  onClick={() => onRelationModeChange('exclude')}
+              <button
+                type="button"
+                onClick={() => onRelationModeChange(relationMode === 'exclude' ? 'require' : 'exclude')}
+                title={
+                  relationMode === 'exclude'
+                    ? 'Checked items exclude this one — click to switch to requiring them instead'
+                    : 'This item requires every checked item — click to switch to excluding them instead'
+                }
+                style={{
+                  position: 'relative',
+                  display: 'inline-flex',
+                  marginLeft: 'auto',
+                  width: RELATION_SWITCH_HALF_WIDTH * 2,
+                  borderRadius: 12,
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--bg-panel-raised)',
+                  padding: 2,
+                  boxShadow: 'none',
+                  transform: 'none',
+                }}
+              >
+                <span
                   style={{
-                    padding: '2px 8px',
-                    borderTopRightRadius: 0,
-                    borderBottomRightRadius: 0,
-                    color: relationMode === 'exclude' ? 'var(--gold-bright)' : undefined,
-                    borderColor: relationMode === 'exclude' ? 'var(--gold)' : undefined,
+                    position: 'absolute',
+                    top: 2,
+                    bottom: 2,
+                    left: relationMode === 'exclude' ? 2 : RELATION_SWITCH_HALF_WIDTH,
+                    width: RELATION_SWITCH_HALF_WIDTH - 2,
+                    borderRadius: 10,
+                    background: 'var(--gold)',
+                    transition: 'left 150ms ease',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'relative',
+                    width: RELATION_SWITCH_HALF_WIDTH,
+                    padding: '3px 0',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: relationMode === 'exclude' ? 'var(--bg-panel)' : 'var(--text-dim)',
                   }}
                 >
                   Exclude
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRelationModeChange('require')}
+                </span>
+                <span
                   style={{
-                    padding: '2px 8px',
-                    borderTopLeftRadius: 0,
-                    borderBottomLeftRadius: 0,
-                    marginLeft: -1,
-                    color: relationMode === 'require' ? 'var(--gold-bright)' : undefined,
-                    borderColor: relationMode === 'require' ? 'var(--gold)' : undefined,
+                    position: 'relative',
+                    width: RELATION_SWITCH_HALF_WIDTH,
+                    padding: '3px 0',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: relationMode === 'require' ? 'var(--bg-panel)' : 'var(--text-dim)',
                   }}
                 >
-                  Only include
-                </button>
-              </div>
+                  Require
+                </span>
+              </button>
             </div>
             <div>
               {relationMode === 'exclude'
