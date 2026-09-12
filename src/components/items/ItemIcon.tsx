@@ -3,11 +3,23 @@ import type { DDragonItem } from '../../types/ddragon'
 import { itemImageUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
 
+// Hover relation ring: gold marks other placements of the same item, red a mutual exclusion,
+// green an item the hovered one requires, blue an item that requires the hovered one.
+export type ItemRelationOutline = 'gold' | 'red' | 'green' | 'blue'
+
+const OUTLINE_COLORS: Record<ItemRelationOutline, string> = {
+  gold: 'var(--gold)',
+  red: 'var(--danger)',
+  green: 'var(--success)',
+  blue: 'var(--accent)',
+}
+
 interface Props {
   item: DDragonItem
   size?: number
   selected?: boolean
   excluded?: boolean
+  outline?: ItemRelationOutline
   badge?: number
   title?: string
   note?: string
@@ -15,6 +27,8 @@ interface Props {
   onDragStart?: (e: DragEvent<HTMLButtonElement>) => void
   onDragEnd?: (e: DragEvent<HTMLButtonElement>) => void
   onClick?: (e: MouseEvent) => void
+  onMouseEnter?: () => void
+  onMouseLeave?: () => void
 }
 
 export function ItemIcon({
@@ -22,6 +36,7 @@ export function ItemIcon({
   size = 44,
   selected,
   excluded,
+  outline,
   badge,
   title,
   note,
@@ -29,11 +44,20 @@ export function ItemIcon({
   onDragStart,
   onDragEnd,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
 }: Props) {
+  const rings = [
+    selected ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : null,
+    outline ? `0 0 0 2px ${OUTLINE_COLORS[outline]}` : null,
+  ].filter(Boolean)
+
   const button = (
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -45,7 +69,7 @@ export function ItemIcon({
         padding: 3,
         opacity: excluded ? 0.3 : 1,
         background: 'var(--bg-panel)',
-        boxShadow: selected ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : 'var(--shadow-sm)',
+        boxShadow: rings.length > 0 ? rings.join(', ') : 'var(--shadow-sm)',
         lineHeight: 0,
         cursor: draggable ? 'grab' : undefined,
       }}

@@ -1,7 +1,7 @@
 import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemNoteGlobalFlags, type ItemNotes, type ItemSlot, type ItemSlotNotes } from '../../types/items'
-import { ItemIcon } from './ItemIcon'
+import { ItemIcon, type ItemRelationOutline } from './ItemIcon'
 import './items.css'
 
 interface Props {
@@ -25,6 +25,8 @@ interface Props {
   onRenameSlot: (slotId: string, label: string) => void
   onDeleteSlot: (slotId: string) => void
   excludedPlacementIds: Set<string>
+  hoverOutlines: Map<string, ItemRelationOutline>
+  onHoverPlacement: (placementId: string | null) => void
 }
 
 export function BuildSlotsPanel({
@@ -48,6 +50,8 @@ export function BuildSlotsPanel({
   onRenameSlot,
   onDeleteSlot,
   excludedPlacementIds,
+  hoverOutlines,
+  onHoverPlacement,
 }: Props) {
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
   const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
@@ -264,6 +268,7 @@ export function BuildSlotsPanel({
                           item={item}
                           selected={mode === 'view' && preview[slotId] === placement.id}
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
+                          outline={hoverOutlines.get(placement.id)}
                           note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
                           draggable={mode === 'edit'}
                           onDragStart={(e) => {
@@ -271,6 +276,8 @@ export function BuildSlotsPanel({
                             onDragStartPlacement(slotId, placement.id, item.id)
                           }}
                           onClick={handleClick}
+                          onMouseEnter={() => onHoverPlacement(placement.id)}
+                          onMouseLeave={() => onHoverPlacement(null)}
                         />
                         {mode === 'edit' && (
                           <button

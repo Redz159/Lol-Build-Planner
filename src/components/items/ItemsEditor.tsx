@@ -5,13 +5,14 @@ import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, 
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
-import { requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
+import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { addCategory, deleteCategory, duplicateCategory, mergedCategoryItems, renameCategory, toggleCategoryPlacement } from '../../lib/itemCategories'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ItemCategoryTabs } from './ItemCategoryTabs'
+import type { ItemRelationOutline } from './ItemIcon'
 
 interface Props {
   loadout: Loadout
@@ -153,6 +154,39 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     }
     return result
   }, [preview, loadout.itemSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
+
+  // Hovering any placed item lightly rings every OTHER placement related to it: gold for the
+  // same item elsewhere, red for a mutual exclusion, green for an item the hovered one requires,
+  // blue for an item that in turn requires the hovered one. Tracked by placement id (not item
+  // id) so the hovered tile itself never rings its own reflection.
+  const [hoveredPlacementId, setHoveredPlacementId] = useState<string | null>(null)
+
+  const hoverOutlines = useMemo(() => {
+    const result = new Map<string, ItemRelationOutline>()
+    if (!hoveredPlacementId) return result
+    const hoveredItemId = Object.values(currentItems)
+      .flat()
+      .find((p) => p.id === hoveredPlacementId)?.itemId
+    if (!hoveredItemId) return result
+    for (const slot of loadout.itemSlots) {
+      for (const placement of currentItems[slot.id] ?? []) {
+        if (placement.id === hoveredPlacementId) continue
+        if (placement.itemId === hoveredItemId) {
+          result.set(placement.id, 'gold')
+        } else if (
+          isExcludedPair(loadout.itemExclusions, hoveredItemId, placement.itemId) ||
+          isExcludedPair(builtinExclusions, hoveredItemId, placement.itemId)
+        ) {
+          result.set(placement.id, 'red')
+        } else if (isRequiredPair(loadout.itemRequirements, hoveredItemId, placement.itemId)) {
+          result.set(placement.id, 'green')
+        } else if (isRequiredPair(loadout.itemRequirements, placement.itemId, hoveredItemId)) {
+          result.set(placement.id, 'blue')
+        }
+      }
+    }
+    return result
+  }, [hoveredPlacementId, loadout.itemSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
 
   // A slot's local note only makes sense while the item is actually placed there, so every
   // path that removes a placement (toggling off, the × button, or dragging it elsewhere)
@@ -427,6 +461,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           onRenameSlot={() => {}}
           onDeleteSlot={() => {}}
           excludedPlacementIds={excludedPlacementIds}
+          hoverOutlines={hoverOutlines}
+          onHoverPlacement={setHoveredPlacementId}
         />
       </div>
     )
@@ -461,6 +497,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             onRenameSlot={() => {}}
             onDeleteSlot={() => {}}
             excludedPlacementIds={new Set()}
+            hoverOutlines={hoverOutlines}
+            onHoverPlacement={setHoveredPlacementId}
           />
         </>
       ) : (
@@ -487,6 +525,8 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
               onRenameSlot={renameSlot}
               onDeleteSlot={deleteSlot}
               excludedPlacementIds={excludedPlacementIds}
+              hoverOutlines={hoverOutlines}
+              onHoverPlacement={setHoveredPlacementId}
             />
           </div>
           <div style={{ flex: '2 1 420px', minWidth: 280 }}>
