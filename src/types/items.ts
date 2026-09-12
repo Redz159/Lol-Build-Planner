@@ -16,6 +16,7 @@ export interface ItemSlot {
 // The slot layout every new loadout starts with, mirroring League's own build panel.
 export const DEFAULT_ITEM_SLOTS: ItemSlot[] = [
   { id: 'starter', label: 'Starter Items', kind: 'starter' },
+  { id: 'early', label: 'Early Components' },
   { id: 'item1', label: '1st Item' },
   { id: 'boots', label: 'Boots', kind: 'boots' },
   { id: 'item2', label: '2nd Item' },
