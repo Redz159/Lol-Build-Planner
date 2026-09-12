@@ -1,7 +1,14 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
 import type { Build, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
-import { normalizeBuildItems, normalizeItemExclusions, normalizeItemNotes, normalizeItemSlots } from '../types/items'
+import {
+  normalizeBuildItems,
+  normalizeItemExclusions,
+  normalizeItemNoteGlobalFlags,
+  normalizeItemNotes,
+  normalizeItemSlotNotes,
+  normalizeItemSlots,
+} from '../types/items'
 import { ROLES } from './loadouts'
 import { newId } from './id'
 
@@ -69,12 +76,26 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   const items = normalizeBuildItems(raw.items, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemNotes = normalizeItemNotes(raw.itemNotes)
+  const itemSlotNotes = normalizeItemSlotNotes(raw.itemSlotNotes)
+  const itemNoteGlobal = normalizeItemNoteGlobalFlags(raw.itemNoteGlobal)
 
   if (Array.isArray(raw.runePages)) {
-    return { id: newId(), roles: [], runePages: normalizeRunePages(raw.runePages), itemSlots, items, itemExclusions, itemNotes }
+    return {
+      id: newId(),
+      roles: [],
+      runePages: normalizeRunePages(raw.runePages),
+      itemSlots,
+      items,
+      itemExclusions,
+      itemNotes,
+      itemSlotNotes,
+      itemNoteGlobal,
+    }
   }
   const runes = raw.runes as LegacyRuneSelection | undefined
-  if (!runes || !runes.primaryTreeId) return { id: newId(), roles: [], runePages: [], itemSlots, items, itemExclusions, itemNotes }
+  if (!runes || !runes.primaryTreeId) {
+    return { id: newId(), roles: [], runePages: [], itemSlots, items, itemExclusions, itemNotes, itemSlotNotes, itemNoteGlobal }
+  }
 
   return {
     id: newId(),
@@ -83,6 +104,8 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     items,
     itemExclusions,
     itemNotes,
+    itemSlotNotes,
+    itemNoteGlobal,
     runePages: [
       {
         id: newId(),
@@ -122,6 +145,8 @@ export function migrateBuild(raw: any): Build {
           items: normalizeBuildItems(l?.items, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
           itemNotes: normalizeItemNotes(l?.itemNotes),
+          itemSlotNotes: normalizeItemSlotNotes(l?.itemSlotNotes),
+          itemNoteGlobal: normalizeItemNoteGlobalFlags(l?.itemNoteGlobal),
         }
       })
     : []

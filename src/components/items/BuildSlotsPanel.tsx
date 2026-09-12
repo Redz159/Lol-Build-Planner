@@ -1,6 +1,6 @@
 import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import type { BuildItems, ItemNotes, ItemSlot } from '../../types/items'
+import { itemSlotNoteKey, type BuildItems, type ItemNotes, type ItemSlot, type ItemSlotNotes } from '../../types/items'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
 
@@ -8,6 +8,7 @@ interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
   itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
   slots: ItemSlot[]
   mode: 'view' | 'edit'
   activeSlotId: string | null
@@ -15,7 +16,7 @@ interface Props {
   preview: Partial<Record<string, string>>
   onTogglePreview: (slotId: string, placementId: string) => void
   onRemovePlacement: (slotId: string, placementId: string) => void
-  onOpenPopup: (item: DDragonItem) => void
+  onOpenPopup: (item: DDragonItem, slotId: string) => void
   onDragStartPlacement: (slotId: string, placementId: string, itemId: string) => void
   onDropOnSlot: (slotId: string) => void
   onDropOnPlacement: (slotId: string, placementId: string, side: 'before' | 'after') => void
@@ -29,6 +30,7 @@ export function BuildSlotsPanel({
   items,
   buildItems,
   itemNotes,
+  itemSlotNotes,
   slots,
   mode,
   activeSlotId,
@@ -198,7 +200,7 @@ export function BuildSlotsPanel({
                         onRemovePlacement(slotId, placement.id)
                         return
                       }
-                      onOpenPopup(item)
+                      onOpenPopup(item, slotId)
                       return
                     }
                     onTogglePreview(slotId, placement.id)
@@ -260,7 +262,7 @@ export function BuildSlotsPanel({
                           item={item}
                           selected={mode === 'view' && preview[slotId] === placement.id}
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
-                          note={itemNotes[item.id]}
+                          note={itemSlotNotes[itemSlotNoteKey(slotId, item.id)] ?? itemNotes[item.id]}
                           draggable={mode === 'edit'}
                           onDragStart={(e) => {
                             e.dataTransfer.effectAllowed = 'move'

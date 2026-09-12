@@ -85,6 +85,7 @@ export function normalizeItemExclusions(value: unknown): ItemExclusionPair[] {
 }
 
 // Freeform per-item notes, keyed by item id, shown as an addition to that item's tooltip.
+// This is the "global" note — the default shown wherever a slot has no note of its own below.
 export type ItemNotes = Record<string, string>
 
 export function normalizeItemNotes(value: unknown): ItemNotes {
@@ -92,6 +93,39 @@ export function normalizeItemNotes(value: unknown): ItemNotes {
   if (!value || typeof value !== 'object') return result
   for (const [itemId, note] of Object.entries(value as Record<string, unknown>)) {
     if (typeof note === 'string' && note.trim() !== '') result[itemId] = note
+  }
+  return result
+}
+
+// Per-(slot, item) note text, keyed by itemSlotNoteKey(slotId, itemId) — only read while that
+// item is in "local" mode per ItemNoteGlobalFlags below. Each slot holding the item keeps its
+// own entry here, independent of the others.
+export type ItemSlotNotes = Record<string, string>
+
+export function itemSlotNoteKey(slotId: string, itemId: string): string {
+  return `${slotId}::${itemId}`
+}
+
+export function normalizeItemSlotNotes(value: unknown): ItemSlotNotes {
+  const result: ItemSlotNotes = {}
+  if (!value || typeof value !== 'object') return result
+  for (const [key, note] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof note === 'string' && note.trim() !== '') result[key] = note
+  }
+  return result
+}
+
+// Whether an item's note is "global" (one note shared by every slot it's placed in, stored in
+// ItemNotes) or "local" (each slot keeps its own note in ItemSlotNotes). This is a single flag
+// per item — not per slot — so toggling it for an item anywhere flips it everywhere the item
+// is placed. Absent means global (true), the default every item starts in.
+export type ItemNoteGlobalFlags = Record<string, boolean>
+
+export function normalizeItemNoteGlobalFlags(value: unknown): ItemNoteGlobalFlags {
+  const result: ItemNoteGlobalFlags = {}
+  if (!value || typeof value !== 'object') return result
+  for (const [itemId, isGlobal] of Object.entries(value as Record<string, unknown>)) {
+    if (isGlobal === false) result[itemId] = false
   }
   return result
 }

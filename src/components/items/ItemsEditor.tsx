@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
-import { type BuildItems, type ItemSlot } from '../../types/items'
+import { type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
@@ -20,7 +20,21 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   const { items } = useGameData()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
+  // Which slot's placement opened the note popup, if any — lets the popup edit that slot's own
+  // note instead of the item's global one. Null when opened from the browser with no specific
+  // slot in context (e.g. no active fast-add slot).
+  const [popupSlotId, setPopupSlotId] = useState<string | null>(null)
   const [preview, setPreview] = useState<Partial<Record<string, string>>>({})
+
+  const openPopup = (item: DDragonItem, slotId?: string) => {
+    setPopupItemId(item.id)
+    setPopupSlotId(slotId ?? null)
+  }
+
+  const closePopup = () => {
+    setPopupItemId(null)
+    setPopupSlotId(null)
+  }
 
   // The 6th item slot (or any future adc-bonus slot) is an ADC-only bonus slot, hidden
   // everywhere else; every other slot is always visible once it exists.
@@ -34,7 +48,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (popupItemId) setPopupItemId(null)
+      if (popupItemId) closePopup()
       else if (activeSlotId) setActiveSlotId(null)
     }
     document.addEventListener('keydown', onKey)
@@ -67,11 +81,22 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     return result
   }, [preview, loadout.itemSlots, loadout.items, loadout.itemExclusions, builtinExclusions])
 
+  // A slot's local note only makes sense while the item is actually placed there, so every
+  // path that removes a placement (toggling off, the × button, or dragging it elsewhere)
+  // drops that slot's local note along with it rather than leaving it to resurface later.
+  const withoutLocalNote = (slotId: string, itemId: string): ItemSlotNotes => {
+    const key = itemSlotNoteKey(slotId, itemId)
+    if (!(key in loadout.itemSlotNotes)) return loadout.itemSlotNotes
+    const next = { ...loadout.itemSlotNotes }
+    delete next[key]
+    return next
+  }
+
   const toggleItemInSlot = (itemId: string, slotId: string) => {
     const current = loadout.items[slotId] ?? []
     const exists = current.some((p) => p.itemId === itemId)
     const next = exists ? current.filter((p) => p.itemId !== itemId) : [...current, { id: newId(), itemId }]
-    onChange({ items: { ...loadout.items, [slotId]: next } })
+    onChange({ items: { ...loadout.items, [slotId]: next }, ...(exists ? { itemSlotNotes: withoutLocalNote(slotId, itemId) } : {}) })
   }
 
   const fastToggle = (item: DDragonItem) => {
@@ -81,7 +106,11 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   }
 
   const removePlacement = (slotId: string, placementId: string) => {
-    onChange({ items: { ...loadout.items, [slotId]: (loadout.items[slotId] ?? []).filter((p) => p.id !== placementId) } })
+    const placement = (loadout.items[slotId] ?? []).find((p) => p.id === placementId)
+    onChange({
+      items: { ...loadout.items, [slotId]: (loadout.items[slotId] ?? []).filter((p) => p.id !== placementId) },
+      ...(placement ? { itemSlotNotes: withoutLocalNote(slotId, placement.itemId) } : {}),
+    })
     setPreview((prev) => {
       if (prev[slotId] !== placementId) return prev
       const next = { ...prev }
@@ -121,7 +150,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
       [from.slotId]: (loadout.items[from.slotId] ?? []).filter((p) => p.id !== from.placementId),
     }
     if (!alreadyInTarget) nextItems[toSlotId] = [...(nextItems[toSlotId] ?? []), { id: newId(), itemId }]
-    onChange({ items: nextItems })
+    onChange({ items: nextItems, itemSlotNotes: withoutLocalNote(from.slotId, itemId) })
   }
 
   const reorderItemInSlot = (slotId: string, placementId: string, targetPlacementId: string, side: 'before' | 'after') => {
@@ -185,11 +214,48 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     onChange({ itemExclusions: toggleExclusionPair(loadout.itemExclusions, itemId, otherItemId) })
   }
 
-  const setItemNote = (itemId: string, note: string) => {
+  const setGlobalNote = (itemId: string, note: string) => {
     const next = { ...loadout.itemNotes }
     if (note.trim() === '') delete next[itemId]
     else next[itemId] = note
     onChange({ itemNotes: next })
+  }
+
+  const setLocalNote = (slotId: string, itemId: string, note: string) => {
+    const key = itemSlotNoteKey(slotId, itemId)
+    const next = { ...loadout.itemSlotNotes }
+    if (note.trim() === '') delete next[key]
+    else next[key] = note
+    onChange({ itemSlotNotes: next })
+  }
+
+  // Whether an item's note is global or local is one flag per item, so flipping it anywhere
+  // flips it for every slot the item is placed in — never just the slot the popup happened to
+  // open from. Either direction carries the currently effective text into its new home first,
+  // so nothing visibly changes the instant you toggle; only later edits made in the new mode
+  // can diverge from what it used to share.
+  const toggleNoteGlobal = (itemId: string, makeGlobal: boolean, currentText: string) => {
+    const nextFlags = { ...loadout.itemNoteGlobal }
+    if (makeGlobal) delete nextFlags[itemId]
+    else nextFlags[itemId] = false
+
+    if (makeGlobal) {
+      const nextGlobal = { ...loadout.itemNotes }
+      if (currentText.trim() === '') delete nextGlobal[itemId]
+      else nextGlobal[itemId] = currentText
+      onChange({ itemNoteGlobal: nextFlags, itemNotes: nextGlobal })
+    } else {
+      // Seed every slot that currently holds this item with the same text it was just
+      // showing, so becoming local doesn't blank any of them out.
+      const nextLocal = { ...loadout.itemSlotNotes }
+      for (const slot of loadout.itemSlots) {
+        if (!(loadout.items[slot.id] ?? []).some((p) => p.itemId === itemId)) continue
+        const key = itemSlotNoteKey(slot.id, itemId)
+        if (currentText.trim() === '') delete nextLocal[key]
+        else nextLocal[key] = currentText
+      }
+      onChange({ itemNoteGlobal: nextFlags, itemSlotNotes: nextLocal })
+    }
   }
 
   const addSlot = () => {
@@ -207,7 +273,9 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   const deleteSlot = (slotId: string) => {
     const nextItems = { ...loadout.items }
     delete nextItems[slotId]
-    onChange({ itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId), items: nextItems })
+    const prefix = itemSlotNoteKey(slotId, '')
+    const nextSlotNotes = Object.fromEntries(Object.entries(loadout.itemSlotNotes).filter(([key]) => !key.startsWith(prefix)))
+    onChange({ itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId), items: nextItems, itemSlotNotes: nextSlotNotes })
     if (activeSlotId === slotId) setActiveSlotId(null)
     setPreview((prev) => {
       if (!(slotId in prev)) return prev
@@ -218,6 +286,16 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   }
 
   const popupItem = popupItemId ? items.find((i) => i.id === popupItemId) : undefined
+  // isGlobalNote is a per-item flag (synced across every slot), independent of which slot the
+  // popup opened from; only the note *text* shown for a local item still depends on that slot.
+  const popupIsGlobalNote = popupItem ? (loadout.itemNoteGlobal[popupItem.id] ?? true) : true
+  const popupNote = popupItem
+    ? popupIsGlobalNote
+      ? (loadout.itemNotes[popupItem.id] ?? '')
+      : popupSlotId
+        ? (loadout.itemSlotNotes[itemSlotNoteKey(popupSlotId, popupItem.id)] ?? '')
+        : (loadout.itemNotes[popupItem.id] ?? '')
+    : ''
 
   if (mode === 'view') {
     return (
@@ -225,6 +303,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         items={items}
         buildItems={loadout.items}
         itemNotes={loadout.itemNotes}
+        itemSlotNotes={loadout.itemSlotNotes}
         slots={visibleSlots}
         mode="view"
         activeSlotId={null}
@@ -252,6 +331,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             items={items}
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
+            itemSlotNotes={loadout.itemSlotNotes}
             slots={visibleSlots}
             mode="edit"
             activeSlotId={activeSlotId}
@@ -259,7 +339,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             preview={preview}
             onTogglePreview={togglePreview}
             onRemovePlacement={removePlacement}
-            onOpenPopup={(item) => setPopupItemId(item.id)}
+            onOpenPopup={openPopup}
             onDragStartPlacement={startDragFromSlot}
             onDropOnSlot={dropOnSlot}
             onDropOnPlacement={dropOnPlacement}
@@ -274,10 +354,11 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             items={items}
             buildItems={loadout.items}
             itemNotes={loadout.itemNotes}
+            itemSlotNotes={loadout.itemSlotNotes}
             roles={loadout.roles}
             activeSlot={activeSlotId ? (findSlot(activeSlotId) ?? null) : null}
             onFastToggle={fastToggle}
-            onOpenPopup={(item) => setPopupItemId(item.id)}
+            onOpenPopup={openPopup}
             onDragStartItem={startDragFromBrowser}
             onDropToBrowser={dropOnBrowser}
           />
@@ -291,11 +372,16 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           slots={visibleSlots}
           itemExclusions={loadout.itemExclusions}
           builtinExclusions={builtinExclusions}
-          note={loadout.itemNotes[popupItem.id] ?? ''}
+          note={popupNote}
+          isGlobalNote={popupIsGlobalNote}
+          hasSlotContext={!!popupSlotId}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}
           onToggleExclusion={(otherId) => toggleExclusion(popupItem.id, otherId)}
-          onNoteChange={(note) => setItemNote(popupItem.id, note)}
-          onClose={() => setPopupItemId(null)}
+          onNoteChange={(note) =>
+            !popupIsGlobalNote && popupSlotId ? setLocalNote(popupSlotId, popupItem.id, note) : setGlobalNote(popupItem.id, note)
+          }
+          onToggleNoteGlobal={(makeGlobal) => toggleNoteGlobal(popupItem.id, makeGlobal, popupNote)}
+          onClose={closePopup}
         />
       )}
     </div>

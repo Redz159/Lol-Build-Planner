@@ -33,7 +33,17 @@ export const FILL_ICON_URL = 'https://raw.communitydragon.org/latest/plugins/rcp
 
 export function emptyLoadout(roles: Role[] = []): Loadout {
   const itemSlots = DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
-  return { id: newId(), roles, runePages: [], itemSlots, items: emptyBuildItems(itemSlots), itemExclusions: [], itemNotes: {} }
+  return {
+    id: newId(),
+    roles,
+    runePages: [],
+    itemSlots,
+    items: emptyBuildItems(itemSlots),
+    itemExclusions: [],
+    itemNotes: {},
+    itemSlotNotes: {},
+    itemNoteGlobal: {},
+  }
 }
 
 export function loadoutLabel(loadout: Loadout): string {
@@ -110,6 +120,8 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
         items: source.items,
         itemExclusions: source.itemExclusions,
         itemNotes: source.itemNotes,
+        itemSlotNotes: source.itemSlotNotes,
+        itemNoteGlobal: source.itemNoteGlobal,
       }
     : emptyLoadout()
   return { build: { ...build, loadouts: [...build.loadouts, clone] }, newLoadoutId: clone.id }

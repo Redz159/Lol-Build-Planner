@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Role } from '../../types/build'
-import type { BuildItems, ItemNotes, ItemSlot, ItemSlotKind } from '../../types/items'
+import { itemSlotNoteKey, type BuildItems, type ItemNotes, type ItemSlot, type ItemSlotKind, type ItemSlotNotes } from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, isItemVisibleForRoles, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
@@ -19,10 +19,11 @@ interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
   itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
   roles: Role[]
   activeSlot: ItemSlot | null
   onFastToggle: (item: DDragonItem) => void
-  onOpenPopup: (item: DDragonItem) => void
+  onOpenPopup: (item: DDragonItem, slotId?: string) => void
   onDragStartItem: (itemId: string) => void
   onDropToBrowser: () => void
 }
@@ -35,6 +36,7 @@ export function ItemBrowser({
   items,
   buildItems,
   itemNotes,
+  itemSlotNotes,
   roles,
   activeSlot,
   onFastToggle,
@@ -122,7 +124,7 @@ export function ItemBrowser({
                 size={40}
                 badge={count > 0 ? count : undefined}
                 title={activeSlot ? `${item.name} — click to toggle in active slot` : item.name}
-                note={itemNotes[item.id]}
+                note={activeSlot ? (itemSlotNotes[itemSlotNoteKey(activeSlot.id, item.id)] ?? itemNotes[item.id]) : itemNotes[item.id]}
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'copy'
@@ -136,7 +138,7 @@ export function ItemBrowser({
                   className="item-tile-action"
                   aria-label={`Manage ${item.name}`}
                   title="Manage slots & exclusions"
-                  onClick={() => onOpenPopup(item)}
+                  onClick={() => onOpenPopup(item, activeSlot.id)}
                 >
                   ⋯
                 </button>

@@ -1,5 +1,5 @@
 import type { RunePage } from './runes'
-import type { BuildItems, ItemExclusionPair, ItemNotes, ItemSlot } from './items'
+import type { BuildItems, ItemExclusionPair, ItemNoteGlobalFlags, ItemNotes, ItemSlotNotes, ItemSlot } from './items'
 
 export type Role = 'top' | 'jungle' | 'mid' | 'adc' | 'support'
 
@@ -11,6 +11,8 @@ export interface Loadout {
   items: BuildItems
   itemExclusions: ItemExclusionPair[]
   itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
 }
 
 export interface Build {

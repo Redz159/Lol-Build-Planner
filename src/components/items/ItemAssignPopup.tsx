@@ -12,9 +12,12 @@ interface Props {
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
   note: string
+  isGlobalNote: boolean
+  hasSlotContext: boolean
   onToggleSlot: (slotId: string) => void
   onToggleExclusion: (otherItemId: string) => void
   onNoteChange: (note: string) => void
+  onToggleNoteGlobal: (makeGlobal: boolean) => void
   onClose: () => void
 }
 
@@ -26,9 +29,12 @@ export function ItemAssignPopup({
   itemExclusions,
   builtinExclusions,
   note,
+  isGlobalNote,
+  hasSlotContext,
   onToggleSlot,
   onToggleExclusion,
   onNoteChange,
+  onToggleNoteGlobal,
   onClose,
 }: Props) {
   const otherItemIds = [...new Set(slots.flatMap((slot) => (buildItems[slot.id] ?? []).map((p) => p.itemId)))].filter(
@@ -91,13 +97,19 @@ export function ItemAssignPopup({
             ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>Note</div>
+          {hasSlotContext && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, marginLeft: 'auto' }}>
+              <input type="checkbox" checked={isGlobalNote} onChange={(e) => onToggleNoteGlobal(e.target.checked)} />
+              Global
+            </label>
+          )}
           {note && (
             <button
               type="button"
               onClick={() => onNoteChange('')}
-              style={{ marginLeft: 'auto', padding: '1px 8px', fontSize: 11 }}
+              style={{ marginLeft: hasSlotContext ? 0 : 'auto', padding: '1px 8px', fontSize: 11 }}
             >
               Clear
             </button>
@@ -106,7 +118,7 @@ export function ItemAssignPopup({
         <textarea
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
-          placeholder="Shown on this item's tooltip..."
+          placeholder={hasSlotContext && !isGlobalNote ? "Shown on this item's tooltip, only in this slot..." : "Shown on this item's tooltip..."}
           rows={3}
           style={{ width: '100%', resize: 'vertical', marginBottom: 14, fontSize: 13 }}
         />
