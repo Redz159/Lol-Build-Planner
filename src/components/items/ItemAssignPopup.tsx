@@ -1,8 +1,11 @@
 import type { DDragonItem } from '../../types/ddragon'
-import type { BuildItems, ItemExclusionPair, ItemSlot } from '../../types/items'
+import type { BuildItems, ItemExclusionPair, ItemRequirementPair, ItemSlot } from '../../types/items'
 import { isBoots } from '../../lib/itemAttributes'
 import { isExcludedPair } from '../../lib/itemExclusions'
+import { isRequiredPair } from '../../lib/itemRequirements'
 import { itemImageUrl } from '../../lib/ddragon'
+
+export type ItemRelationMode = 'exclude' | 'require'
 
 interface Props {
   item: DDragonItem
@@ -11,11 +14,15 @@ interface Props {
   slots: ItemSlot[]
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
+  itemRequirements: ItemRequirementPair[]
+  relationMode: ItemRelationMode
   note: string
   isGlobalNote: boolean
   hasSlotContext: boolean
   onToggleSlot: (slotId: string) => void
   onToggleExclusion: (otherItemId: string) => void
+  onToggleRequirement: (otherItemId: string) => void
+  onRelationModeChange: (mode: ItemRelationMode) => void
   onNoteChange: (note: string) => void
   onToggleNoteGlobal: (makeGlobal: boolean) => void
   onClose: () => void
@@ -28,11 +35,15 @@ export function ItemAssignPopup({
   slots,
   itemExclusions,
   builtinExclusions,
+  itemRequirements,
+  relationMode,
   note,
   isGlobalNote,
   hasSlotContext,
   onToggleSlot,
   onToggleExclusion,
+  onToggleRequirement,
+  onRelationModeChange,
   onNoteChange,
   onToggleNoteGlobal,
   onClose,
@@ -125,26 +136,69 @@ export function ItemAssignPopup({
 
         {otherItems.length > 0 && (
           <>
-            <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-              Excludes
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                {relationMode === 'exclude' ? 'Excludes' : 'Only include when'}
+              </div>
+              <div style={{ display: 'flex', marginLeft: 'auto', fontSize: 11 }}>
+                <button
+                  type="button"
+                  onClick={() => onRelationModeChange('exclude')}
+                  style={{
+                    padding: '2px 8px',
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                    color: relationMode === 'exclude' ? 'var(--gold-bright)' : undefined,
+                    borderColor: relationMode === 'exclude' ? 'var(--gold)' : undefined,
+                  }}
+                >
+                  Exclude
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRelationModeChange('require')}
+                  style={{
+                    padding: '2px 8px',
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                    marginLeft: -1,
+                    color: relationMode === 'require' ? 'var(--gold-bright)' : undefined,
+                    borderColor: relationMode === 'require' ? 'var(--gold)' : undefined,
+                  }}
+                >
+                  Only include
+                </button>
+              </div>
             </div>
             <div>
-              {otherItems.map((other) => {
-                const builtin = isExcludedPair(builtinExclusions, item.id, other.id)
-                return (
-                  <label key={other.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-                    <input
-                      type="checkbox"
-                      checked={builtin || isExcludedPair(itemExclusions, item.id, other.id)}
-                      disabled={builtin}
-                      onChange={() => onToggleExclusion(other.id)}
-                    />
-                    <img src={itemImageUrl(other.image.full)} alt="" width={18} height={18} style={{ borderRadius: 3 }} />
-                    {other.name}
-                    {builtin && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(game rule)</span>}
-                  </label>
-                )
-              })}
+              {relationMode === 'exclude'
+                ? otherItems.map((other) => {
+                    const builtin = isExcludedPair(builtinExclusions, item.id, other.id)
+                    return (
+                      <label key={other.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                        <input
+                          type="checkbox"
+                          checked={builtin || isExcludedPair(itemExclusions, item.id, other.id)}
+                          disabled={builtin}
+                          onChange={() => onToggleExclusion(other.id)}
+                        />
+                        <img src={itemImageUrl(other.image.full)} alt="" width={18} height={18} style={{ borderRadius: 3 }} />
+                        {other.name}
+                        {builtin && <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>(game rule)</span>}
+                      </label>
+                    )
+                  })
+                : otherItems.map((other) => (
+                    <label key={other.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                      <input
+                        type="checkbox"
+                        checked={isRequiredPair(itemRequirements, item.id, other.id)}
+                        onChange={() => onToggleRequirement(other.id)}
+                      />
+                      <img src={itemImageUrl(other.image.full)} alt="" width={18} height={18} style={{ borderRadius: 3 }} />
+                      {other.name}
+                    </label>
+                  ))}
             </div>
           </>
         )}

@@ -84,6 +84,18 @@ export function normalizeItemExclusions(value: unknown): ItemExclusionPair[] {
   )
 }
 
+// Directional, unlike ItemExclusionPair: [itemId, requiredItemId] means itemId only belongs in
+// the build once requiredItemId has also been picked. An item can carry several of these (one
+// per required item), and all of them must hold — see requiredItemIds in lib/itemRequirements.
+export type ItemRequirementPair = [string, string]
+
+export function normalizeItemRequirements(value: unknown): ItemRequirementPair[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (p): p is ItemRequirementPair => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string' && typeof p[1] === 'string',
+  )
+}
+
 // Freeform per-item notes, keyed by item id, shown as an addition to that item's tooltip.
 // This is the "global" note — the default shown wherever a slot has no note of its own below.
 export type ItemNotes = Record<string, string>

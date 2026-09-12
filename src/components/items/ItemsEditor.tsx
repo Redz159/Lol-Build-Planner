@@ -5,10 +5,11 @@ import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, 
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
+import { requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
-import { ItemAssignPopup } from './ItemAssignPopup'
+import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 
 interface Props {
   loadout: Loadout
@@ -24,11 +25,15 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
   // note instead of the item's global one. Null when opened from the browser with no specific
   // slot in context (e.g. no active fast-add slot).
   const [popupSlotId, setPopupSlotId] = useState<string | null>(null)
+  // Which of the popup's "Excludes" / "Only include" checklists is shown — resets to Excludes
+  // each time the popup opens, since it's a view toggle rather than a per-item setting.
+  const [popupRelationMode, setPopupRelationMode] = useState<ItemRelationMode>('exclude')
   const [preview, setPreview] = useState<Partial<Record<string, string>>>({})
 
   const openPopup = (item: DDragonItem, slotId?: string) => {
     setPopupItemId(item.id)
     setPopupSlotId(slotId ?? null)
+    setPopupRelationMode('exclude')
   }
 
   const closePopup = () => {
@@ -75,11 +80,13 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         const excluded = [...previewedItemIds].some(
           (pid) => isExcludedPair(loadout.itemExclusions, pid, placement.itemId) || isExcludedPair(builtinExclusions, pid, placement.itemId),
         )
-        if (sameItemElsewhere || excluded) result.add(placement.id)
+        const required = requiredItemIds(loadout.itemRequirements, placement.itemId)
+        const requirementUnmet = required.length > 0 && !required.every((id) => previewedItemIds.has(id))
+        if (sameItemElsewhere || excluded || requirementUnmet) result.add(placement.id)
       }
     }
     return result
-  }, [preview, loadout.itemSlots, loadout.items, loadout.itemExclusions, builtinExclusions])
+  }, [preview, loadout.itemSlots, loadout.items, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
 
   // A slot's local note only makes sense while the item is actually placed there, so every
   // path that removes a placement (toggling off, the × button, or dragging it elsewhere)
@@ -212,6 +219,10 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
 
   const toggleExclusion = (itemId: string, otherItemId: string) => {
     onChange({ itemExclusions: toggleExclusionPair(loadout.itemExclusions, itemId, otherItemId) })
+  }
+
+  const toggleRequirement = (itemId: string, otherItemId: string) => {
+    onChange({ itemRequirements: toggleRequirementPair(loadout.itemRequirements, itemId, otherItemId) })
   }
 
   const setGlobalNote = (itemId: string, note: string) => {
@@ -373,11 +384,15 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
           slots={visibleSlots}
           itemExclusions={loadout.itemExclusions}
           builtinExclusions={builtinExclusions}
+          itemRequirements={loadout.itemRequirements}
+          relationMode={popupRelationMode}
           note={popupNote}
           isGlobalNote={popupIsGlobalNote}
           hasSlotContext={!!popupSlotId}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}
           onToggleExclusion={(otherId) => toggleExclusion(popupItem.id, otherId)}
+          onToggleRequirement={(otherId) => toggleRequirement(popupItem.id, otherId)}
+          onRelationModeChange={setPopupRelationMode}
           onNoteChange={(note) =>
             !popupIsGlobalNote && popupSlotId ? setLocalNote(popupSlotId, popupItem.id, note) : setGlobalNote(popupItem.id, note)
           }

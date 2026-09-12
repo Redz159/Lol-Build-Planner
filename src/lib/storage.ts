@@ -6,6 +6,7 @@ import {
   normalizeItemExclusions,
   normalizeItemNoteGlobalFlags,
   normalizeItemNotes,
+  normalizeItemRequirements,
   normalizeItemSlotNotes,
   normalizeItemSlots,
 } from '../types/items'
@@ -75,6 +76,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   const itemSlots = normalizeItemSlots(raw.itemSlots)
   const items = normalizeBuildItems(raw.items, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
+  const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
   const itemNotes = normalizeItemNotes(raw.itemNotes)
   const itemSlotNotes = normalizeItemSlotNotes(raw.itemSlotNotes)
   const itemNoteGlobal = normalizeItemNoteGlobalFlags(raw.itemNoteGlobal)
@@ -87,6 +89,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       itemSlots,
       items,
       itemExclusions,
+      itemRequirements,
       itemNotes,
       itemSlotNotes,
       itemNoteGlobal,
@@ -94,7 +97,18 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   }
   const runes = raw.runes as LegacyRuneSelection | undefined
   if (!runes || !runes.primaryTreeId) {
-    return { id: newId(), roles: [], runePages: [], itemSlots, items, itemExclusions, itemNotes, itemSlotNotes, itemNoteGlobal }
+    return {
+      id: newId(),
+      roles: [],
+      runePages: [],
+      itemSlots,
+      items,
+      itemExclusions,
+      itemRequirements,
+      itemNotes,
+      itemSlotNotes,
+      itemNoteGlobal,
+    }
   }
 
   return {
@@ -103,6 +117,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     itemSlots,
     items,
     itemExclusions,
+    itemRequirements,
     itemNotes,
     itemSlotNotes,
     itemNoteGlobal,
@@ -144,6 +159,7 @@ export function migrateBuild(raw: any): Build {
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
+          itemRequirements: normalizeItemRequirements(l?.itemRequirements),
           itemNotes: normalizeItemNotes(l?.itemNotes),
           itemSlotNotes: normalizeItemSlotNotes(l?.itemSlotNotes),
           itemNoteGlobal: normalizeItemNoteGlobalFlags(l?.itemNoteGlobal),
