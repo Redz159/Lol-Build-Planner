@@ -18,6 +18,7 @@ interface Props {
   onOpenPopup: (item: DDragonItem) => void
   onDragStartPlacement: (slotId: string, placementId: string, itemId: string) => void
   onDropOnSlot: (slotId: string) => void
+  onDropOnPlacement: (slotId: string, placementId: string, side: 'before' | 'after') => void
   onAddSlot: () => void
   onRenameSlot: (slotId: string, label: string) => void
   onDeleteSlot: (slotId: string) => void
@@ -38,12 +39,14 @@ export function BuildSlotsPanel({
   onOpenPopup,
   onDragStartPlacement,
   onDropOnSlot,
+  onDropOnPlacement,
   onAddSlot,
   onRenameSlot,
   onDeleteSlot,
   excludedPlacementIds,
 }: Props) {
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
+  const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [labelDraft, setLabelDraft] = useState('')
 
@@ -192,8 +195,56 @@ export function BuildSlotsPanel({
                     }
                     onTogglePreview(slotId, placement.id)
                   }
+                  const placementDragOver = mode === 'edit' && dragOverPlacement?.id === placement.id ? dragOverPlacement.side : null
+                  const sideFromEvent = (e: DragEvent): 'before' | 'after' => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    return e.clientX - rect.left < rect.width / 2 ? 'before' : 'after'
+                  }
                   return (
-                    <div key={placement.id} className="item-tile">
+                    <div
+                      key={placement.id}
+                      className="item-tile"
+                      style={
+                        placementDragOver
+                          ? {
+                              boxShadow:
+                                placementDragOver === 'before'
+                                  ? 'inset 3px 0 0 var(--gold)'
+                                  : 'inset -3px 0 0 var(--gold)',
+                              borderRadius: 8,
+                            }
+                          : undefined
+                      }
+                      onDragOver={
+                        mode === 'edit'
+                          ? (e: DragEvent) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const side = sideFromEvent(e)
+                              if (dragOverPlacement?.id !== placement.id || dragOverPlacement.side !== side) {
+                                setDragOverPlacement({ id: placement.id, side })
+                              }
+                            }
+                          : undefined
+                      }
+                      onDragLeave={
+                        mode === 'edit'
+                          ? () => setDragOverPlacement((prev) => (prev?.id === placement.id ? null : prev))
+                          : undefined
+                      }
+                      onDrop={
+                        mode === 'edit'
+                          ? (e: DragEvent) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              const side = sideFromEvent(e)
+                              setDragOverPlacement(null)
+                              setDragOverSlotId(null)
+                              onDropOnPlacement(slotId, placement.id, side)
+                            }
+                          : undefined
+                      }
+                    >
                       <ItemIcon
                         item={item}
                         selected={preview[slotId] === placement.id}

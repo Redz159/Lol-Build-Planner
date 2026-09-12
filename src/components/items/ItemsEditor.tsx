@@ -124,16 +124,43 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
     onChange({ items: nextItems })
   }
 
-  const dropOnSlot = (toSlotId: string) => {
-    const drag = dragRef.current
-    dragRef.current = null
-    if (!drag) return
+  const reorderItemInSlot = (slotId: string, placementId: string, targetPlacementId: string, side: 'before' | 'after') => {
+    const current = loadout.items[slotId] ?? []
+    const fromIndex = current.findIndex((p) => p.id === placementId)
+    if (fromIndex === -1 || placementId === targetPlacementId) return
+    const next = [...current]
+    const [moved] = next.splice(fromIndex, 1)
+    const targetIndex = next.findIndex((p) => p.id === targetPlacementId)
+    if (targetIndex === -1) return
+    next.splice(side === 'after' ? targetIndex + 1 : targetIndex, 0, moved)
+    onChange({ items: { ...loadout.items, [slotId]: next } })
+  }
+
+  const applyDrop = (toSlotId: string, drag: { itemId: string; from: { slotId: string; placementId: string } | null }) => {
     if (drag.from) {
       if (drag.from.slotId === toSlotId) return
       moveItemToSlot(drag.itemId, drag.from, toSlotId)
     } else {
       addItemToSlot(drag.itemId, toSlotId)
     }
+  }
+
+  const dropOnSlot = (toSlotId: string) => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (!drag) return
+    applyDrop(toSlotId, drag)
+  }
+
+  const dropOnPlacement = (toSlotId: string, targetPlacementId: string, side: 'before' | 'after') => {
+    const drag = dragRef.current
+    dragRef.current = null
+    if (!drag) return
+    if (drag.from && drag.from.slotId === toSlotId) {
+      reorderItemInSlot(toSlotId, drag.from.placementId, targetPlacementId, side)
+      return
+    }
+    applyDrop(toSlotId, drag)
   }
 
   const dropOnBrowser = () => {
@@ -208,6 +235,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
         onOpenPopup={() => {}}
         onDragStartPlacement={() => {}}
         onDropOnSlot={() => {}}
+        onDropOnPlacement={() => {}}
         onAddSlot={() => {}}
         onRenameSlot={() => {}}
         onDeleteSlot={() => {}}
@@ -234,6 +262,7 @@ export function ItemsEditor({ loadout, mode, onChange }: Props) {
             onOpenPopup={(item) => setPopupItemId(item.id)}
             onDragStartPlacement={startDragFromSlot}
             onDropOnSlot={dropOnSlot}
+            onDropOnPlacement={dropOnPlacement}
             onAddSlot={addSlot}
             onRenameSlot={renameSlot}
             onDeleteSlot={deleteSlot}
