@@ -75,6 +75,27 @@ export function normalizeBuildItems(value: unknown, slots: ItemSlot[]): BuildIte
   return result
 }
 
+// A category is its own independent BuildItems over the same slots — like a parallel mini-build
+// a loadout can switch between, rather than a tag on the loadout's single item list.
+export interface ItemCategory {
+  id: string
+  label: string
+  items: BuildItems
+}
+
+export function normalizeItemCategories(value: unknown, slots: ItemSlot[]): ItemCategory[] {
+  if (!Array.isArray(value)) return []
+  const result: ItemCategory[] = []
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue
+    const id = (raw as Record<string, unknown>).id
+    const label = (raw as Record<string, unknown>).label
+    if (typeof id !== 'string' || typeof label !== 'string') continue
+    result.push({ id, label, items: normalizeBuildItems((raw as Record<string, unknown>).items, slots) })
+  }
+  return result
+}
+
 export type ItemExclusionPair = [string, string]
 
 export function normalizeItemExclusions(value: unknown): ItemExclusionPair[] {

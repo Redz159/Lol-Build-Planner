@@ -3,6 +3,7 @@ import type { Build, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import {
   normalizeBuildItems,
+  normalizeItemCategories,
   normalizeItemExclusions,
   normalizeItemNoteGlobalFlags,
   normalizeItemNotes,
@@ -75,6 +76,7 @@ function normalizeRoles(value: unknown): Role[] {
 function migrateLegacyFlatBuild(raw: any): Loadout {
   const itemSlots = normalizeItemSlots(raw.itemSlots)
   const items = normalizeBuildItems(raw.items, itemSlots)
+  const itemCategories = normalizeItemCategories(raw.itemCategories, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
   const itemNotes = normalizeItemNotes(raw.itemNotes)
@@ -88,6 +90,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       runePages: normalizeRunePages(raw.runePages),
       itemSlots,
       items,
+      itemCategories,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -103,6 +106,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       runePages: [],
       itemSlots,
       items,
+      itemCategories,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -116,6 +120,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     roles: [],
     itemSlots,
     items,
+    itemCategories,
     itemExclusions,
     itemRequirements,
     itemNotes,
@@ -158,6 +163,7 @@ export function migrateBuild(raw: any): Build {
           runePages: normalizeRunePages(l?.runePages),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
+          itemCategories: normalizeItemCategories(l?.itemCategories, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
           itemRequirements: normalizeItemRequirements(l?.itemRequirements),
           itemNotes: normalizeItemNotes(l?.itemNotes),
