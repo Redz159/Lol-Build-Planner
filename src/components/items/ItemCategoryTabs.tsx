@@ -18,7 +18,7 @@ interface Props {
   onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
 }
 
-function tabStyle(active: boolean): CSSProperties {
+function tabStyle(active: boolean, hovered = false): CSSProperties {
   return {
     padding: '4px 10px',
     borderRadius: 8,
@@ -28,6 +28,7 @@ function tabStyle(active: boolean): CSSProperties {
     background: active ? 'rgba(200, 170, 110, 0.18)' : 'var(--bg-panel-raised)',
     color: active ? 'var(--gold-bright)' : 'var(--text-dim)',
     boxShadow: 'none',
+    filter: hovered ? 'brightness(0.85)' : undefined,
   }
 }
 
@@ -93,10 +94,10 @@ export function ItemCategoryTabs({ categories, slots, items, mode, activeId, onS
               ) : (
                 <div
                   style={{ position: 'relative' }}
-                  onMouseEnter={() => editable && setHoveredId(category.id)}
+                  onMouseEnter={() => setHoveredId(category.id)}
                   onMouseLeave={() => setHoveredId((prev) => (prev === category.id ? null : prev))}
                 >
-                  <button type="button" onClick={() => onSelect(category.id)} style={tabStyle(active)}>
+                  <button type="button" onClick={() => onSelect(category.id)} style={tabStyle(active, hoveredId === category.id)}>
                     {category.label}
                   </button>
                   {editable && hoveredId === category.id && (
