@@ -247,8 +247,8 @@ export function BuildSlotsPanel({
                     >
                       <ItemIcon
                         item={item}
-                        selected={preview[slotId] === placement.id}
-                        excluded={excludedPlacementIds.has(placement.id)}
+                        selected={mode === 'view' && preview[slotId] === placement.id}
+                        excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
                         note={itemNotes[item.id]}
                         draggable={mode === 'edit'}
                         onDragStart={(e) => {
