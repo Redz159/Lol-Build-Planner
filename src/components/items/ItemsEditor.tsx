@@ -7,13 +7,14 @@ import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { addCategory, deleteCategory, duplicateCategory, mergedCategoryItems, renameCategory, toggleCategoryPlacement } from '../../lib/itemCategories'
-import { buildLeagueItemSet } from '../../lib/leagueItemSet'
+import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ItemCategoryTabs } from './ItemCategoryTabs'
 import { ExportItemSetPopup } from './ExportItemSetPopup'
+import { ImportItemSetPopup } from './ImportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
 
 interface Props {
@@ -41,6 +42,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   // deleted or not-yet-chosen category never leaves the view on a dangling id.
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [showExportPopup, setShowExportPopup] = useState(false)
+  const [showImportPopup, setShowImportPopup] = useState(false)
 
   const openPopup = (item: DDragonItem, slotId?: string) => {
     setPopupItemId(item.id)
@@ -117,6 +119,54 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     onChange({
       itemCategories: loadout.itemCategories.map((c) => (c.id === categoryId ? { ...c, items: toggleCategoryPlacement(c.items, slotId, itemId) } : c)),
     })
+  }
+
+  // Each imported block replaces the matching slot's items in whichever item-set is active (a
+  // category, or the plain item list when there are no categories) — slots it doesn't mention
+  // are left untouched. A block whose label doesn't match an existing slot creates one, synced
+  // as an empty array into every other item-set the same way addSlot does.
+  const importItemSet = (parsed: ParsedItemSet) => {
+    if (isAllCategoryView) return
+    const slotByLabel = new Map(loadout.itemSlots.map((s) => [s.label.toLowerCase(), s]))
+    const newSlots: ItemSlot[] = []
+    for (const block of parsed.blocks) {
+      const key = block.label.toLowerCase()
+      if (!slotByLabel.has(key)) {
+        const slot: ItemSlot = { id: newId(), label: block.label }
+        slotByLabel.set(key, slot)
+        newSlots.push(slot)
+      }
+    }
+    const nextSlots = [...loadout.itemSlots, ...newSlots]
+
+    const withNewSlotKeys = (buildItems: BuildItems): BuildItems => {
+      if (newSlots.length === 0) return buildItems
+      const next = { ...buildItems }
+      for (const slot of newSlots) next[slot.id] = []
+      return next
+    }
+
+    const applyBlocks = (buildItems: BuildItems): BuildItems => {
+      const next = { ...buildItems }
+      for (const block of parsed.blocks) {
+        const slot = slotByLabel.get(block.label.toLowerCase())!
+        next[slot.id] = block.itemIds.map((itemId) => ({ id: newId(), itemId }))
+      }
+      return next
+    }
+
+    const nextLoadoutItems = withNewSlotKeys(loadout.items)
+    const nextCategories = loadout.itemCategories.map((c) => ({ ...c, items: withNewSlotKeys(c.items) }))
+
+    if (activeCategory) {
+      onChange({
+        itemSlots: nextSlots,
+        items: nextLoadoutItems,
+        itemCategories: nextCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: applyBlocks(c.items) } : c)),
+      })
+    } else {
+      onChange({ itemSlots: nextSlots, items: applyBlocks(nextLoadoutItems), itemCategories: nextCategories })
+    }
   }
 
   useEffect(() => {
@@ -428,13 +478,23 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   // Exports whatever item-set is currently on screen — a specific category, the "All" merge, or
   // the plain item list when there are no categories — same scoping the rest of the editor uses.
   const exportTitleSuffix = activeCategory ? ` - ${activeCategory.label}` : isAllCategoryView ? ' - All' : ''
+  const leagueInteropButtonStyle = { padding: '4px 10px', fontSize: 12, border: '1px solid var(--accent)', color: 'var(--accent)', background: 'transparent' }
   const exportButton = (
+    <button type="button" onClick={() => setShowExportPopup(true)} style={leagueInteropButtonStyle}>
+      Export item set
+    </button>
+  )
+  // Importing writes into whichever item-set is active, so it's edit-only and disabled on the
+  // read-only "All" merge, same as every other edit affordance in that view.
+  const importButton = mode === 'edit' && (
     <button
       type="button"
-      onClick={() => setShowExportPopup(true)}
-      style={{ padding: '4px 10px', fontSize: 12, border: '1px solid var(--accent)', color: 'var(--accent)', background: 'transparent' }}
+      onClick={() => setShowImportPopup(true)}
+      disabled={isAllCategoryView}
+      title={isAllCategoryView ? 'Pick a category to import into — "All" is read-only' : undefined}
+      style={{ ...leagueInteropButtonStyle, marginRight: 6 }}
     >
-      Export item set
+      Import item set
     </button>
   )
 
@@ -451,7 +511,12 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
       onDelete={deleteItemCategory}
       onDuplicate={duplicateItemCategory}
       onToggleCategoryItem={toggleCategoryItem}
-      trailing={exportButton}
+      trailing={
+        <>
+          {importButton}
+          {exportButton}
+        </>
+      }
     />
   )
 
@@ -599,6 +664,12 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
         <ExportItemSetPopup
           itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems)}
           onClose={() => setShowExportPopup(false)}
+        />
+      )}
+      {showImportPopup && (
+        <ImportItemSetPopup
+          onImport={importItemSet}
+          onClose={() => setShowImportPopup(false)}
         />
       )}
     </div>
