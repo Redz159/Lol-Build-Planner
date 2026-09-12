@@ -5,8 +5,10 @@ import { ALL_STAT_CATEGORIES, getAutoStatTags } from './itemStatTags'
 // These are derived from Data Dragon's own item fields rather than a hardcoded item-id
 // list, so the classification keeps working as items are added/removed each patch.
 
+// Tier-3 boot enchantments (Gunmetal Greaves and the like) drop the 'Boots' tag entirely in
+// Data Dragon, so they're recognized by name via isUpgradedBoots below instead.
 export function isBoots(item: DDragonItem): boolean {
-  return item.tags.includes('Boots')
+  return item.tags.includes('Boots') || isUpgradedBoots(item)
 }
 
 // Grievous Wounds ("Wounds" in the tooltip keyword) is applied by every anti-heal item;
