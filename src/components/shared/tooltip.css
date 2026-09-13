@@ -77,10 +77,12 @@
   font-weight: 600;
 }
 
+/* Data Dragon reuses <passive>/<active> both as section labels (already followed by their own
+   <br> in the source text) and as inline keyword highlights repeated mid-sentence (e.g. Mejai's
+   Soulstealer's "Glory") — forcing block display here would break the second case onto its own
+   line every time it appears. */
 .tooltip-desc passive,
 .tooltip-desc active {
-  display: block;
-  margin-top: 6px;
   color: var(--accent);
   font-weight: 600;
 }
