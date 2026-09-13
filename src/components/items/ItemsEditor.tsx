@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Loadout } from '../../types/build'
+import type { ExampleBuild, Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
-import { mergedCategoryItems } from '../../lib/categories'
+import { mergedCategoryExampleBuilds, mergedCategoryItems } from '../../lib/categories'
+import { addSlotToExampleBuilds, removeSlotFromExampleBuilds } from '../../lib/exampleBuilds'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
+import { ExampleBuildsSection } from './ExampleBuildsSection'
 import { ExportItemSetPopup } from './ExportItemSetPopup'
 import { ImportItemSetPopup } from './ImportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
@@ -87,6 +89,22 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     }
   }
 
+  // Same scoping as currentItems/setCurrentItems above, for the example-builds section below the
+  // main item pool.
+  const currentExampleBuilds: ExampleBuild[] = activeCategory
+    ? activeCategory.exampleBuilds
+    : isAllCategoryView
+      ? mergedCategoryExampleBuilds(loadout.categories)
+      : loadout.exampleBuilds
+
+  const setCurrentExampleBuilds = (next: ExampleBuild[]) => {
+    if (activeCategory) {
+      onChange({ categories: loadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, exampleBuilds: next } : c)) })
+    } else if (!isAllCategoryView) {
+      onChange({ exampleBuilds: next })
+    }
+  }
+
   // Each imported block replaces the matching slot's items in whichever item-set is active (a
   // category, or the plain item list when there are no categories) — slots it doesn't mention
   // are left untouched. A block whose label doesn't match an existing slot creates one, synced
@@ -112,6 +130,9 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       return next
     }
 
+    const withNewSlotKeysInExampleBuilds = (list: ExampleBuild[]): ExampleBuild[] =>
+      newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), list)
+
     const applyBlocks = (buildItems: BuildItems): BuildItems => {
       const next = { ...buildItems }
       for (const block of parsed.blocks) {
@@ -122,16 +143,27 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     }
 
     const nextLoadoutItems = withNewSlotKeys(loadout.items)
-    const nextCategories = loadout.categories.map((c) => ({ ...c, items: withNewSlotKeys(c.items) }))
+    const nextLoadoutExampleBuilds = withNewSlotKeysInExampleBuilds(loadout.exampleBuilds)
+    const nextCategories = loadout.categories.map((c) => ({
+      ...c,
+      items: withNewSlotKeys(c.items),
+      exampleBuilds: withNewSlotKeysInExampleBuilds(c.exampleBuilds),
+    }))
 
     if (activeCategory) {
       onChange({
         itemSlots: nextSlots,
         items: nextLoadoutItems,
+        exampleBuilds: nextLoadoutExampleBuilds,
         categories: nextCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: applyBlocks(c.items) } : c)),
       })
     } else {
-      onChange({ itemSlots: nextSlots, items: applyBlocks(nextLoadoutItems), categories: nextCategories })
+      onChange({
+        itemSlots: nextSlots,
+        items: applyBlocks(nextLoadoutItems),
+        exampleBuilds: nextLoadoutExampleBuilds,
+        categories: nextCategories,
+      })
     }
   }
 
@@ -397,14 +429,20 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     }
   }
 
-  // Slots are shared across every category, so adding/removing one has to keep loadout.items
-  // and every category's own item map in lockstep with loadout.itemSlots.
+  // Slots are shared across every category, so adding/removing one has to keep loadout.items,
+  // every category's own item map, and every example build's item map in lockstep with
+  // loadout.itemSlots.
   const addSlot = () => {
     const slot: ItemSlot = { id: newId(), label: 'New Slot' }
     onChange({
       itemSlots: [...loadout.itemSlots, slot],
       items: { ...loadout.items, [slot.id]: [] },
-      categories: loadout.categories.map((c) => ({ ...c, items: { ...c.items, [slot.id]: [] } })),
+      exampleBuilds: addSlotToExampleBuilds(loadout.exampleBuilds, slot.id),
+      categories: loadout.categories.map((c) => ({
+        ...c,
+        items: { ...c.items, [slot.id]: [] },
+        exampleBuilds: addSlotToExampleBuilds(c.exampleBuilds, slot.id),
+      })),
     })
   }
 
@@ -426,7 +464,12 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     onChange({
       itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId),
       items: stripSlot(loadout.items),
-      categories: loadout.categories.map((c) => ({ ...c, items: stripSlot(c.items) })),
+      exampleBuilds: removeSlotFromExampleBuilds(loadout.exampleBuilds, slotId),
+      categories: loadout.categories.map((c) => ({
+        ...c,
+        items: stripSlot(c.items),
+        exampleBuilds: removeSlotFromExampleBuilds(c.exampleBuilds, slotId),
+      })),
       itemSlotNotes: nextSlotNotes,
     })
     if (activeSlotId === slotId) setActiveSlotId(null)
@@ -508,6 +551,20 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           hoverOutlines={hoverOutlines}
           onHoverPlacement={setHoveredPlacementId}
         />
+        <ExampleBuildsSection
+          mode="view"
+          exampleBuilds={currentExampleBuilds}
+          onChange={setCurrentExampleBuilds}
+          slots={visibleSlots}
+          items={items}
+          poolItems={currentItems}
+          itemExclusions={loadout.itemExclusions}
+          builtinExclusions={builtinExclusions}
+          itemRequirements={loadout.itemRequirements}
+          itemNotes={loadout.itemNotes}
+          itemSlotNotes={loadout.itemSlotNotes}
+          itemNoteGlobal={loadout.itemNoteGlobal}
+        />
         {showExportPopup && (
           <ExportItemSetPopup
             itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems)}
@@ -551,52 +608,82 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             hoverOutlines={hoverOutlines}
             onHoverPlacement={setHoveredPlacementId}
           />
+          <ExampleBuildsSection
+            mode="view"
+            exampleBuilds={currentExampleBuilds}
+            onChange={setCurrentExampleBuilds}
+            slots={visibleSlots}
+            items={items}
+            poolItems={currentItems}
+            itemExclusions={loadout.itemExclusions}
+            builtinExclusions={builtinExclusions}
+            itemRequirements={loadout.itemRequirements}
+            itemNotes={loadout.itemNotes}
+            itemSlotNotes={loadout.itemSlotNotes}
+            itemNoteGlobal={loadout.itemNoteGlobal}
+          />
         </>
       ) : (
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div style={{ flex: '1 1 320px', minWidth: 280 }}>
-            <BuildSlotsPanel
-              items={items}
-              buildItems={currentItems}
-              itemNotes={loadout.itemNotes}
-              itemSlotNotes={loadout.itemSlotNotes}
-              itemNoteGlobal={loadout.itemNoteGlobal}
-              itemSituational={loadout.itemSituational}
-              slots={visibleSlots}
-              mode="edit"
-              activeSlotId={activeSlotId}
-              onSetActiveSlot={setActiveSlotId}
-              preview={preview}
-              onTogglePreview={togglePreview}
-              onRemovePlacement={removePlacement}
-              onOpenPopup={openPopup}
-              onDragStartPlacement={startDragFromSlot}
-              onDropOnSlot={dropOnSlot}
-              onDropOnPlacement={dropOnPlacement}
-              onAddSlot={addSlot}
-              onRenameSlot={renameSlot}
-              onDeleteSlot={deleteSlot}
-              excludedPlacementIds={excludedPlacementIds}
-              hoverOutlines={hoverOutlines}
-              onHoverPlacement={setHoveredPlacementId}
-            />
+        <>
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div style={{ flex: '1 1 320px', minWidth: 280 }}>
+              <BuildSlotsPanel
+                items={items}
+                buildItems={currentItems}
+                itemNotes={loadout.itemNotes}
+                itemSlotNotes={loadout.itemSlotNotes}
+                itemNoteGlobal={loadout.itemNoteGlobal}
+                itemSituational={loadout.itemSituational}
+                slots={visibleSlots}
+                mode="edit"
+                activeSlotId={activeSlotId}
+                onSetActiveSlot={setActiveSlotId}
+                preview={preview}
+                onTogglePreview={togglePreview}
+                onRemovePlacement={removePlacement}
+                onOpenPopup={openPopup}
+                onDragStartPlacement={startDragFromSlot}
+                onDropOnSlot={dropOnSlot}
+                onDropOnPlacement={dropOnPlacement}
+                onAddSlot={addSlot}
+                onRenameSlot={renameSlot}
+                onDeleteSlot={deleteSlot}
+                excludedPlacementIds={excludedPlacementIds}
+                hoverOutlines={hoverOutlines}
+                onHoverPlacement={setHoveredPlacementId}
+              />
+            </div>
+            <div style={{ flex: '2 1 420px', minWidth: 280 }}>
+              <ItemBrowser
+                items={items}
+                buildItems={currentItems}
+                itemNotes={loadout.itemNotes}
+                itemSlotNotes={loadout.itemSlotNotes}
+                itemNoteGlobal={loadout.itemNoteGlobal}
+                roles={loadout.roles}
+                activeSlot={activeSlotId ? (findSlot(activeSlotId) ?? null) : null}
+                onFastToggle={fastToggle}
+                onOpenPopup={openPopup}
+                onDragStartItem={startDragFromBrowser}
+                onDropToBrowser={dropOnBrowser}
+              />
+            </div>
           </div>
-          <div style={{ flex: '2 1 420px', minWidth: 280 }}>
-            <ItemBrowser
-              items={items}
-              buildItems={currentItems}
-              itemNotes={loadout.itemNotes}
-              itemSlotNotes={loadout.itemSlotNotes}
-              itemNoteGlobal={loadout.itemNoteGlobal}
-              roles={loadout.roles}
-              activeSlot={activeSlotId ? (findSlot(activeSlotId) ?? null) : null}
-              onFastToggle={fastToggle}
-              onOpenPopup={openPopup}
-              onDragStartItem={startDragFromBrowser}
-              onDropToBrowser={dropOnBrowser}
-            />
-          </div>
-        </div>
+          <ExampleBuildsSection
+            mode="edit"
+            exampleBuilds={currentExampleBuilds}
+            onChange={setCurrentExampleBuilds}
+            slots={visibleSlots}
+            items={items}
+            poolItems={currentItems}
+            itemExclusions={loadout.itemExclusions}
+            builtinExclusions={builtinExclusions}
+            itemRequirements={loadout.itemRequirements}
+            itemNotes={loadout.itemNotes}
+            itemSlotNotes={loadout.itemSlotNotes}
+            itemNoteGlobal={loadout.itemNoteGlobal}
+          />
+        </>
       )}
       {popupItem && !isAllCategoryView && (
         <ItemAssignPopup

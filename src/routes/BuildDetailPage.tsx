@@ -114,7 +114,9 @@ export function BuildDetailPage() {
       activeLoadout.categories,
       activeLoadout.itemSlots,
       label,
-      activeLoadout.categories.length === 0 ? { runePages: activeLoadout.runePages, items: activeLoadout.items } : undefined,
+      activeLoadout.categories.length === 0
+        ? { runePages: activeLoadout.runePages, items: activeLoadout.items, exampleBuilds: activeLoadout.exampleBuilds }
+        : undefined,
     )
     saveLoadout({ categories })
     setSelectedCategoryId(categories[categories.length - 1].id)
@@ -201,7 +203,7 @@ export function BuildDetailPage() {
   }
 
   return (
-    <div style={{ padding: '32px 28px', maxWidth: 1160, margin: '0 auto' }}>
+    <div style={{ padding: '32px 28px 200px', maxWidth: 1160, margin: '0 auto' }}>
       <Link to="/">&larr; Back to collection</Link>
       <div
         style={{

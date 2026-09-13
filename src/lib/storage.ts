@@ -1,5 +1,5 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
-import type { Build, Category, Loadout, Role } from '../types/build'
+import type { Build, Category, ExampleBuild, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import {
   normalizeBuildItems,
@@ -66,6 +66,19 @@ function normalizeRunePages(value: unknown): RunePage[] {
   return Array.isArray(value) ? value.map(normalizeRunePage) : []
 }
 
+function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild[] {
+  if (!Array.isArray(value)) return []
+  const result: ExampleBuild[] = []
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue
+    const id = (raw as Record<string, unknown>).id
+    const label = (raw as Record<string, unknown>).label
+    if (typeof id !== 'string' || typeof label !== 'string') continue
+    result.push({ id, label, items: normalizeBuildItems((raw as Record<string, unknown>).items, slots) })
+  }
+  return result
+}
+
 function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
   if (!Array.isArray(value)) return []
   const result: Category[] = []
@@ -79,6 +92,7 @@ function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
       label,
       runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
       items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),
+      exampleBuilds: normalizeExampleBuilds((raw as Record<string, unknown>).exampleBuilds, slots),
     })
   }
   return result
@@ -98,6 +112,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   // `raw.itemCategories` is the pre-restructure key (items-only categories, no runePages) — still
   // read so builds saved during that period migrate instead of losing their categories.
   const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots)
+  const exampleBuilds = normalizeExampleBuilds(raw.exampleBuilds, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
   const itemNotes = normalizeItemNotes(raw.itemNotes)
@@ -113,6 +128,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       itemSlots,
       items,
       categories,
+      exampleBuilds,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -130,6 +146,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       itemSlots,
       items,
       categories,
+      exampleBuilds,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -145,6 +162,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     itemSlots,
     items,
     categories,
+    exampleBuilds,
     itemExclusions,
     itemRequirements,
     itemNotes,
@@ -189,6 +207,7 @@ export function migrateBuild(raw: any): Build {
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
           categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots),
+          exampleBuilds: normalizeExampleBuilds(l?.exampleBuilds, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
           itemRequirements: normalizeItemRequirements(l?.itemRequirements),
           itemNotes: normalizeItemNotes(l?.itemNotes),

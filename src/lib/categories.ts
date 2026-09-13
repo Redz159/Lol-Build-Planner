@@ -1,9 +1,10 @@
-import type { Category } from '../types/build'
+import type { Category, ExampleBuild } from '../types/build'
 import type { RunePage } from '../types/runes'
 import type { BuildItems, ItemPlacement, ItemSlot } from '../types/items'
 import { emptyBuildItems } from '../types/items'
 import { newId } from './id'
 import { cloneRunePages } from './runeRules'
+import { cloneExampleBuilds } from './exampleBuilds'
 
 // Deep-copies a BuildItems map onto the given slots, minting fresh placement ids so the copy
 // never shares identity with its source (used when seeding, duplicating, or cloning a category).
@@ -18,12 +19,13 @@ export function addCategory(
   categories: Category[],
   slots: ItemSlot[],
   label: string,
-  seed?: { runePages: RunePage[]; items: BuildItems },
+  seed?: { runePages: RunePage[]; items: BuildItems; exampleBuilds: ExampleBuild[] },
 ): Category[] {
   const trimmed = label.trim() || 'New Category'
   const runePages = seed ? cloneRunePages(seed.runePages) : []
   const items = seed ? cloneItems(seed.items, slots) : emptyBuildItems(slots)
-  return [...categories, { id: newId(), label: trimmed, runePages, items }]
+  const exampleBuilds = seed ? cloneExampleBuilds(seed.exampleBuilds, slots) : []
+  return [...categories, { id: newId(), label: trimmed, runePages, items, exampleBuilds }]
 }
 
 export function renameCategory(categories: Category[], id: string, label: string): Category[] {
@@ -37,7 +39,13 @@ export function deleteCategory(categories: Category[], id: string): Category[] {
 }
 
 function cloneCategory(source: Category, slots: ItemSlot[], label: string): Category {
-  return { id: newId(), label, runePages: cloneRunePages(source.runePages), items: cloneItems(source.items, slots) }
+  return {
+    id: newId(),
+    label,
+    runePages: cloneRunePages(source.runePages),
+    items: cloneItems(source.items, slots),
+    exampleBuilds: cloneExampleBuilds(source.exampleBuilds, slots),
+  }
 }
 
 // Inserts the clone right after its source and returns the clone's id so the caller can switch
@@ -66,6 +74,11 @@ export function copyCategoryToLoadout(
 // The "All" tab's read-only view: every category's rune pages, concatenated in category order.
 export function mergedCategoryRunePages(categories: Category[]): RunePage[] {
   return categories.flatMap((c) => c.runePages)
+}
+
+// The "All" tab's read-only view: every category's example builds, concatenated in category order.
+export function mergedCategoryExampleBuilds(categories: Category[]): ExampleBuild[] {
+  return categories.flatMap((c) => c.exampleBuilds)
 }
 
 // The "All" tab's read-only view: per slot, every item that appears in any category, each shown
