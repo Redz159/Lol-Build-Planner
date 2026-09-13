@@ -163,6 +163,21 @@ export function normalizeItemNoteGlobalFlags(value: unknown): ItemNoteGlobalFlag
   return result
 }
 
+// Whether an item is "situational" — a global per-item flag (like ItemNoteGlobalFlags), not tied
+// to any one slot or category. Situational items are shown after regular ones (but before
+// excluded ones) wherever they're placed, split off by a dashed divider. Absent means false —
+// only items actually marked situational are stored.
+export type ItemSituationalFlags = Record<string, boolean>
+
+export function normalizeItemSituationalFlags(value: unknown): ItemSituationalFlags {
+  const result: ItemSituationalFlags = {}
+  if (!value || typeof value !== 'object') return result
+  for (const [itemId, isSituational] of Object.entries(value as Record<string, unknown>)) {
+    if (isSituational === true) result[itemId] = true
+  }
+  return result
+}
+
 // The note text to actually show for an item placed in a given slot. While the item is global,
 // this is its shared ItemNotes entry regardless of slot; while local, it's that slot's own
 // ItemSlotNotes entry (or nothing at all, even if a global note happens to still be stored) —

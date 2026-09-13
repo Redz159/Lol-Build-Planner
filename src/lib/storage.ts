@@ -8,6 +8,7 @@ import {
   normalizeItemNoteGlobalFlags,
   normalizeItemNotes,
   normalizeItemRequirements,
+  normalizeItemSituationalFlags,
   normalizeItemSlotNotes,
   normalizeItemSlots,
 } from '../types/items'
@@ -82,6 +83,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   const itemNotes = normalizeItemNotes(raw.itemNotes)
   const itemSlotNotes = normalizeItemSlotNotes(raw.itemSlotNotes)
   const itemNoteGlobal = normalizeItemNoteGlobalFlags(raw.itemNoteGlobal)
+  const itemSituational = normalizeItemSituationalFlags(raw.itemSituational)
 
   if (Array.isArray(raw.runePages)) {
     return {
@@ -96,6 +98,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       itemNotes,
       itemSlotNotes,
       itemNoteGlobal,
+      itemSituational,
     }
   }
   const runes = raw.runes as LegacyRuneSelection | undefined
@@ -112,6 +115,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       itemNotes,
       itemSlotNotes,
       itemNoteGlobal,
+      itemSituational,
     }
   }
 
@@ -126,6 +130,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     itemNotes,
     itemSlotNotes,
     itemNoteGlobal,
+    itemSituational,
     runePages: [
       {
         id: newId(),
@@ -169,6 +174,7 @@ export function migrateBuild(raw: any): Build {
           itemNotes: normalizeItemNotes(l?.itemNotes),
           itemSlotNotes: normalizeItemSlotNotes(l?.itemSlotNotes),
           itemNoteGlobal: normalizeItemNoteGlobalFlags(l?.itemNoteGlobal),
+          itemSituational: normalizeItemSituationalFlags(l?.itemSituational),
         }
       })
     : []

@@ -21,12 +21,14 @@ interface Props {
   note: string
   isGlobalNote: boolean
   hasSlotContext: boolean
+  situational: boolean
   onToggleSlot: (slotId: string) => void
   onToggleExclusion: (otherItemId: string) => void
   onToggleRequirement: (otherItemId: string) => void
   onRelationModeChange: (mode: ItemRelationMode) => void
   onNoteChange: (note: string) => void
   onToggleNoteGlobal: (makeGlobal: boolean) => void
+  onToggleSituational: (situational: boolean) => void
   onClose: () => void
 }
 
@@ -42,12 +44,14 @@ export function ItemAssignPopup({
   note,
   isGlobalNote,
   hasSlotContext,
+  situational,
   onToggleSlot,
   onToggleExclusion,
   onToggleRequirement,
   onRelationModeChange,
   onNoteChange,
   onToggleNoteGlobal,
+  onToggleSituational,
   onClose,
 }: Props) {
   const otherItemIds = [...new Set(slots.flatMap((slot) => (buildItems[slot.id] ?? []).map((p) => p.itemId)))].filter(
@@ -109,6 +113,11 @@ export function ItemAssignPopup({
               </label>
             ))}
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontSize: 13 }}>
+          <input type="checkbox" checked={situational} onChange={(e) => onToggleSituational(e.target.checked)} />
+          Situational
+        </label>
 
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>Note</div>

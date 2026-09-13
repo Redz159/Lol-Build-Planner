@@ -45,6 +45,7 @@ export function emptyLoadout(roles: Role[] = []): Loadout {
     itemNotes: {},
     itemSlotNotes: {},
     itemNoteGlobal: {},
+    itemSituational: {},
   }
 }
 
@@ -126,6 +127,7 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
         itemNotes: source.itemNotes,
         itemSlotNotes: source.itemSlotNotes,
         itemNoteGlobal: source.itemNoteGlobal,
+        itemSituational: source.itemSituational,
       }
     : emptyLoadout()
   return { build: { ...build, loadouts: [...build.loadouts, clone] }, newLoadoutId: clone.id }

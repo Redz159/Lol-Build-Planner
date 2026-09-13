@@ -1,6 +1,14 @@
 import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import { effectiveItemNote, type BuildItems, type ItemNoteGlobalFlags, type ItemNotes, type ItemSlot, type ItemSlotNotes } from '../../types/items'
+import {
+  effectiveItemNote,
+  type BuildItems,
+  type ItemNoteGlobalFlags,
+  type ItemNotes,
+  type ItemSituationalFlags,
+  type ItemSlot,
+  type ItemSlotNotes,
+} from '../../types/items'
 import { ItemIcon, type ItemRelationOutline } from './ItemIcon'
 import './items.css'
 
@@ -10,6 +18,7 @@ interface Props {
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
   slots: ItemSlot[]
   mode: 'view' | 'edit'
   activeSlotId: string | null
@@ -35,6 +44,7 @@ export function BuildSlotsPanel({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
+  itemSituational,
   slots,
   mode,
   activeSlotId,
@@ -94,13 +104,18 @@ export function BuildSlotsPanel({
         const slotId = slot.id
         const placements = buildItems[slotId] ?? []
         if (mode === 'view' && placements.length === 0) return null
-        // Excluded (greyed-out) placements sort after selectable ones, with a divider between
-        // the two groups — a stable sort keeps each group's own relative order intact.
-        const orderedPlacements =
-          mode === 'view'
-            ? [...placements].sort((a, b) => Number(excludedPlacementIds.has(a.id)) - Number(excludedPlacementIds.has(b.id)))
-            : placements
-        const dividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => excludedPlacementIds.has(p.id)) : -1
+        // Three groups, in order: regular included items, situational-but-included items (split
+        // off by a dashed divider), then excluded ones (split off by the solid divider) — a
+        // stable sort keeps each group's own relative order intact. An excluded item never
+        // counts as merely "situational" even if it's also flagged that way.
+        const rank = (p: { id: string; itemId: string }) => {
+          if (excludedPlacementIds.has(p.id)) return 2
+          if (itemSituational[p.itemId]) return 1
+          return 0
+        }
+        const orderedPlacements = mode === 'view' ? [...placements].sort((a, b) => rank(a) - rank(b)) : placements
+        const situationalDividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => rank(p) >= 1) : -1
+        const excludedDividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => rank(p) >= 2) : -1
         const active = activeSlotId === slotId
         const dragOver = mode === 'edit' && dragOverSlotId === slotId
         const editing = editingSlotId === slotId
@@ -199,7 +214,9 @@ export function BuildSlotsPanel({
                 {orderedPlacements.map((placement, index) => {
                   const item = items.find((i) => i.id === placement.itemId)
                   if (!item) return null
-                  const showDivider = index === dividerIndex && index > 0
+                  const showSituationalDivider =
+                    index === situationalDividerIndex && index > 0 && situationalDividerIndex !== excludedDividerIndex
+                  const showExcludedDivider = index === excludedDividerIndex && index > 0
                   const handleClick = (e: MouseEvent) => {
                     if (mode === 'edit') {
                       if (e.ctrlKey || e.metaKey) {
@@ -218,7 +235,10 @@ export function BuildSlotsPanel({
                   }
                   return (
                     <Fragment key={placement.id}>
-                      {showDivider && (
+                      {showSituationalDivider && (
+                        <div aria-hidden="true" style={{ alignSelf: 'stretch', width: 0, borderLeft: '1px dashed var(--text-dim)', opacity: 0.7 }} />
+                      )}
+                      {showExcludedDivider && (
                         <div aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'var(--gold)', opacity: 0.5 }} />
                       )}
                       <div

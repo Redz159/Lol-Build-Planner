@@ -264,6 +264,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
     itemNotes: {},
     itemSlotNotes: {},
     itemNoteGlobal: {},
+    itemSituational: {},
   }
 }
 

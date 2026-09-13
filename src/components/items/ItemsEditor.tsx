@@ -395,6 +395,13 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     onChange({ itemSlotNotes: next })
   }
 
+  const toggleSituational = (itemId: string, situational: boolean) => {
+    const next = { ...loadout.itemSituational }
+    if (situational) next[itemId] = true
+    else delete next[itemId]
+    onChange({ itemSituational: next })
+  }
+
   // Whether an item's note is global or local is one flag per item, so flipping it anywhere
   // flips it for every slot the item is placed in — never just the slot the popup happened to
   // open from. Either direction carries the currently effective text into its new home first,
@@ -469,6 +476,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   // isGlobalNote is a per-item flag (synced across every slot), independent of which slot the
   // popup opened from; only the note *text* shown for a local item still depends on that slot.
   const popupIsGlobalNote = popupItem ? (loadout.itemNoteGlobal[popupItem.id] ?? true) : true
+  const popupSituational = popupItem ? !!loadout.itemSituational[popupItem.id] : false
   const popupNote = popupItem
     ? popupSlotId
       ? (effectiveItemNote(loadout.itemNotes, loadout.itemSlotNotes, loadout.itemNoteGlobal, popupSlotId, popupItem.id) ?? '')
@@ -530,6 +538,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
           itemNotes={loadout.itemNotes}
           itemSlotNotes={loadout.itemSlotNotes}
           itemNoteGlobal={loadout.itemNoteGlobal}
+          itemSituational={loadout.itemSituational}
           slots={visibleSlots}
           mode="view"
           activeSlotId={null}
@@ -572,6 +581,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
+            itemSituational={loadout.itemSituational}
             slots={visibleSlots}
             mode="view"
             activeSlotId={null}
@@ -600,6 +610,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
               itemNotes={loadout.itemNotes}
               itemSlotNotes={loadout.itemSlotNotes}
               itemNoteGlobal={loadout.itemNoteGlobal}
+              itemSituational={loadout.itemSituational}
               slots={visibleSlots}
               mode="edit"
               activeSlotId={activeSlotId}
@@ -649,6 +660,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
           note={popupNote}
           isGlobalNote={popupIsGlobalNote}
           hasSlotContext={!!popupSlotId}
+          situational={popupSituational}
           onToggleSlot={(slotId) => toggleItemInSlot(popupItem.id, slotId)}
           onToggleExclusion={(otherId) => toggleExclusion(popupItem.id, otherId)}
           onToggleRequirement={(otherId) => toggleRequirement(popupItem.id, otherId)}
@@ -657,6 +669,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
             !popupIsGlobalNote && popupSlotId ? setLocalNote(popupSlotId, popupItem.id, note) : setGlobalNote(popupItem.id, note)
           }
           onToggleNoteGlobal={(makeGlobal) => toggleNoteGlobal(popupItem.id, makeGlobal, popupNote)}
+          onToggleSituational={(situational) => toggleSituational(popupItem.id, situational)}
           onClose={closePopup}
         />
       )}
