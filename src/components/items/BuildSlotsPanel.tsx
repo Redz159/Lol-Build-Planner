@@ -236,23 +236,26 @@ export function BuildSlotsPanel({
                   return (
                     <Fragment key={placement.id}>
                       {showSituationalDivider && (
-                        <span
+                        <div
                           aria-hidden="true"
-                          style={{
-                            alignSelf: 'center',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: 0.5,
-                            textTransform: 'uppercase',
-                            color: 'var(--gold)',
-                            border: '1px solid var(--gold)',
-                            borderRadius: 10,
-                            padding: '2px 8px',
-                            whiteSpace: 'nowrap',
-                          }}
+                          style={{ position: 'relative', alignSelf: 'stretch', width: 0, borderLeft: '2px dotted var(--gold)' }}
                         >
-                          Situational
-                        </span>
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: -26,
+                              left: 5,
+                              whiteSpace: 'nowrap',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.5,
+                              color: 'var(--gold)',
+                            }}
+                          >
+                            Situational
+                          </span>
+                        </div>
                       )}
                       {showExcludedDivider && (
                         <div aria-hidden="true" style={{ alignSelf: 'stretch', width: 1, background: 'var(--gold)', opacity: 0.5 }} />
