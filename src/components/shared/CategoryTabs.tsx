@@ -252,7 +252,7 @@ function CategoryQuickAddPopup({
       <div
         className="panel"
         onClick={(e) => e.stopPropagation()}
-        style={{ padding: 18, width: 640, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }}
+        style={{ padding: 18, width: 1100, maxWidth: '92vw', maxHeight: '80vh', overflowY: 'auto' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
           <div style={{ fontWeight: 600 }}>Add items to {category.label}</div>
