@@ -46,6 +46,13 @@ export function duplicateRunePage(page: RunePage): RunePage {
   }
 }
 
+// Deep-copies rune pages, minting fresh ids for each page and its variants — keeps each page's
+// keystone/tree/rune selections intact, unlike duplicateRunePage, since this is for copying a
+// whole page (or keystone group) somewhere else rather than starting a fresh draft from it.
+export function cloneRunePages(pages: RunePage[]): RunePage[] {
+  return pages.map((p) => ({ ...p, id: newId(), variants: p.variants.map((v) => ({ ...v, id: newId() })) }))
+}
+
 // Moves every page belonging to one keystone group to sit where another group currently is —
 // used when the user drags the keystone-switcher icons to reorder groups.
 export function reorderPageGroups(pages: RunePage[], fromKeystoneId: number, toKeystoneId: number): RunePage[] {

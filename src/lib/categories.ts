@@ -3,17 +3,15 @@ import type { RunePage } from '../types/runes'
 import type { BuildItems, ItemPlacement, ItemSlot } from '../types/items'
 import { emptyBuildItems } from '../types/items'
 import { newId } from './id'
+import { cloneRunePages } from './runeRules'
 
 // Deep-copies a BuildItems map onto the given slots, minting fresh placement ids so the copy
 // never shares identity with its source (used when seeding, duplicating, or cloning a category).
+// Slots the source has no entry for come out empty, and any source slot not present in `slots`
+// (e.g. a custom slot that only exists on the source's loadout) is silently dropped — the two
+// loadouts' slot ids only line up exactly when neither has customized its slot list.
 function cloneItems(source: BuildItems, slots: ItemSlot[]): BuildItems {
   return Object.fromEntries(slots.map((slot) => [slot.id, (source[slot.id] ?? []).map((p) => ({ id: newId(), itemId: p.itemId }))]))
-}
-
-// Deep-copies rune pages, minting fresh ids for each page and its variants — same reasoning as
-// cloneItems, so a duplicated category never shares placement/page identity with its source.
-function cloneRunePages(pages: RunePage[]): RunePage[] {
-  return pages.map((p) => ({ ...p, id: newId(), variants: p.variants.map((v) => ({ ...v, id: newId() })) }))
 }
 
 export function addCategory(
@@ -38,21 +36,31 @@ export function deleteCategory(categories: Category[], id: string): Category[] {
   return categories.filter((c) => c.id !== id)
 }
 
+function cloneCategory(source: Category, slots: ItemSlot[], label: string): Category {
+  return { id: newId(), label, runePages: cloneRunePages(source.runePages), items: cloneItems(source.items, slots) }
+}
+
 // Inserts the clone right after its source and returns the clone's id so the caller can switch
 // the active tab to it.
 export function duplicateCategory(categories: Category[], slots: ItemSlot[], id: string): { categories: Category[]; newId: string } {
   const index = categories.findIndex((c) => c.id === id)
   if (index === -1) return { categories, newId: id }
-  const source = categories[index]
-  const clone: Category = {
-    id: newId(),
-    label: `${source.label} Copy`,
-    runePages: cloneRunePages(source.runePages),
-    items: cloneItems(source.items, slots),
-  }
+  const clone = cloneCategory(categories[index], slots, `${categories[index].label} Copy`)
   const next = [...categories]
   next.splice(index + 1, 0, clone)
   return { categories: next, newId: clone.id }
+}
+
+// Copies a category into another loadout's category list, re-keying its items onto that
+// loadout's own item slots. Keeps the source's label as-is (no "Copy" suffix) since it isn't
+// sitting next to its source anymore. Returns the clone's id so the caller can jump to it.
+export function copyCategoryToLoadout(
+  targetCategories: Category[],
+  targetSlots: ItemSlot[],
+  source: Category,
+): { categories: Category[]; newId: string } {
+  const clone = cloneCategory(source, targetSlots, source.label)
+  return { categories: [...targetCategories, clone], newId: clone.id }
 }
 
 // The "All" tab's read-only view: every category's rune pages, concatenated in category order.

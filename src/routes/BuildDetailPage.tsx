@@ -23,13 +23,16 @@ import {
 } from '../lib/loadouts'
 import {
   addCategory,
+  copyCategoryToLoadout,
   deleteCategory,
   duplicateCategory,
   mergedCategoryRunePages,
   renameCategory,
   toggleCategoryPlacement,
 } from '../lib/categories'
+import { cloneRunePages } from '../lib/runeRules'
 import { RoleIcon } from '../components/shared/RoleIcon'
+import { CopyToPicker } from '../components/shared/CopyToPicker'
 import type { RunePage } from '../types/runes'
 import type { Build, Loadout, Role } from '../types/build'
 
@@ -54,6 +57,11 @@ export function BuildDetailPage() {
   // none do, so a deleted or not-yet-chosen category (or one from a different loadout variant)
   // never leaves the view on a dangling id.
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  // Which category is up for a cross-role-variant "Copy to..." right now, if any.
+  const [categoryCopySourceId, setCategoryCopySourceId] = useState<string | null>(null)
+  // Which rune page(s) are up for a cross-category "Copy to..." right now, if any, along with
+  // where they came from (so the picker can exclude that exact spot as a destination).
+  const [runeCopySource, setRuneCopySource] = useState<{ pages: RunePage[]; loadoutId: string; categoryId: string | null } | null>(null)
 
   useEffect(() => {
     if (build && !build.loadouts.some((l) => l.id === activeLoadoutId)) {
@@ -124,6 +132,28 @@ export function BuildDetailPage() {
     const { categories, newId: clonedId } = duplicateCategory(activeLoadout.categories, activeLoadout.itemSlots, id)
     saveLoadout({ categories })
     setSelectedCategoryId(clonedId)
+  }
+
+  const copyCategoryToLoadoutHandler = (targetLoadoutId: string) => {
+    const source = activeLoadout.categories.find((c) => c.id === categoryCopySourceId)
+    const target = build.loadouts.find((l) => l.id === targetLoadoutId)
+    if (!source || !target) return
+    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source)
+    save({ loadouts: build.loadouts.map((l) => (l.id === targetLoadoutId ? { ...l, categories } : l)) })
+  }
+
+  const copyRunePagesHandler = (targetLoadoutId: string, targetCategoryId: string | null) => {
+    if (!runeCopySource) return
+    const cloned = cloneRunePages(runeCopySource.pages)
+    save({
+      loadouts: build.loadouts.map((l) => {
+        if (l.id !== targetLoadoutId) return l
+        if (targetCategoryId) {
+          return { ...l, categories: l.categories.map((c) => (c.id === targetCategoryId ? { ...c, runePages: [...c.runePages, ...cloned] } : c)) }
+        }
+        return { ...l, runePages: [...l.runePages, ...cloned] }
+      }),
+    })
   }
 
   // The category tab row's own quick-add popup only ever copies existing item placements between
@@ -353,8 +383,19 @@ export function BuildDetailPage() {
         onRename={renameCategoryHandler}
         onDelete={deleteCategoryHandler}
         onDuplicate={duplicateCategoryHandler}
+        onCopyOut={build.loadouts.length > 1 ? setCategoryCopySourceId : undefined}
         onToggleCategoryItem={toggleCategoryItemHandler}
       />
+      {categoryCopySourceId && (
+        <CopyToPicker
+          title={`Copy "${activeLoadout.categories.find((c) => c.id === categoryCopySourceId)?.label ?? ''}" to...`}
+          build={build}
+          mode="loadout"
+          exclude={{ loadoutId: activeLoadout.id, categoryId: null }}
+          onPick={(targetLoadoutId) => copyCategoryToLoadoutHandler(targetLoadoutId)}
+          onClose={() => setCategoryCopySourceId(null)}
+        />
+      )}
 
       <Tabs
         tabs={[
@@ -369,6 +410,7 @@ export function BuildDetailPage() {
                   onChange={setCurrentRunePages}
                   initialKeystoneId={selectedKeystoneId}
                   onGroupSelect={setSelectedKeystoneId}
+                  onCopyOut={(pages) => setRuneCopySource({ pages, loadoutId: activeLoadout.id, categoryId: effectiveCategoryId })}
                 />
               ) : (
                 <>
@@ -403,6 +445,16 @@ export function BuildDetailPage() {
           },
         ]}
       />
+      {runeCopySource && (
+        <CopyToPicker
+          title="Copy rune page to..."
+          build={build}
+          mode="category"
+          exclude={{ loadoutId: runeCopySource.loadoutId, categoryId: runeCopySource.categoryId }}
+          onPick={(targetLoadoutId, targetCategoryId) => copyRunePagesHandler(targetLoadoutId, targetCategoryId)}
+          onClose={() => setRuneCopySource(null)}
+        />
+      )}
     </div>
   )
 }

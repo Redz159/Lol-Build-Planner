@@ -20,6 +20,7 @@ interface Props {
   onRename: (id: string, label: string) => void
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
+  onCopyOut?: (id: string) => void
   onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
 }
 
@@ -56,6 +57,7 @@ export function CategoryTabs({
   onRename,
   onDelete,
   onDuplicate,
+  onCopyOut,
   onToggleCategoryItem,
 }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -158,6 +160,11 @@ export function CategoryTabs({
                   <button type="button" title="Duplicate category" onClick={() => onDuplicate(category.id)} style={iconBtnStyle}>
                     ⧉
                   </button>
+                  {onCopyOut && (
+                    <button type="button" title="Copy to another role-variant" onClick={() => onCopyOut(category.id)} style={iconBtnStyle}>
+                      ⇒
+                    </button>
+                  )}
                   <button
                     type="button"
                     title="Delete category"

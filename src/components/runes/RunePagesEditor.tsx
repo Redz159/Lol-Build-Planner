@@ -17,6 +17,10 @@ interface Props {
   onChange: (pages: RunePage[]) => void
   initialKeystoneId?: number | null
   onGroupSelect?: (keystoneId: number) => void
+  // Hands the currently visible page(s) — the selected keystone group, or a single draft page —
+  // off to the caller for a cross-category/cross-loadout "Copy to..." action. Left out of this
+  // component entirely since it has no notion of loadouts or categories.
+  onCopyOut?: (pages: RunePage[]) => void
 }
 
 type Selection = { kind: 'group'; keystoneId: number } | { kind: 'draft'; pageId: string }
@@ -27,7 +31,7 @@ function sameSelection(a: Selection, b: Selection): boolean {
   return false
 }
 
-export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSelect }: Props) {
+export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSelect, onCopyOut }: Props) {
   const { runeTrees } = useGameData()
   const [selected, setSelected] = useState<Selection | null>(
     initialKeystoneId != null ? { kind: 'group', keystoneId: initialKeystoneId } : null,
@@ -58,96 +62,103 @@ export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSel
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        {groups.map((group, groupIndex) => {
-          const tree = runeTrees.find((t) => t.id === group.primaryTreeId)
-          const keystone = tree?.slots[0]?.runes.find((r) => r.id === group.keystoneId)
-          if (!tree || !keystone) return null
-          const isActive = activeSelection?.kind === 'group' && activeSelection.keystoneId === group.keystoneId
-          return (
-            <Tooltip key={group.keystoneId} title={keystone.name}>
-              <button
-                type="button"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'move'
-                  dragGroupIndexRef.current = groupIndex
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  const from = dragGroupIndexRef.current
-                  dragGroupIndexRef.current = null
-                  if (from === null || from === groupIndex) return
-                  onChange(reorderPageGroups(pages, groups[from].keystoneId, group.keystoneId))
-                }}
-                onClick={() => select({ kind: 'group', keystoneId: group.keystoneId })}
-                style={{
-                  border: isActive ? '3px solid var(--gold)' : '1px solid var(--border-strong)',
-                  borderRadius: '50%',
-                  padding: 5,
-                  background: isActive ? 'var(--bg-panel-raised)' : 'var(--bg-panel)',
-                  boxShadow: isActive ? 'var(--shadow-md)' : 'var(--shadow-sm)',
-                  cursor: 'grab',
-                }}
-              >
-                <img
-                  src={runeIconUrl(keystone.icon)}
-                  alt={keystone.name}
-                  width={38}
-                  height={38}
-                  style={{ display: 'block', borderRadius: '50%' }}
-                />
-              </button>
-            </Tooltip>
-          )
-        })}
-        {draftPages.map((page) => {
-          const isActive = activeSelection?.kind === 'draft' && activeSelection.pageId === page.id
-          return (
-            <Tooltip key={page.id} title="Rune page without a keystone yet">
-              <button
-                type="button"
-                onClick={() => select({ kind: 'draft', pageId: page.id })}
-                style={{
-                  border: isActive ? '2px solid var(--gold)' : '1px dashed var(--border-strong)',
-                  borderRadius: '50%',
-                  width: 48,
-                  height: 48,
-                  background: isActive ? 'var(--bg-panel-raised)' : 'var(--bg-panel)',
-                  color: 'var(--text-dim)',
-                  fontSize: 18,
-                  fontWeight: 600,
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                ?
-              </button>
-            </Tooltip>
-          )
-        })}
-        <Tooltip title="Add rune page">
-          <button
-            type="button"
-            onClick={() => {
-              const page = createRunePage()
-              onChange([...pages, page])
-              select({ kind: 'draft', pageId: page.id })
-            }}
-            style={{
-              border: '1px dashed var(--border-strong)',
-              borderRadius: '50%',
-              width: 48,
-              height: 48,
-              background: 'var(--bg-panel)',
-              color: 'var(--text-dim)',
-              fontSize: 20,
-              lineHeight: 1,
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            +
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {groups.map((group, groupIndex) => {
+            const tree = runeTrees.find((t) => t.id === group.primaryTreeId)
+            const keystone = tree?.slots[0]?.runes.find((r) => r.id === group.keystoneId)
+            if (!tree || !keystone) return null
+            const isActive = activeSelection?.kind === 'group' && activeSelection.keystoneId === group.keystoneId
+            return (
+              <Tooltip key={group.keystoneId} title={keystone.name}>
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move'
+                    dragGroupIndexRef.current = groupIndex
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => {
+                    const from = dragGroupIndexRef.current
+                    dragGroupIndexRef.current = null
+                    if (from === null || from === groupIndex) return
+                    onChange(reorderPageGroups(pages, groups[from].keystoneId, group.keystoneId))
+                  }}
+                  onClick={() => select({ kind: 'group', keystoneId: group.keystoneId })}
+                  style={{
+                    border: isActive ? '3px solid var(--gold)' : '1px solid var(--border-strong)',
+                    borderRadius: '50%',
+                    padding: 5,
+                    background: isActive ? 'var(--bg-panel-raised)' : 'var(--bg-panel)',
+                    boxShadow: isActive ? 'var(--shadow-md)' : 'var(--shadow-sm)',
+                    cursor: 'grab',
+                  }}
+                >
+                  <img
+                    src={runeIconUrl(keystone.icon)}
+                    alt={keystone.name}
+                    width={38}
+                    height={38}
+                    style={{ display: 'block', borderRadius: '50%' }}
+                  />
+                </button>
+              </Tooltip>
+            )
+          })}
+          {draftPages.map((page) => {
+            const isActive = activeSelection?.kind === 'draft' && activeSelection.pageId === page.id
+            return (
+              <Tooltip key={page.id} title="Rune page without a keystone yet">
+                <button
+                  type="button"
+                  onClick={() => select({ kind: 'draft', pageId: page.id })}
+                  style={{
+                    border: isActive ? '2px solid var(--gold)' : '1px dashed var(--border-strong)',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    background: isActive ? 'var(--bg-panel-raised)' : 'var(--bg-panel)',
+                    color: 'var(--text-dim)',
+                    fontSize: 18,
+                    fontWeight: 600,
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                >
+                  ?
+                </button>
+              </Tooltip>
+            )
+          })}
+          <Tooltip title="Add rune page">
+            <button
+              type="button"
+              onClick={() => {
+                const page = createRunePage()
+                onChange([...pages, page])
+                select({ kind: 'draft', pageId: page.id })
+              }}
+              style={{
+                border: '1px dashed var(--border-strong)',
+                borderRadius: '50%',
+                width: 48,
+                height: 48,
+                background: 'var(--bg-panel)',
+                color: 'var(--text-dim)',
+                fontSize: 20,
+                lineHeight: 1,
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              +
+            </button>
+          </Tooltip>
+        </div>
+        {onCopyOut && activeSelection && visiblePages.length > 0 && (
+          <button type="button" onClick={() => onCopyOut(visiblePages)} style={{ marginLeft: 'auto', fontSize: 12, padding: '6px 10px' }}>
+            Copy to...
           </button>
-        </Tooltip>
+        )}
       </div>
 
       {visiblePages.map((page) => (
