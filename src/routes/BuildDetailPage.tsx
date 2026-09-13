@@ -19,6 +19,7 @@ import {
   removeLoadout,
   roleOwnerLoadoutId,
   splitLoadout,
+  visibleItemSlots,
 } from '../lib/loadouts'
 import {
   addCategory,
@@ -339,8 +340,12 @@ export function BuildDetailPage() {
 
       <CategoryTabs
         categories={activeLoadout.categories}
-        slots={activeLoadout.itemSlots}
+        slots={visibleItemSlots(activeLoadout.itemSlots, activeLoadout.roles)}
         items={items}
+        itemNotes={activeLoadout.itemNotes}
+        itemSlotNotes={activeLoadout.itemSlotNotes}
+        itemNoteGlobal={activeLoadout.itemNoteGlobal}
+        itemSituational={activeLoadout.itemSituational}
         mode={mode}
         activeId={effectiveCategoryId}
         onSelect={setSelectedCategoryId}

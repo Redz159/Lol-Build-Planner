@@ -79,25 +79,6 @@ export function mergedCategoryItems(categories: Category[], slots: ItemSlot[]): 
   return result
 }
 
-// Every distinct (slot, item) placement found in any category, deduplicated — the pool the
-// per-category "+add" quick-toggle picker offers, since it only ever copies existing placements
-// between categories rather than introducing brand-new items.
-export function allCategorizedPlacements(categories: Category[], slots: ItemSlot[]): { itemId: string; slotId: string }[] {
-  const seen = new Set<string>()
-  const result: { itemId: string; slotId: string }[] = []
-  for (const category of categories) {
-    for (const slot of slots) {
-      for (const placement of category.items[slot.id] ?? []) {
-        const key = `${slot.id}::${placement.itemId}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        result.push({ itemId: placement.itemId, slotId: slot.id })
-      }
-    }
-  }
-  return result
-}
-
 export function categoryHasPlacement(category: Category, slotId: string, itemId: string): boolean {
   return (category.items[slotId] ?? []).some((p) => p.itemId === itemId)
 }

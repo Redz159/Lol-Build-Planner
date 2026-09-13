@@ -8,6 +8,7 @@ import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../.
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { mergedCategoryItems } from '../../lib/categories'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
+import { visibleItemSlots } from '../../lib/loadouts'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
@@ -53,10 +54,8 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     setPopupSlotId(null)
   }
 
-  // The 6th item slot (or any future adc-bonus slot) is an ADC-only bonus slot, hidden
-  // everywhere else; every other slot is always visible once it exists.
   const visibleSlots = useMemo(
-    () => loadout.itemSlots.filter((slot) => slot.kind !== 'adc-bonus' || loadout.roles.includes('adc')),
+    () => visibleItemSlots(loadout.itemSlots, loadout.roles),
     [loadout.itemSlots, loadout.roles],
   )
 

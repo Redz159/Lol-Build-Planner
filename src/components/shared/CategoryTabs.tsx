@@ -1,14 +1,18 @@
 import { useState, type CSSProperties } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Category } from '../../types/build'
-import type { ItemSlot } from '../../types/items'
-import { allCategorizedPlacements, categoryHasPlacement } from '../../lib/categories'
-import { itemImageUrl } from '../../lib/ddragon'
+import type { ItemNoteGlobalFlags, ItemNotes, ItemSituationalFlags, ItemSlot, ItemSlotNotes } from '../../types/items'
+import { categoryHasPlacement, mergedCategoryItems } from '../../lib/categories'
+import { BuildSlotsPanel } from '../items/BuildSlotsPanel'
 
 interface Props {
   categories: Category[]
   slots: ItemSlot[]
   items: DDragonItem[]
+  itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
   mode: 'view' | 'edit'
   activeId: string | null
   onSelect: (id: string) => void
@@ -37,7 +41,23 @@ const iconBtnStyle: CSSProperties = { padding: '2px 6px', fontSize: 11 }
 
 // Sits above the Runes/Items tabs, one level up from both — a category bundles its own rune
 // pages and its own item set, so switching category swaps what both of those tabs show.
-export function CategoryTabs({ categories, slots, items, mode, activeId, onSelect, onAdd, onRename, onDelete, onDuplicate, onToggleCategoryItem }: Props) {
+export function CategoryTabs({
+  categories,
+  slots,
+  items,
+  itemNotes,
+  itemSlotNotes,
+  itemNoteGlobal,
+  itemSituational,
+  mode,
+  activeId,
+  onSelect,
+  onAdd,
+  onRename,
+  onDelete,
+  onDuplicate,
+  onToggleCategoryItem,
+}: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -106,7 +126,7 @@ export function CategoryTabs({ categories, slots, items, mode, activeId, onSelec
                   {editable && hoveredId === category.id && (
                     <button
                       type="button"
-                      title={`Copy items already in another category into ${category.label}`}
+                      title={`Toggle which items are in ${category.label}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         setQuickAddCategoryId(category.id)
@@ -178,6 +198,10 @@ export function CategoryTabs({ categories, slots, items, mode, activeId, onSelec
           categories={categories}
           slots={slots}
           items={items}
+          itemNotes={itemNotes}
+          itemSlotNotes={itemSlotNotes}
+          itemNoteGlobal={itemNoteGlobal}
+          itemSituational={itemSituational}
           onToggle={(slotId, itemId) => onToggleCategoryItem(quickAddCategory.id, slotId, itemId)}
           onClose={() => setQuickAddCategoryId(null)}
         />
@@ -186,11 +210,19 @@ export function CategoryTabs({ categories, slots, items, mode, activeId, onSelec
   )
 }
 
+// The same slot/item layout as the "All" tab, except every item that's already in *this*
+// category (in that slot) is rung gold, and clicking any item toggles its membership instead of
+// switching a build-path preview. Excludes/requires/notes/situational all still apply — they're
+// shared globally by item id, so they just come along for free once the item's placed.
 function CategoryQuickAddPopup({
   category,
   categories,
   slots,
   items,
+  itemNotes,
+  itemSlotNotes,
+  itemNoteGlobal,
+  itemSituational,
   onToggle,
   onClose,
 }: {
@@ -198,45 +230,69 @@ function CategoryQuickAddPopup({
   categories: Category[]
   slots: ItemSlot[]
   items: DDragonItem[]
+  itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
   onToggle: (slotId: string, itemId: string) => void
   onClose: () => void
 }) {
-  const placements = allCategorizedPlacements(categories, slots)
+  const mergedItems = mergedCategoryItems(categories, slots)
+  const selectedPlacementIds = new Set(
+    Object.entries(mergedItems).flatMap(([slotId, placements]) =>
+      placements.filter((p) => categoryHasPlacement(category, slotId, p.itemId)).map((p) => p.id),
+    ),
+  )
+
   return (
     <div
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(5, 7, 11, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
     >
-      <div className="panel" onClick={(e) => e.stopPropagation()} style={{ padding: 18, width: 300, maxHeight: '80vh', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+      <div
+        className="panel"
+        onClick={(e) => e.stopPropagation()}
+        style={{ padding: 18, width: 640, maxWidth: '90vw', maxHeight: '80vh', overflowY: 'auto' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
           <div style={{ fontWeight: 600 }}>Add items to {category.label}</div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', padding: '4px 9px' }}>
             ✕
           </button>
         </div>
-        {placements.length === 0 ? (
-          <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>No items in any category yet.</div>
-        ) : (
-          <div>
-            {placements.map(({ itemId, slotId }) => {
-              const item = items.find((i) => i.id === itemId)
-              const slot = slots.find((s) => s.id === slotId)
-              if (!item || !slot) return null
-              return (
-                <label key={`${slotId}::${itemId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-                  <input
-                    type="checkbox"
-                    checked={categoryHasPlacement(category, slotId, itemId)}
-                    onChange={() => onToggle(slotId, itemId)}
-                  />
-                  <img src={itemImageUrl(item.image.full)} alt="" width={18} height={18} style={{ borderRadius: 3 }} />
-                  {item.name}
-                  <span style={{ marginLeft: 'auto', color: 'var(--text-dim)', fontSize: 11 }}>{slot.label}</span>
-                </label>
-              )
-            })}
-          </div>
-        )}
+        <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
+          Every item placed in any category. Highlighted ones are already in {category.label} — click to add or remove.
+        </div>
+        <BuildSlotsPanel
+          items={items}
+          buildItems={mergedItems}
+          itemNotes={itemNotes}
+          itemSlotNotes={itemSlotNotes}
+          itemNoteGlobal={itemNoteGlobal}
+          itemSituational={itemSituational}
+          slots={slots}
+          mode="view"
+          activeSlotId={null}
+          onSetActiveSlot={() => {}}
+          preview={{}}
+          onTogglePreview={() => {}}
+          onRemovePlacement={() => {}}
+          onOpenPopup={() => {}}
+          onDragStartPlacement={() => {}}
+          onDropOnSlot={() => {}}
+          onDropOnPlacement={() => {}}
+          onAddSlot={() => {}}
+          onRenameSlot={() => {}}
+          onDeleteSlot={() => {}}
+          excludedPlacementIds={new Set()}
+          hoverOutlines={new Map()}
+          onHoverPlacement={() => {}}
+          selectedPlacementIds={selectedPlacementIds}
+          onToggleSelection={(slotId, placementId) => {
+            const placement = mergedItems[slotId]?.find((p) => p.id === placementId)
+            if (placement) onToggle(slotId, placement.itemId)
+          }}
+        />
       </div>
     </div>
   )

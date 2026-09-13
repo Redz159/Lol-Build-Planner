@@ -1,9 +1,15 @@
 import type { Build, Loadout, Role } from '../types/build'
 import type { DDragonItem } from '../types/ddragon'
-import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../types/items'
+import { DEFAULT_ITEM_SLOTS, emptyBuildItems, type ItemSlot } from '../types/items'
 import { newId } from './id'
 
 export const ROLES: Role[] = ['top', 'jungle', 'mid', 'adc', 'support']
+
+// The 6th item slot (or any future adc-bonus slot) is an ADC-only bonus slot, hidden everywhere
+// else; every other slot is always visible once it exists.
+export function visibleItemSlots(itemSlots: ItemSlot[], roles: Role[]): ItemSlot[] {
+  return itemSlots.filter((slot) => slot.kind !== 'adc-bonus' || roles.includes('adc'))
+}
 
 export const ROLE_LABELS: Record<Role, string> = {
   top: 'Top',

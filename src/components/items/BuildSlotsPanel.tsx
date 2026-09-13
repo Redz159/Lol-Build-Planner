@@ -36,6 +36,14 @@ interface Props {
   excludedPlacementIds: Set<string>
   hoverOutlines: Map<string, ItemRelationOutline>
   onHoverPlacement: (placementId: string | null) => void
+  // Overrides the normal single-per-slot preview selection in view mode: any placement whose id
+  // is in this set renders with the "selected" gold ring, and clicking a placement calls
+  // onToggleSelection instead of onTogglePreview. Used by the category quick-add view, where
+  // several items in the same slot can all already belong to the category at once — something
+  // the one-placement-per-slot `preview` map can't represent. Omit both to get the normal
+  // single-selection preview behavior.
+  selectedPlacementIds?: Set<string>
+  onToggleSelection?: (slotId: string, placementId: string) => void
 }
 
 export function BuildSlotsPanel({
@@ -62,6 +70,8 @@ export function BuildSlotsPanel({
   excludedPlacementIds,
   hoverOutlines,
   onHoverPlacement,
+  selectedPlacementIds,
+  onToggleSelection,
 }: Props) {
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
   const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
@@ -226,7 +236,8 @@ export function BuildSlotsPanel({
                       onOpenPopup(item, slotId)
                       return
                     }
-                    onTogglePreview(slotId, placement.id)
+                    if (onToggleSelection) onToggleSelection(slotId, placement.id)
+                    else onTogglePreview(slotId, placement.id)
                   }
                   const placementDragOver = mode === 'edit' && dragOverPlacement?.id === placement.id ? dragOverPlacement.side : null
                   const sideFromEvent = (e: DragEvent): 'before' | 'after' => {
@@ -305,7 +316,10 @@ export function BuildSlotsPanel({
                       >
                         <ItemIcon
                           item={item}
-                          selected={mode === 'view' && preview[slotId] === placement.id}
+                          selected={
+                            mode === 'view' &&
+                            (selectedPlacementIds ? selectedPlacementIds.has(placement.id) : preview[slotId] === placement.id)
+                          }
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
                           outline={hoverOutlines.get(placement.id)}
                           note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
