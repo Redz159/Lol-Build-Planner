@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCollection } from '../state/CollectionContext'
 import { useGameData } from '../state/GameDataContext'
 import { Tabs } from '../components/shared/Tabs'
+import { CategoryTabs } from '../components/shared/CategoryTabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { ItemsEditor } from '../components/items/ItemsEditor'
@@ -19,7 +20,16 @@ import {
   roleOwnerLoadoutId,
   splitLoadout,
 } from '../lib/loadouts'
+import {
+  addCategory,
+  deleteCategory,
+  duplicateCategory,
+  mergedCategoryRunePages,
+  renameCategory,
+  toggleCategoryPlacement,
+} from '../lib/categories'
 import { RoleIcon } from '../components/shared/RoleIcon'
+import type { RunePage } from '../types/runes'
 import type { Build, Loadout, Role } from '../types/build'
 
 export function BuildDetailPage() {
@@ -38,6 +48,11 @@ export function BuildDetailPage() {
   const [preEditSnapshot, setPreEditSnapshot] = useState<Build | null>(null)
   const [selectedKeystoneId, setSelectedKeystoneId] = useState<number | null>(null)
   const [activeLoadoutId, setActiveLoadoutId] = useState<string | undefined>(build?.loadouts[0]?.id)
+  // Raw tab selection — 'all' or a category id the user picked, or null before any pick. Falls
+  // back to the first category once any exist, and to the loadout's own plain runes/items when
+  // none do, so a deleted or not-yet-chosen category (or one from a different loadout variant)
+  // never leaves the view on a dangling id.
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   useEffect(() => {
     if (build && !build.loadouts.some((l) => l.id === activeLoadoutId)) {
@@ -49,12 +64,73 @@ export function BuildDetailPage() {
 
   const activeLoadout = build.loadouts.find((l) => l.id === activeLoadoutId) ?? build.loadouts[0]
 
+  // A category bundles its own rune pages and its own item set — Runes and Items are its
+  // children, not the other way around. No categories at all means the loadout's own plain
+  // runePages/items, exactly as before categories existed.
+  const effectiveCategoryId =
+    activeLoadout.categories.length === 0
+      ? null
+      : selectedCategoryId === 'all' || activeLoadout.categories.some((c) => c.id === selectedCategoryId)
+        ? selectedCategoryId
+        : activeLoadout.categories[0].id
+  const activeCategory =
+    effectiveCategoryId && effectiveCategoryId !== 'all' ? activeLoadout.categories.find((c) => c.id === effectiveCategoryId) : undefined
+  const isAllCategoryView = effectiveCategoryId === 'all'
+  const currentRunePages: RunePage[] = activeCategory
+    ? activeCategory.runePages
+    : isAllCategoryView
+      ? mergedCategoryRunePages(activeLoadout.categories)
+      : activeLoadout.runePages
+
   const save = (patch: Partial<typeof build>) => {
     updateBuild({ ...build, ...patch, updatedAt: new Date().toISOString() })
   }
 
   const saveLoadout = (patch: Partial<Loadout>) => {
     save({ loadouts: build.loadouts.map((l) => (l.id === activeLoadout.id ? { ...l, ...patch } : l)) })
+  }
+
+  // Writes go to whichever rune-page set is active; a no-op while viewing the merged "All" tab,
+  // since it has no single category to write into.
+  const setCurrentRunePages = (runePages: RunePage[]) => {
+    if (activeCategory) {
+      saveLoadout({ categories: activeLoadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, runePages } : c)) })
+    } else if (!isAllCategoryView) {
+      saveLoadout({ runePages })
+    }
+  }
+
+  const addCategoryHandler = (label: string) => {
+    const categories = addCategory(
+      activeLoadout.categories,
+      activeLoadout.itemSlots,
+      label,
+      activeLoadout.categories.length === 0 ? { runePages: activeLoadout.runePages, items: activeLoadout.items } : undefined,
+    )
+    saveLoadout({ categories })
+    setSelectedCategoryId(categories[categories.length - 1].id)
+  }
+
+  const renameCategoryHandler = (id: string, label: string) => {
+    saveLoadout({ categories: renameCategory(activeLoadout.categories, id, label) })
+  }
+
+  const deleteCategoryHandler = (id: string) => {
+    saveLoadout({ categories: deleteCategory(activeLoadout.categories, id) })
+  }
+
+  const duplicateCategoryHandler = (id: string) => {
+    const { categories, newId: clonedId } = duplicateCategory(activeLoadout.categories, activeLoadout.itemSlots, id)
+    saveLoadout({ categories })
+    setSelectedCategoryId(clonedId)
+  }
+
+  // The category tab row's own quick-add popup only ever copies existing item placements between
+  // categories — see CategoryTabs for why runes aren't part of that shortcut.
+  const toggleCategoryItemHandler = (categoryId: string, slotId: string, itemId: string) => {
+    saveLoadout({
+      categories: activeLoadout.categories.map((c) => (c.id === categoryId ? { ...c, items: toggleCategoryPlacement(c.items, slotId, itemId) } : c)),
+    })
   }
 
   const toggleRole = (role: Role, checked: boolean) => {
@@ -261,27 +337,48 @@ export function BuildDetailPage() {
         </div>
       )}
 
+      <CategoryTabs
+        categories={activeLoadout.categories}
+        slots={activeLoadout.itemSlots}
+        items={items}
+        mode={mode}
+        activeId={effectiveCategoryId}
+        onSelect={setSelectedCategoryId}
+        onAdd={addCategoryHandler}
+        onRename={renameCategoryHandler}
+        onDelete={deleteCategoryHandler}
+        onDuplicate={duplicateCategoryHandler}
+        onToggleCategoryItem={toggleCategoryItemHandler}
+      />
+
       <Tabs
         tabs={[
           {
             key: 'runes',
             label: 'Runes',
             content:
-              mode === 'edit' ? (
+              mode === 'edit' && !isAllCategoryView ? (
                 <RunePagesEditor
-                  key={activeLoadout.id}
-                  pages={activeLoadout.runePages}
-                  onChange={(runePages) => saveLoadout({ runePages })}
+                  key={`${activeLoadout.id}:${effectiveCategoryId}`}
+                  pages={currentRunePages}
+                  onChange={setCurrentRunePages}
                   initialKeystoneId={selectedKeystoneId}
                   onGroupSelect={setSelectedKeystoneId}
                 />
               ) : (
-                <RunePagesViewer
-                  key={activeLoadout.id}
-                  pages={activeLoadout.runePages}
-                  selectedKeystoneId={selectedKeystoneId}
-                  onSelectKeystoneId={setSelectedKeystoneId}
-                />
+                <>
+                  {isAllCategoryView && (
+                    <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
+                      "All" is a read-only merge of every category — pick a category to edit its runes.
+                    </div>
+                  )}
+                  <RunePagesViewer
+                    key={`${activeLoadout.id}:${effectiveCategoryId}`}
+                    pages={currentRunePages}
+                    selectedKeystoneId={selectedKeystoneId}
+                    onSelectKeystoneId={setSelectedKeystoneId}
+                  />
+                </>
               ),
           },
           {
@@ -289,12 +386,13 @@ export function BuildDetailPage() {
             label: 'Items',
             content: (
               <ItemsEditor
-                key={activeLoadout.id}
+                key={`${activeLoadout.id}:${effectiveCategoryId}`}
                 loadout={activeLoadout}
                 mode={mode}
                 onChange={(patch) => saveLoadout(patch)}
                 championKey={champion?.key}
                 buildTitle={build.title}
+                activeCategoryId={effectiveCategoryId}
               />
             ),
           },

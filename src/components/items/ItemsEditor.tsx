@@ -6,13 +6,12 @@ import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
-import { addCategory, deleteCategory, duplicateCategory, mergedCategoryItems, renameCategory, toggleCategoryPlacement } from '../../lib/itemCategories'
+import { mergedCategoryItems } from '../../lib/categories'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { useGameData } from '../../state/GameDataContext'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
-import { ItemCategoryTabs } from './ItemCategoryTabs'
 import { ExportItemSetPopup } from './ExportItemSetPopup'
 import { ImportItemSetPopup } from './ImportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
@@ -23,9 +22,12 @@ interface Props {
   onChange: (patch: Partial<Loadout>) => void
   championKey: string | undefined
   buildTitle: string
+  // Resolved one level up (shared with the Runes tab): a category id, 'all' for the merged
+  // read-only view, or null when the loadout has no categories at all.
+  activeCategoryId: string | null
 }
 
-export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }: Props) {
+export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, activeCategoryId }: Props) {
   const { items } = useGameData()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
@@ -37,10 +39,6 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   // each time the popup opens, since it's a view toggle rather than a per-item setting.
   const [popupRelationMode, setPopupRelationMode] = useState<ItemRelationMode>('exclude')
   const [preview, setPreview] = useState<Partial<Record<string, string>>>({})
-  // Raw tab selection — 'all' or a category id the user picked, or null before any pick. Falls
-  // back to the first category once any exist, and to plain loadout.items when none do, so a
-  // deleted or not-yet-chosen category never leaves the view on a dangling id.
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
   const [showExportPopup, setShowExportPopup] = useState(false)
   const [showImportPopup, setShowImportPopup] = useState(false)
 
@@ -66,20 +64,15 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
 
   // Which item-set is currently being shown/edited: a real category, the merged read-only "All"
   // view, or (no categories at all) the loadout's own plain item list — the pre-categories
-  // behavior, left untouched so existing builds keep working unchanged.
-  const effectiveCategoryId =
-    loadout.itemCategories.length === 0
-      ? null
-      : selectedCategoryId === 'all' || loadout.itemCategories.some((c) => c.id === selectedCategoryId)
-        ? selectedCategoryId
-        : loadout.itemCategories[0].id
+  // behavior, left untouched so existing builds keep working unchanged. `activeCategoryId` is
+  // resolved once by the parent and shared with the Runes tab, so it's trusted as-is here.
   const activeCategory =
-    effectiveCategoryId && effectiveCategoryId !== 'all' ? loadout.itemCategories.find((c) => c.id === effectiveCategoryId) : undefined
-  const isAllCategoryView = effectiveCategoryId === 'all'
+    activeCategoryId && activeCategoryId !== 'all' ? loadout.categories.find((c) => c.id === activeCategoryId) : undefined
+  const isAllCategoryView = activeCategoryId === 'all'
   const currentItems: BuildItems = activeCategory
     ? activeCategory.items
     : isAllCategoryView
-      ? mergedCategoryItems(loadout.itemCategories, loadout.itemSlots)
+      ? mergedCategoryItems(loadout.categories, loadout.itemSlots)
       : loadout.items
 
   // Writes go to whichever item-set is active; a no-op while viewing the merged "All" tab, since
@@ -87,38 +80,12 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
   const setCurrentItems = (nextItems: BuildItems, extra: Partial<Loadout> = {}) => {
     if (activeCategory) {
       onChange({
-        itemCategories: loadout.itemCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: nextItems } : c)),
+        categories: loadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, items: nextItems } : c)),
         ...extra,
       })
     } else if (!isAllCategoryView) {
       onChange({ items: nextItems, ...extra })
     }
-  }
-
-  const addItemCategory = (label: string) => {
-    const categories = addCategory(loadout.itemCategories, loadout.itemSlots, label, loadout.itemCategories.length === 0 ? loadout.items : undefined)
-    onChange({ itemCategories: categories })
-    setSelectedCategoryId(categories[categories.length - 1].id)
-  }
-
-  const renameItemCategory = (id: string, label: string) => {
-    onChange({ itemCategories: renameCategory(loadout.itemCategories, id, label) })
-  }
-
-  const deleteItemCategory = (id: string) => {
-    onChange({ itemCategories: deleteCategory(loadout.itemCategories, id) })
-  }
-
-  const duplicateItemCategory = (id: string) => {
-    const { categories, newId: clonedId } = duplicateCategory(loadout.itemCategories, loadout.itemSlots, id)
-    onChange({ itemCategories: categories })
-    setSelectedCategoryId(clonedId)
-  }
-
-  const toggleCategoryItem = (categoryId: string, slotId: string, itemId: string) => {
-    onChange({
-      itemCategories: loadout.itemCategories.map((c) => (c.id === categoryId ? { ...c, items: toggleCategoryPlacement(c.items, slotId, itemId) } : c)),
-    })
   }
 
   // Each imported block replaces the matching slot's items in whichever item-set is active (a
@@ -156,16 +123,16 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     }
 
     const nextLoadoutItems = withNewSlotKeys(loadout.items)
-    const nextCategories = loadout.itemCategories.map((c) => ({ ...c, items: withNewSlotKeys(c.items) }))
+    const nextCategories = loadout.categories.map((c) => ({ ...c, items: withNewSlotKeys(c.items) }))
 
     if (activeCategory) {
       onChange({
         itemSlots: nextSlots,
         items: nextLoadoutItems,
-        itemCategories: nextCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: applyBlocks(c.items) } : c)),
+        categories: nextCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: applyBlocks(c.items) } : c)),
       })
     } else {
-      onChange({ itemSlots: nextSlots, items: applyBlocks(nextLoadoutItems), itemCategories: nextCategories })
+      onChange({ itemSlots: nextSlots, items: applyBlocks(nextLoadoutItems), categories: nextCategories })
     }
   }
 
@@ -438,7 +405,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     onChange({
       itemSlots: [...loadout.itemSlots, slot],
       items: { ...loadout.items, [slot.id]: [] },
-      itemCategories: loadout.itemCategories.map((c) => ({ ...c, items: { ...c.items, [slot.id]: [] } })),
+      categories: loadout.categories.map((c) => ({ ...c, items: { ...c.items, [slot.id]: [] } })),
     })
   }
 
@@ -460,7 +427,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     onChange({
       itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId),
       items: stripSlot(loadout.items),
-      itemCategories: loadout.itemCategories.map((c) => ({ ...c, items: stripSlot(c.items) })),
+      categories: loadout.categories.map((c) => ({ ...c, items: stripSlot(c.items) })),
       itemSlotNotes: nextSlotNotes,
     })
     if (activeSlotId === slotId) setActiveSlotId(null)
@@ -506,32 +473,17 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
     </button>
   )
 
-  const categoryTabs = (
-    <ItemCategoryTabs
-      categories={loadout.itemCategories}
-      slots={loadout.itemSlots}
-      items={items}
-      mode={mode}
-      activeId={effectiveCategoryId}
-      onSelect={setSelectedCategoryId}
-      onAdd={addItemCategory}
-      onRename={renameItemCategory}
-      onDelete={deleteItemCategory}
-      onDuplicate={duplicateItemCategory}
-      onToggleCategoryItem={toggleCategoryItem}
-      trailing={
-        <>
-          {importButton}
-          {exportButton}
-        </>
-      }
-    />
+  const leagueInteropRow = (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+      {importButton}
+      {exportButton}
+    </div>
   )
 
   if (mode === 'view') {
     return (
       <div>
-        {categoryTabs}
+        {leagueInteropRow}
         <BuildSlotsPanel
           items={items}
           buildItems={currentItems}
@@ -569,7 +521,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle }
 
   return (
     <div>
-      {categoryTabs}
+      {leagueInteropRow}
       {isAllCategoryView ? (
         <>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>

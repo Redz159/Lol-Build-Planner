@@ -1,11 +1,12 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import type { ItemCategory, ItemSlot } from '../../types/items'
-import { allCategorizedPlacements, categoryHasPlacement } from '../../lib/itemCategories'
+import type { Category } from '../../types/build'
+import type { ItemSlot } from '../../types/items'
+import { allCategorizedPlacements, categoryHasPlacement } from '../../lib/categories'
 import { itemImageUrl } from '../../lib/ddragon'
 
 interface Props {
-  categories: ItemCategory[]
+  categories: Category[]
   slots: ItemSlot[]
   items: DDragonItem[]
   mode: 'view' | 'edit'
@@ -16,9 +17,6 @@ interface Props {
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
   onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
-  // Rendered at the far right of the tab row (e.g. the item-set export button) — shown even when
-  // there are no categories to display, unlike the rest of this row.
-  trailing?: ReactNode
 }
 
 function tabStyle(active: boolean, hovered = false): CSSProperties {
@@ -37,20 +35,9 @@ function tabStyle(active: boolean, hovered = false): CSSProperties {
 
 const iconBtnStyle: CSSProperties = { padding: '2px 6px', fontSize: 11 }
 
-export function ItemCategoryTabs({
-  categories,
-  slots,
-  items,
-  mode,
-  activeId,
-  onSelect,
-  onAdd,
-  onRename,
-  onDelete,
-  onDuplicate,
-  onToggleCategoryItem,
-  trailing,
-}: Props) {
+// Sits above the Runes/Items tabs, one level up from both — a category bundles its own rune
+// pages and its own item set, so switching category swaps what both of those tabs show.
+export function CategoryTabs({ categories, slots, items, mode, activeId, onSelect, onAdd, onRename, onDelete, onDuplicate, onToggleCategoryItem }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -61,10 +48,9 @@ export function ItemCategoryTabs({
   // Category CRUD (rename/duplicate/delete/add, and the cross-category quick-add) is edit-mode
   // only, matching how slot rename/delete works — view mode only ever switches between tabs.
   const editable = mode === 'edit'
-  // Nothing to show but `trailing` (no categories, and not editing so no "+ Add category" either)
-  // still renders that row — it's the export button's home even before any category exists.
+  if (!editable && categories.length === 0) return null
 
-  const startRename = (category: ItemCategory) => {
+  const startRename = (category: Category) => {
     setEditingId(category.id)
     setRenameDraft(category.label)
   }
@@ -185,7 +171,6 @@ export function ItemCategoryTabs({
               + Add category
             </button>
           ))}
-        {trailing && <div style={{ marginLeft: 'auto' }}>{trailing}</div>}
       </div>
       {editable && quickAddCategory && (
         <CategoryQuickAddPopup
@@ -209,8 +194,8 @@ function CategoryQuickAddPopup({
   onToggle,
   onClose,
 }: {
-  category: ItemCategory
-  categories: ItemCategory[]
+  category: Category
+  categories: Category[]
   slots: ItemSlot[]
   items: DDragonItem[]
   onToggle: (slotId: string, itemId: string) => void
@@ -224,7 +209,7 @@ function CategoryQuickAddPopup({
     >
       <div className="panel" onClick={(e) => e.stopPropagation()} style={{ padding: 18, width: 300, maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 8 }}>
-          <div style={{ fontWeight: 600 }}>Add to {category.label}</div>
+          <div style={{ fontWeight: 600 }}>Add items to {category.label}</div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', padding: '4px 9px' }}>
             ✕
           </button>

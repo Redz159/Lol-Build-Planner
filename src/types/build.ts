@@ -1,7 +1,6 @@
 import type { RunePage } from './runes'
 import type {
   BuildItems,
-  ItemCategory,
   ItemExclusionPair,
   ItemNoteGlobalFlags,
   ItemNotes,
@@ -13,13 +12,23 @@ import type {
 
 export type Role = 'top' | 'jungle' | 'mid' | 'adc' | 'support'
 
+// A category is its own independent rune-page set and item set over the same slots — like a
+// parallel mini-loadout a loadout can switch between, rather than a tag on its single rune/item
+// selection. Runes and items live *under* a category now, not the other way around.
+export interface Category {
+  id: string
+  label: string
+  runePages: RunePage[]
+  items: BuildItems
+}
+
 export interface Loadout {
   id: string
   roles: Role[]
   runePages: RunePage[]
   itemSlots: ItemSlot[]
   items: BuildItems
-  itemCategories: ItemCategory[]
+  categories: Category[]
   itemExclusions: ItemExclusionPair[]
   itemRequirements: ItemRequirementPair[]
   itemNotes: ItemNotes

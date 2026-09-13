@@ -1,9 +1,8 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
-import type { Build, Loadout, Role } from '../types/build'
+import type { Build, Category, Loadout, Role } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import {
   normalizeBuildItems,
-  normalizeItemCategories,
   normalizeItemExclusions,
   normalizeItemNoteGlobalFlags,
   normalizeItemNotes,
@@ -11,6 +10,7 @@ import {
   normalizeItemSituationalFlags,
   normalizeItemSlotNotes,
   normalizeItemSlots,
+  type ItemSlot,
 } from '../types/items'
 import { ROLES } from './loadouts'
 import { newId } from './id'
@@ -66,6 +66,24 @@ function normalizeRunePages(value: unknown): RunePage[] {
   return Array.isArray(value) ? value.map(normalizeRunePage) : []
 }
 
+function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
+  if (!Array.isArray(value)) return []
+  const result: Category[] = []
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue
+    const id = (raw as Record<string, unknown>).id
+    const label = (raw as Record<string, unknown>).label
+    if (typeof id !== 'string' || typeof label !== 'string') continue
+    result.push({
+      id,
+      label,
+      runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
+      items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),
+    })
+  }
+  return result
+}
+
 function normalizeRoles(value: unknown): Role[] {
   if (!Array.isArray(value)) return []
   return ROLES.filter((r) => value.includes(r))
@@ -77,7 +95,9 @@ function normalizeRoles(value: unknown): Role[] {
 function migrateLegacyFlatBuild(raw: any): Loadout {
   const itemSlots = normalizeItemSlots(raw.itemSlots)
   const items = normalizeBuildItems(raw.items, itemSlots)
-  const itemCategories = normalizeItemCategories(raw.itemCategories, itemSlots)
+  // `raw.itemCategories` is the pre-restructure key (items-only categories, no runePages) — still
+  // read so builds saved during that period migrate instead of losing their categories.
+  const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
   const itemNotes = normalizeItemNotes(raw.itemNotes)
@@ -92,7 +112,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       runePages: normalizeRunePages(raw.runePages),
       itemSlots,
       items,
-      itemCategories,
+      categories,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -109,7 +129,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       runePages: [],
       itemSlots,
       items,
-      itemCategories,
+      categories,
       itemExclusions,
       itemRequirements,
       itemNotes,
@@ -124,7 +144,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     roles: [],
     itemSlots,
     items,
-    itemCategories,
+    categories,
     itemExclusions,
     itemRequirements,
     itemNotes,
@@ -168,7 +188,7 @@ export function migrateBuild(raw: any): Build {
           runePages: normalizeRunePages(l?.runePages),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
-          itemCategories: normalizeItemCategories(l?.itemCategories, itemSlots),
+          categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
           itemRequirements: normalizeItemRequirements(l?.itemRequirements),
           itemNotes: normalizeItemNotes(l?.itemNotes),
