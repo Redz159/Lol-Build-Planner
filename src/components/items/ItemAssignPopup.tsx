@@ -114,10 +114,27 @@ export function ItemAssignPopup({
             ))}
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontSize: 13 }}>
-          <input type="checkbox" checked={situational} onChange={(e) => onToggleSituational(e.target.checked)} />
-          Situational
-        </label>
+        <button
+          type="button"
+          onClick={() => onToggleSituational(!situational)}
+          aria-pressed={situational}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            marginBottom: 14,
+            padding: '4px 12px',
+            borderRadius: 14,
+            fontSize: 12,
+            fontWeight: 600,
+            border: `1px solid ${situational ? 'var(--gold)' : 'var(--border-strong)'}`,
+            background: situational ? 'rgba(200, 170, 110, 0.18)' : 'var(--bg-panel-raised)',
+            color: situational ? 'var(--gold-bright)' : 'var(--text-dim)',
+            boxShadow: 'none',
+          }}
+        >
+          {situational ? '✓ Situational' : 'Situational'}
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
           <div style={{ color: 'var(--text-dim)', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6 }}>Note</div>
