@@ -53,6 +53,9 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <strong style={{ color: 'var(--text-heading)' }}>{keystone ? keystone.name : 'New rune page'}</strong>
         <div style={{ flex: 1 }} />
+        <button type="button" onClick={() => onChange(addVariant(page))}>
+          + Add secondary tree option
+        </button>
         <button type="button" onClick={onDuplicate}>
           Duplicate page
         </button>
@@ -61,49 +64,42 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
         </button>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={labelStyle}>Primary tree</div>
-        <RuneTreeSelector
-          runeTrees={runeTrees}
-          selectedId={page.primaryTreeId}
-          onSelect={(id) => onChange(selectPrimaryTree(page, id))}
-        />
-      </div>
-
-      {primaryTree && (
-        <div style={{ marginBottom: 16 }}>
-          <RuneTreeColumn
-            tree={primaryTree}
-            mode="primary"
-            keystoneId={page.keystoneId}
-            preferredKeystone={page.preferredKeystone}
-            selectedRuneIds={page.primaryRuneIds}
-            preferredRuneIds={page.preferredPrimaryRuneIds}
-            onSelectKeystone={(id, preferred) => {
-              onChange(selectKeystone(page, id))
-              if (preferred) onSetPreferredKeystone(!(page.keystoneId === id && page.preferredKeystone))
-            }}
-            onSelectRune={(_rowIndex, id, preferred) => onChange(selectPrimaryRune(page, id, preferred))}
+      {/* Primary tree and every secondary tree option are flat siblings in one wrapping row, not
+          primary plus a single "secondary options" block — that way, when a row runs out of
+          room, only the option(s) that don't fit drop to the next row instead of the whole
+          secondary group jumping down together while primary still had room to spare. */}
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={labelStyle}>Primary tree</div>
+          <RuneTreeSelector
+            runeTrees={runeTrees}
+            selectedId={page.primaryTreeId}
+            onSelect={(id) => onChange(selectPrimaryTree(page, id))}
           />
+          {primaryTree && (
+            <div style={{ marginTop: 8 }}>
+              <RuneTreeColumn
+                tree={primaryTree}
+                mode="primary"
+                keystoneId={page.keystoneId}
+                preferredKeystone={page.preferredKeystone}
+                selectedRuneIds={page.primaryRuneIds}
+                preferredRuneIds={page.preferredPrimaryRuneIds}
+                onSelectKeystone={(id, preferred) => {
+                  onChange(selectKeystone(page, id))
+                  if (preferred) onSetPreferredKeystone(!(page.keystoneId === id && page.preferredKeystone))
+                }}
+                onSelectRune={(_rowIndex, id, preferred) => onChange(selectPrimaryRune(page, id, preferred))}
+              />
+            </div>
+          )}
         </div>
-      )}
 
-      <div style={labelStyle}>Secondary tree options</div>
-      {page.variants.map((variant, index) => {
-        const secondaryTree = runeTrees.find((t) => t.id === variant.secondaryTreeId)
-        return (
-          <div
-            key={variant.id}
-            style={{
-              display: 'flex',
-              gap: 16,
-              alignItems: 'flex-start',
-              marginBottom: 12,
-              paddingBottom: 12,
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <div>
+        {page.variants.map((variant, index) => {
+          const secondaryTree = runeTrees.find((t) => t.id === variant.secondaryTreeId)
+          return (
+            <div key={variant.id} style={{ marginBottom: 12 }}>
+              {index === 0 && <div style={labelStyle}>Secondary tree options</div>}
               <RuneTreeSelector
                 runeTrees={runeTrees}
                 selectedId={variant.secondaryTreeId}
@@ -143,43 +139,38 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                   onSelect={(id, preferred) => onChange(selectShard(page, variant.id, 'defense', id, preferred))}
                 />
               </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
                 <button
                   type="button"
                   disabled={index === 0}
-                  title="Move up"
+                  title="Move left"
                   style={arrowButtonStyle}
                   onClick={() => onChange({ ...page, variants: reorder(page.variants, index, index - 1) })}
                 >
-                  ▲
+                  ◀
                 </button>
                 <button
                   type="button"
                   disabled={index === page.variants.length - 1}
-                  title="Move down"
+                  title="Move right"
                   style={arrowButtonStyle}
                   onClick={() => onChange({ ...page, variants: reorder(page.variants, index, index + 1) })}
                 >
-                  ▼
+                  ▶
+                </button>
+                <button
+                  type="button"
+                  disabled={page.variants.length <= 1}
+                  onClick={() => onChange(removeVariant(page, variant.id))}
+                  style={{ color: 'var(--danger)' }}
+                >
+                  Remove
                 </button>
               </div>
-              <button
-                type="button"
-                disabled={page.variants.length <= 1}
-                onClick={() => onChange(removeVariant(page, variant.id))}
-                style={{ color: 'var(--danger)' }}
-              >
-                Remove
-              </button>
             </div>
-          </div>
-        )
-      })}
-      <button type="button" onClick={() => onChange(addVariant(page))}>
-        + Add secondary tree option
-      </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
