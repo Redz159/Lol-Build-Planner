@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useReducer, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useReducer, useState, type ReactNode } from 'react'
 import type { Build } from '../types/build'
 import type { Collection } from '../types/collection'
 import { loadCollection, saveCollection } from '../lib/storage'
@@ -46,38 +46,64 @@ interface CollectionApi {
   duplicateBuild: (id: string) => void
   toggleFavorite: (id: string) => void
   replaceAll: (collection: Collection) => void
+  canUndo: boolean
+  canRedo: boolean
+  undo: () => void
+  redo: () => void
 }
 
 const CollectionContext = createContext<CollectionApi | null>(null)
 
 export function CollectionProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadCollection)
-  const historyRef = useRef<Collection[]>([])
+  // Plain state (not a ref) so canUndo/canRedo can drive a button's disabled state, not just the
+  // keyboard shortcut.
+  const [past, setPast] = useState<Collection[]>([])
+  const [future, setFuture] = useState<Collection[]>([])
 
   useEffect(() => {
     saveCollection(state)
   }, [state])
 
-  // Ctrl/Cmd+Z undoes the last mutation, unless a text field has focus (so native
-  // text-undo in inputs still works).
+  const undo = () => {
+    const previous = past[past.length - 1]
+    if (!previous) return
+    setPast((p) => p.slice(0, -1))
+    setFuture((f) => [state, ...f].slice(0, MAX_UNDO_HISTORY))
+    dispatch({ type: 'REPLACE_ALL', collection: previous })
+  }
+
+  const redo = () => {
+    const next = future[0]
+    if (!next) return
+    setFuture((f) => f.slice(1))
+    setPast((p) => [...p, state].slice(-MAX_UNDO_HISTORY))
+    dispatch({ type: 'REPLACE_ALL', collection: next })
+  }
+
+  // Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z (or Ctrl+Y) redoes, unless a text field has focus (so
+  // native text-undo in inputs still works).
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const key = e.key.toLowerCase()
+      const isUndo = key === 'z' && !e.shiftKey
+      const isRedo = (key === 'z' && e.shiftKey) || key === 'y'
+      if (!isUndo && !isRedo) return
       const target = e.target as HTMLElement | null
       if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return
-      const stack = historyRef.current
-      const previous = stack[stack.length - 1]
-      if (!previous) return
       e.preventDefault()
-      historyRef.current = stack.slice(0, -1)
-      dispatch({ type: 'REPLACE_ALL', collection: previous })
+      if (isUndo) undo()
+      else redo()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [past, future, state])
 
+  // Any new edit invalidates whatever was available to redo.
   const withHistory = (action: Action) => {
-    historyRef.current = [...historyRef.current, state].slice(-MAX_UNDO_HISTORY)
+    setPast((p) => [...p, state].slice(-MAX_UNDO_HISTORY))
+    setFuture([])
     dispatch(action)
   }
 
@@ -101,6 +127,10 @@ export function CollectionProvider({ children }: { children: ReactNode }) {
     },
     toggleFavorite: (id) => withHistory({ type: 'TOGGLE_FAVORITE', id }),
     replaceAll: (collection) => withHistory({ type: 'REPLACE_ALL', collection }),
+    canUndo: past.length > 0,
+    canRedo: future.length > 0,
+    undo,
+    redo,
   }
 
   return <CollectionContext.Provider value={api}>{children}</CollectionContext.Provider>
