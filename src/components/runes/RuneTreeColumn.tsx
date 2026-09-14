@@ -74,7 +74,18 @@ export function RuneTreeColumn({
                 }
 
                 return (
-                  <Tooltip key={rune.id} title={rune.name} descriptionHtml={rune.shortDesc}>
+                  <Tooltip
+                    key={rune.id}
+                    title={rune.name}
+                    descriptionHtml={rune.shortDesc}
+                    extra={
+                      !readOnly && (
+                        <div style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                          Ctrl+click to mark as preferred
+                        </div>
+                      )
+                    }
+                  >
                     <button
                       type="button"
                       aria-label={rune.name}

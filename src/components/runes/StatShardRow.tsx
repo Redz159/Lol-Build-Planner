@@ -32,7 +32,17 @@ export function StatShardRow({ options, selectedIds, preferredIds, readOnly, acc
         }
 
         return (
-          <Tooltip key={opt.id} title={opt.name}>
+          <Tooltip
+            key={opt.id}
+            title={opt.name}
+            extra={
+              !readOnly && (
+                <div style={{ color: 'var(--accent)', fontWeight: 600, fontSize: 12, marginBottom: 6 }}>
+                  Ctrl+click to mark as preferred
+                </div>
+              )
+            }
+          >
             <button
               type="button"
               aria-label={opt.name}
