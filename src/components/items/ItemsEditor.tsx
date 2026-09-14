@@ -526,10 +526,20 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     </button>
   )
 
+  // The gold-ringed "selected" item per slot (view mode's build-path preview) — cleared all at
+  // once rather than having to click each selected item again to toggle it off.
+  const hasSelection = Object.keys(preview).length > 0
+  const clearSelectionButton = mode === 'view' && hasSelection && (
+    <button type="button" onClick={() => setPreview({})} style={{ ...leagueInteropButtonStyle, marginLeft: 'auto' }}>
+      Clear
+    </button>
+  )
+
   const leagueInteropRow = (
     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
       {importButton}
       {exportButton}
+      {clearSelectionButton}
     </div>
   )
 
