@@ -4,7 +4,7 @@ import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
-import { countJoatStacks } from '../../lib/joat'
+import { joatStatNames } from '../../lib/joat'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
@@ -553,14 +553,21 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       return placement ? items.find((i) => i.id === placement.itemId) : undefined
     })
     .filter((item): item is DDragonItem => !!item)
-  const joatStacks = countJoatStacks(selectedItems)
-  const joatBonus = joatStacks >= 10 ? ' — +20 Adaptive Force' : joatStacks >= 5 ? ' — +8 Adaptive Force' : ''
+  const joatNames = joatStatNames(selectedItems)
+  const joatStacks = joatNames.length
+  // Colors the stack count itself at the rune's own breakpoints, so hitting 5 or 10 reads at a
+  // glance instead of needing the Adaptive Force text spelled out to notice.
+  const joatStackColor = joatStacks >= 10 ? 'var(--gold-bright)' : joatStacks >= 5 ? 'var(--accent)' : 'var(--text)'
+  const joatBonus = joatStacks >= 10 ? '+20 Adaptive Force' : joatStacks >= 5 ? '+8 Adaptive Force' : null
   const joatCounter = hasJackOfAllTrades && (
-    <div className="panel" style={{ padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-      <span style={{ color: 'var(--gold-bright)', fontWeight: 600 }}>Jack Of All Trades</span>
-      <span style={{ color: 'var(--text-dim)' }}>
-        {joatStacks} stack{joatStacks === 1 ? '' : 's'} from selected items{joatBonus}
-      </span>
+    <div className="panel" style={{ padding: '8px 12px', marginBottom: 12, fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ color: 'var(--gold-bright)', fontWeight: 600 }}>Jack Of All Trades</span>
+        <span style={{ color: joatStackColor, fontWeight: 700, fontSize: 15 }}>{joatStacks}</span>
+        <span style={{ color: 'var(--text-dim)' }}>stack{joatStacks === 1 ? '' : 's'}</span>
+        {joatBonus && <span style={{ color: joatStackColor, fontWeight: 700 }}>{joatBonus}</span>}
+      </div>
+      {joatNames.length > 0 && <div style={{ color: 'var(--text-dim)', marginTop: 4 }}>{joatNames.join(', ')}</div>}
     </div>
   )
 

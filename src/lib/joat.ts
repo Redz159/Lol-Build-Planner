@@ -61,10 +61,13 @@ function statNamesOf(item: DDragonItem): string[] {
   return STAT_NAMES_BY_ITEM_NAME[item.name] ?? statNamesFromRawStats(item)
 }
 
-export function countJoatStacks(items: DDragonItem[]): number {
+// The distinct stat names a Jack Of All Trades stack count is actually based on, alphabetized
+// for a stable display order — lets the UI show its work instead of just a bare number. The
+// stack count itself is just this list's length.
+export function joatStatNames(items: DDragonItem[]): string[] {
   const names = new Set<string>()
   for (const item of items) {
     for (const name of statNamesOf(item)) names.add(name)
   }
-  return names.size
+  return [...names].sort()
 }
