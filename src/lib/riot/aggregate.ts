@@ -1,4 +1,5 @@
 import type { ExampleBuild, Loadout, Role } from '../../types/build'
+import type { DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import type { BuildItems, ItemExclusionPair, ItemPlacement, ItemSlot } from '../../types/items'
 import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../../types/items'
 import { isBoots, isStarterItem } from '../itemAttributes'
