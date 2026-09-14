@@ -403,6 +403,7 @@ function ExampleBuildWizard({
   const [label, setLabel] = useState(initialLabel)
   const [renamingLabel, setRenamingLabel] = useState(false)
   const [labelDraft, setLabelDraft] = useState(initialLabel)
+  const [searchOpen, setSearchOpen] = useState(false)
 
   // Ignore every key for one frame after mount — guards against a stray Enter/repeat from
   // whatever interaction just opened the wizard (e.g. holding Enter a beat too long) landing on
@@ -530,30 +531,66 @@ function ExampleBuildWizard({
 
         <div style={{ flex: 1, overflowY: 'auto', marginBottom: 16 }}>
           <div style={{ ...slotHeaderStyle, fontSize: 13, marginBottom: 14 }}>{currentSlot.label}</div>
-          {candidates.length === 0 ? (
-            <div style={{ color: 'var(--text-dim)', fontSize: 14 }}>
-              No items in {currentSlot.label}'s pool yet — add some there first, or skip this slot.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              {candidates.map((p) => {
-                const item = items.find((i) => i.id === p.itemId)
-                if (!item) return null
-                const selected = currentSelected.some((s) => s.itemId === p.itemId)
-                return (
-                  <ItemIcon
-                    key={p.itemId}
-                    item={item}
-                    size={56}
-                    selected={selected}
-                    note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, currentSlot.id, item.id)}
-                    onClick={() => handleItemClick(item.id)}
-                  />
-                )
-              })}
-            </div>
-          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            {candidates.map((p) => {
+              const item = items.find((i) => i.id === p.itemId)
+              if (!item) return null
+              const selected = currentSelected.some((s) => s.itemId === p.itemId)
+              return (
+                <ItemIcon
+                  key={p.itemId}
+                  item={item}
+                  size={56}
+                  selected={selected}
+                  note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, currentSlot.id, item.id)}
+                  onClick={() => handleItemClick(item.id)}
+                />
+              )
+            })}
+            {currentSelected.length < MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT && (
+              <button
+                type="button"
+                title={`Search for any item to add to ${currentSlot.label}`}
+                onClick={() => setSearchOpen(true)}
+                style={{
+                  // Matches an ItemIcon's actual footprint at size=56: the 56px image plus its
+                  // own 3px padding and 1px border on each side.
+                  width: 64,
+                  height: 64,
+                  borderRadius: 8,
+                  border: '2px dotted var(--border-strong)',
+                  background: 'transparent',
+                  color: 'var(--text-dim)',
+                  fontSize: 24,
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </button>
+            )}
+            {candidates.length === 0 && (
+              <div style={{ color: 'var(--text-dim)', fontSize: 14 }}>
+                No items in {currentSlot.label}'s pool yet — search for any item, or skip this slot.
+              </div>
+            )}
+          </div>
         </div>
+        {searchOpen && (
+          <WizardItemSearchPopup
+            slotLabel={currentSlot.label}
+            items={items}
+            excludeItemIds={new Set(currentSelected.map((p) => p.itemId))}
+            itemNotes={itemNotes}
+            itemSlotNotes={itemSlotNotes}
+            itemNoteGlobal={itemNoteGlobal}
+            slotId={currentSlot.id}
+            onAdd={(itemId) => {
+              handleItemClick(itemId)
+              setSearchOpen(false)
+            }}
+            onClose={() => setSearchOpen(false)}
+          />
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
@@ -571,6 +608,76 @@ function ExampleBuildWizard({
           >
             {isLastStep ? 'Finish' : 'Next →'}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// The wizard's escape hatch out of "only what's already in the pool": lets a step reach for any
+// item in the full database, for a situational pick that was never worth adding to the pool
+// itself. Layered above the wizard (which is itself a fixed overlay), so its own z-index has to
+// clear it.
+function WizardItemSearchPopup({
+  slotLabel,
+  slotId,
+  items,
+  excludeItemIds,
+  itemNotes,
+  itemSlotNotes,
+  itemNoteGlobal,
+  onAdd,
+  onClose,
+}: {
+  slotLabel: string
+  slotId: string
+  items: DDragonItem[]
+  excludeItemIds: Set<string>
+  itemNotes: ItemNotes
+  itemSlotNotes: ItemSlotNotes
+  itemNoteGlobal: ItemNoteGlobalFlags
+  onAdd: (itemId: string) => void
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const query = search.trim().toLowerCase()
+  const results = items.filter((item) => !excludeItemIds.has(item.id) && item.name.toLowerCase().includes(query))
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(5, 7, 11, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}
+    >
+      <div className="panel" onClick={(e) => e.stopPropagation()} style={{ padding: 20, width: 560, maxWidth: '92vw' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Add any item to {slotLabel}</div>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', padding: '4px 9px' }}>
+            ✕
+          </button>
+        </div>
+        <input
+          type="text"
+          autoFocus
+          placeholder="Search any item..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: '100%', marginBottom: 12 }}
+        />
+        {/* Fixed height (not just a max) so the popup doesn't resize as the results — the whole
+            pool, scrollable, when the search box is empty — narrow while typing. */}
+        <div style={{ height: 360, overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignContent: 'flex-start' }}>
+            {results.map((item) => (
+              <ItemIcon
+                key={item.id}
+                item={item}
+                size={48}
+                note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
+                onClick={() => onAdd(item.id)}
+              />
+            ))}
+            {results.length === 0 && <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>No items match "{search}".</div>}
+          </div>
         </div>
       </div>
     </div>
