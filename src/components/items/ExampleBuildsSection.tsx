@@ -204,7 +204,7 @@ export function ExampleBuildsSection({
                           </button>
                           <ItemIcon
                             item={item}
-                            size={32}
+                            size={40}
                             note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
                           />
                           <button
@@ -232,13 +232,28 @@ export function ExampleBuildsSection({
                       )
                     })}
                     {placements.length < MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT && (
-                      <button
-                        type="button"
-                        onClick={() => setPicker({ buildId: build.id, slotId: slot.id })}
-                        style={{ fontSize: 11, padding: '3px 8px' }}
-                      >
-                        + Add
-                      </button>
+                      // The ▲/▼/× buttons flanking each item icon above aren't symmetric (one
+                      // to the left, two to the right), so the icon itself sits left of the
+                      // row's true center — matching that with invisible same-size spacers
+                      // keeps "+ Add" centered under the icons instead of the whole row.
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <button type="button" aria-hidden="true" tabIndex={-1} style={{ ...iconBtnStyle, padding: '0 4px', visibility: 'hidden' }}>
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPicker({ buildId: build.id, slotId: slot.id })}
+                          style={{ fontSize: 11, padding: '3px 8px' }}
+                        >
+                          + Add
+                        </button>
+                        <button type="button" aria-hidden="true" tabIndex={-1} style={{ ...iconBtnStyle, padding: '0 4px', visibility: 'hidden' }}>
+                          ▼
+                        </button>
+                        <button type="button" aria-hidden="true" tabIndex={-1} style={{ ...iconBtnStyle, visibility: 'hidden' }}>
+                          ×
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
