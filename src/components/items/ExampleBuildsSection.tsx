@@ -44,9 +44,9 @@ interface Props {
 }
 
 // Either "creating a brand-new build" (no id yet) or "re-opened the wizard on an existing one"
-// (the pen icon) — the wizard itself doesn't care which, it just needs a starting label/items and
-// somewhere to send the result.
-type WizardTarget = { buildId: string | null; label: string; items: BuildItems }
+// (the pen icon, or clicking one of its items) — the wizard itself doesn't care which, it just
+// needs a starting label/items/step and somewhere to send the result.
+type WizardTarget = { buildId: string | null; label: string; items: BuildItems; initialStepIndex?: number }
 
 const iconBtnStyle = { padding: '2px 6px', fontSize: 11 }
 const slotHeaderStyle = { color: 'var(--gold)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: 0.5 }
@@ -182,7 +182,7 @@ export function ExampleBuildsSection({
             </button>
           </div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            {slots.map((slot) => {
+            {slots.map((slot, slotIndex) => {
               const placements = build.items[slot.id] ?? []
               return (
                 <div key={slot.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 60 }}>
@@ -205,7 +205,11 @@ export function ExampleBuildsSection({
                           <ItemIcon
                             item={item}
                             size={40}
+                            title={`${item.name} — open in the wizard`}
                             note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                            onClick={() =>
+                              setWizardTarget({ buildId: build.id, label: build.label, items: build.items, initialStepIndex: slotIndex })
+                            }
                           />
                           <button
                             type="button"
@@ -289,6 +293,7 @@ export function ExampleBuildsSection({
           key={wizardTarget.buildId ?? 'new'}
           initialLabel={wizardTarget.label}
           initialItems={wizardTarget.items}
+          initialStepIndex={wizardTarget.initialStepIndex ?? 0}
           slots={slots}
           poolItems={poolItems}
           items={items}
@@ -391,6 +396,7 @@ function ExampleBuildItemPicker({
 function ExampleBuildWizard({
   initialLabel,
   initialItems,
+  initialStepIndex = 0,
   slots,
   poolItems,
   items,
@@ -402,6 +408,9 @@ function ExampleBuildWizard({
 }: {
   initialLabel: string
   initialItems: BuildItems
+  // Lets opening the wizard (e.g. clicking an item in the overview) jump straight to the slot
+  // that item belongs to, instead of always starting over at the first slot.
+  initialStepIndex?: number
   slots: ItemSlot[]
   poolItems: BuildItems
   items: DDragonItem[]
@@ -411,7 +420,7 @@ function ExampleBuildWizard({
   onComplete: (label: string, items: BuildItems) => void
   onCancel: () => void
 }) {
-  const [stepIndex, setStepIndex] = useState(0)
+  const [stepIndex, setStepIndex] = useState(initialStepIndex)
   const [selections, setSelections] = useState<BuildItems>(() =>
     Object.fromEntries(slots.map((s) => [s.id, (initialItems[s.id] ?? []).map((p) => ({ ...p }))])),
   )
