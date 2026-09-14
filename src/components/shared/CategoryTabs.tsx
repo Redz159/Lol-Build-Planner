@@ -24,9 +24,11 @@ interface Props {
   onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
 }
 
-function tabStyle(active: boolean, hovered = false): CSSProperties {
+const QUICK_ADD_BUTTON_WIDTH = 18
+
+function tabStyle(active: boolean, hovered = false, reserveQuickAdd = false): CSSProperties {
   return {
-    padding: '4px 10px',
+    padding: reserveQuickAdd ? `4px ${QUICK_ADD_BUTTON_WIDTH + 12}px 4px 10px` : '4px 10px',
     borderRadius: 8,
     fontSize: 12,
     fontWeight: 600,
@@ -122,7 +124,11 @@ export function CategoryTabs({
                   onMouseEnter={() => setHoveredId(category.id)}
                   onMouseLeave={() => setHoveredId((prev) => (prev === category.id ? null : prev))}
                 >
-                  <button type="button" onClick={() => onSelect(category.id)} style={tabStyle(active, hoveredId === category.id)}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(category.id)}
+                    style={tabStyle(active, hoveredId === category.id, editable && hoveredId === category.id)}
+                  >
                     {category.label}
                   </button>
                   {editable && hoveredId === category.id && (
@@ -138,8 +144,9 @@ export function CategoryTabs({
                         right: 1,
                         top: 1,
                         bottom: 1,
-                        padding: '0 6px',
-                        fontSize: 11,
+                        width: QUICK_ADD_BUTTON_WIDTH,
+                        padding: 0,
+                        fontSize: 12,
                         fontWeight: 700,
                         borderRadius: 6,
                         border: 'none',
@@ -147,7 +154,7 @@ export function CategoryTabs({
                         color: 'var(--bg-panel)',
                       }}
                     >
-                      + add
+                      +
                     </button>
                   )}
                 </div>
