@@ -1,8 +1,8 @@
-import type { Loadout, Role } from '../../types/build'
-import type { DDragonItem, DDragonRuneTree } from '../../types/ddragon'
-import type { ItemExclusionPair, ItemPlacement } from '../../types/items'
+import type { ExampleBuild, Loadout, Role } from '../../types/build'
+import type { BuildItems, ItemExclusionPair, ItemPlacement, ItemSlot } from '../../types/items'
 import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../../types/items'
 import { isBoots, isStarterItem } from '../itemAttributes'
+import { MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT } from '../exampleBuilds'
 import { newId } from '../id'
 import type { RiotMatch, RiotParticipant, RiotTimeline } from './types'
 
@@ -90,6 +90,95 @@ interface RoleGameData {
   coreItemsInOrder?: number[]
   starterItems?: number[]
   bootsItem?: number
+}
+
+// Cap on how many distinct concrete builds get surfaced as example builds — sampled games
+// naturally cluster into a handful of build orders, and a wall of near-duplicates isn't more
+// useful than the top few most common ones.
+const MAX_EXAMPLE_BUILDS_FROM_IMPORT = 3
+
+// How many of the earliest core-item slots identify "the same build" for clustering — games
+// that match on these count as the same build even if they diverge everywhere else (a different
+// starter, different boots, or a different 2nd/3rd item that converges back later), matching the
+// way build guides usually group by their first big item and list everything past it as
+// alternatives rather than as separate builds outright. Just the first core item: real games for
+// the same champion/role routinely vary their 2nd/3rd item pick before converging again on the
+// same later items, and splitting those into separate example builds buried what was actually
+// one build with a couple of interchangeable early picks.
+const CLUSTER_KEY_CORE_SLOTS = 1
+
+function rankByFrequency(ids: number[]): number[] {
+  const counts = new Map<number, number>()
+  for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+}
+
+// Aggregates one cluster of games into a single example build, the same "rank every distinct
+// pick by how often it showed up" treatment buildItems below applies loadout-wide — just scoped
+// to this cluster's games instead of every sampled game, and capped to an example build's own
+// per-slot alternative limit. A slot every game in the cluster agrees on comes out with one
+// placement; a slot they diverge on (starter items, a situational late item, ...) comes out with
+// each variant seen as its own alternative.
+function exampleBuildItemsFromCluster(games: RoleGameData[], role: Role, itemSlots: ItemSlot[]): BuildItems {
+  const items = emptyBuildItems(itemSlots)
+  const capped = (ids: number[]): ItemPlacement[] =>
+    rankByFrequency(ids)
+      .slice(0, MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT)
+      .map((id) => ({ id: newId(), itemId: String(id) }))
+
+  items.starter = capped(games.flatMap((g) => g.starterItems ?? []))
+  items.boots = capped(games.map((g) => g.bootsItem).filter((id): id is number => id !== undefined))
+  CORE_SLOT_IDS.forEach((slotId, position) => {
+    if (slotId === 'item6' && role !== 'adc') return
+    const idsAtPosition = games.map((g) => g.coreItemsInOrder?.[position]).filter((id): id is number => id !== undefined)
+    items[slotId] = capped(idsAtPosition)
+  })
+  return items
+}
+
+// Two games "build into one another" (count as the same build) when the shorter one's core
+// order is an actual prefix of the longer one's, up to CLUSTER_KEY_CORE_SLOTS deep — a game that
+// only got as far as item1 before the sample ran out (or the game just ended) is still the same
+// build as one that went on further from that same item1 foundation, not a separate,
+// less-complete build of its own.
+function coreOrderIsCompatible(a: number[], b: number[]): boolean {
+  const depth = Math.min(a.length, b.length, CLUSTER_KEY_CORE_SLOTS)
+  if (depth === 0) return false
+  for (let i = 0; i < depth; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
+}
+
+// Clusters sampled games by core order (see coreOrderIsCompatible) and turns the most common
+// distinct clusters into example builds — these are what a new player would actually want to
+// see: "here's what to buy, with the alternatives that came up," not the flexible pool's union
+// of every item anyone ever bought. Longest core order first, so a cluster's representative is
+// always the most "complete" build seen — a shorter game that's just an earlier stopping point
+// on the same path merges into it instead of seeding its own separate, less-complete cluster.
+function exampleBuildsFromGames(games: RoleGameData[], role: Role, itemSlots: ItemSlot[]): ExampleBuild[] {
+  const usableGames = [...games.filter((g) => g.coreItemsInOrder && g.coreItemsInOrder.length > 0)].sort(
+    (a, b) => b.coreItemsInOrder!.length - a.coreItemsInOrder!.length,
+  )
+  const clusters: { representative: number[]; games: RoleGameData[] }[] = []
+  for (const game of usableGames) {
+    const core = game.coreItemsInOrder!
+    const cluster = clusters.find((c) => coreOrderIsCompatible(c.representative, core))
+    if (cluster) cluster.games.push(game)
+    else clusters.push({ representative: core, games: [game] })
+  }
+
+  return clusters
+    .sort((a, b) => b.games.length - a.games.length)
+    .slice(0, MAX_EXAMPLE_BUILDS_FROM_IMPORT)
+    .map(({ games: clusterGames }, index) => ({
+      id: newId(),
+      label:
+        index === 0
+          ? `Most common (${clusterGames.length} game${clusterGames.length === 1 ? '' : 's'})`
+          : `Alternative ${index + 1} (${clusterGames.length} game${clusterGames.length === 1 ? '' : 's'})`,
+      items: exampleBuildItemsFromCluster(clusterGames, role, itemSlots),
+    }))
 }
 
 // Builds one role's runes + items from every sampled game played in that role, mirroring the
@@ -203,11 +292,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   // Every distinct item seen is kept (like primaryRuneIds' "viable" set), ordered most- to
   // least-bought rather than first-seen, so the build reads the same way the player's own
   // choices trended.
-  const placementsByFrequency = (ids: number[]): ItemPlacement[] => {
-    const counts = new Map<number, number>()
-    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1)
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => ({ id: newId(), itemId: String(id) }))
-  }
+  const placementsByFrequency = (ids: number[]): ItemPlacement[] => rankByFrequency(ids).map((id) => ({ id: newId(), itemId: String(id) }))
 
   const starterIds = games.flatMap((g) => g.starterItems ?? [])
   buildItems.starter = placementsByFrequency(starterIds)
@@ -259,7 +344,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
     itemSlots,
     items: buildItems,
     categories: [],
-    exampleBuilds: [],
+    exampleBuilds: exampleBuildsFromGames(games, role, itemSlots),
     itemExclusions,
     itemRequirements: [],
     itemNotes: {},
