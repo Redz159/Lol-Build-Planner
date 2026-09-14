@@ -2,6 +2,16 @@ import { newId } from './id'
 import { reorder } from './reorder'
 import type { RunePage, RuneVariant, ShardSelection } from '../types/runes'
 
+// Inspiration tree, row 4 (Cosmic Insight / Approach Velocity / Jack Of All Trades) — not a
+// keystone, so it can show up either as a primary pick or as a secondary-tree pick.
+export const JACK_OF_ALL_TRADES_RUNE_ID = 8316
+
+export function pagesIncludeRune(pages: RunePage[], runeId: number): boolean {
+  return pages.some(
+    (page) => page.primaryRuneIds.includes(runeId) || page.variants.some((v) => v.secondaryRuneIds.includes(runeId)),
+  )
+}
+
 export function createVariant(): RuneVariant {
   return {
     id: newId(),

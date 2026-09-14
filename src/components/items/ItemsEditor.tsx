@@ -4,9 +4,11 @@ import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
+import { countJoatStacks } from '../../lib/joat'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
-import { mergedCategoryExampleBuilds, mergedCategoryItems } from '../../lib/categories'
+import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
+import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
 import { addSlotToExampleBuilds, removeSlotFromExampleBuilds } from '../../lib/exampleBuilds'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
@@ -91,6 +93,15 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
 
   // Same scoping as currentItems/setCurrentItems above, for the example-builds section below the
   // main item pool.
+  // Same scoping as currentItems above, just for rune pages — needed to tell whether Jack Of
+  // All Trades is among the runes selected for whatever's currently on screen.
+  const currentRunePages = activeCategory
+    ? activeCategory.runePages
+    : isAllCategoryView
+      ? mergedCategoryRunePages(loadout.categories)
+      : loadout.runePages
+  const hasJackOfAllTrades = pagesIncludeRune(currentRunePages, JACK_OF_ALL_TRADES_RUNE_ID)
+
   const currentExampleBuilds: ExampleBuild[] = activeCategory
     ? activeCategory.exampleBuilds
     : isAllCategoryView
@@ -522,10 +533,32 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     </div>
   )
 
+  // Only meaningful in view mode: `preview` (the gold-ringed "selected" item per slot) is how a
+  // concrete build is picked out of the candidate pool, and that's what Jack Of All Trades would
+  // actually be scaling off in-game.
+  const selectedItems = visibleSlots
+    .map((slot) => {
+      const placementId = preview[slot.id]
+      const placement = placementId ? currentItems[slot.id]?.find((p) => p.id === placementId) : undefined
+      return placement ? items.find((i) => i.id === placement.itemId) : undefined
+    })
+    .filter((item): item is DDragonItem => !!item)
+  const joatStacks = countJoatStacks(selectedItems)
+  const joatBonus = joatStacks >= 10 ? ' — +20 Adaptive Force' : joatStacks >= 5 ? ' — +8 Adaptive Force' : ''
+  const joatCounter = hasJackOfAllTrades && (
+    <div className="panel" style={{ padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+      <span style={{ color: 'var(--gold-bright)', fontWeight: 600 }}>Jack Of All Trades</span>
+      <span style={{ color: 'var(--text-dim)' }}>
+        {joatStacks} stack{joatStacks === 1 ? '' : 's'} from selected items{joatBonus}
+      </span>
+    </div>
+  )
+
   if (mode === 'view') {
     return (
       <div>
         {leagueInteropRow}
+        {joatCounter}
         <BuildSlotsPanel
           items={items}
           buildItems={currentItems}

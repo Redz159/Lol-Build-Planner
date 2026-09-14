@@ -14,6 +14,10 @@ export interface DDragonItem {
   tags: string[]
   gold: { total: number }
   into: string[]
+  // Data Dragon's own numeric stat mods (FlatHPPoolMod, PercentMovementSpeedMod, ...) — a much
+  // smaller, incomplete set of stats than the tooltip text covers, but it's a factual fallback
+  // for the handful of items (e.g. World Atlas) whose `description` is blank in Data Dragon.
+  stats: Record<string, number>
 }
 
 export interface DDragonRune {

@@ -63,6 +63,7 @@ export async function getItems(): Promise<DDragonItem[]> {
       tags: item.tags,
       gold: { total: item.gold.total },
       into: item.into ?? [],
+      stats: item.stats ?? {},
     }))
     .sort((a, b) => a.gold.total - b.gold.total)
 }
