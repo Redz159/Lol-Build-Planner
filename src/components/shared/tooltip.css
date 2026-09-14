@@ -72,6 +72,13 @@
   display: block;
 }
 
+/* Data Dragon always follows <stats> with a literal "<br><br>" — since <stats> is already
+   block-level, that second <br> is a redundant extra line break stacked on top of the block's
+   own break, doubling the gap before whatever text follows. Drop just the first of the pair. */
+.tooltip-desc stats + br {
+  display: none;
+}
+
 .tooltip-desc attention {
   color: var(--gold-bright);
   font-weight: 600;
