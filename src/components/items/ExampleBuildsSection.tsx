@@ -107,7 +107,7 @@ export function ExampleBuildsSection({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                 <div style={{ fontWeight: 600, color: 'var(--gold-bright)' }}>{build.label}</div>
                 {hasSelection && (
-                  <button type="button" onClick={() => clearPreview(build.id)} style={{ marginLeft: 'auto', padding: '2px 8px', fontSize: 11 }}>
+                  <button type="button" onClick={() => clearPreview(build.id)} style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: 12 }}>
                     Clear
                   </button>
                 )}
@@ -127,7 +127,7 @@ export function ExampleBuildsSection({
                             <ItemIcon
                               key={p.id}
                               item={item}
-                              size={36}
+                              size={44}
                               selected={preview[slot.id] === p.id}
                               note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
                               onClick={() => togglePreview(build.id, slot.id, p.id)}
