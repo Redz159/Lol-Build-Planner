@@ -234,20 +234,10 @@ export function ExampleBuildsSection({
                     {placements.length < MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT && (
                       <button
                         type="button"
-                        title={`Add item to ${slot.label}`}
                         onClick={() => setPicker({ buildId: build.id, slotId: slot.id })}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
-                          border: '2px dotted var(--border-strong)',
-                          background: 'transparent',
-                          color: 'var(--text-dim)',
-                          fontSize: 16,
-                          lineHeight: 1,
-                        }}
+                        style={{ fontSize: 11, padding: '3px 8px' }}
                       >
-                        +
+                        + Add
                       </button>
                     )}
                   </div>
@@ -305,11 +295,10 @@ export function ExampleBuildsSection({
   )
 }
 
-// Defaults to this slot's own flexible-pool candidates (no exclusion/requirement filtering here
-// at all — that's a viewing-mode concept, see exampleBuildPreviewExcludedPlacementIds above;
-// picking concrete items for an example build is never gated on it), but the search bar isn't
-// limited to the pool — an example build is free to reach for any item at all, e.g. a situational
-// pick that was never worth adding to the pool itself.
+// A single slot's candidate list, drawn only from what's already in the flexible pool for that
+// slot — no exclusion/requirement filtering here at all (that's a viewing-mode concept, see
+// exampleBuildPreviewExcludedPlacementIds above; picking concrete items for an example build is
+// never gated on it).
 function ExampleBuildItemPicker({
   build,
   slot,
@@ -331,15 +320,8 @@ function ExampleBuildItemPicker({
   onAdd: (itemId: string) => void
   onClose: () => void
 }) {
-  const [search, setSearch] = useState('')
   const placedHere = new Set((build.items[slot.id] ?? []).map((p) => p.itemId))
-  const query = search.trim().toLowerCase()
-  const results = query
-    ? items.filter((item) => !placedHere.has(item.id) && item.name.toLowerCase().includes(query))
-    : (poolItems[slot.id] ?? [])
-        .filter((p) => !placedHere.has(p.itemId))
-        .map((p) => items.find((i) => i.id === p.itemId))
-        .filter((item): item is DDragonItem => !!item)
+  const candidates = (poolItems[slot.id] ?? []).filter((p) => !placedHere.has(p.itemId))
 
   return (
     <div
@@ -359,32 +341,23 @@ function ExampleBuildItemPicker({
             ✕
           </button>
         </div>
-        <input
-          type="text"
-          autoFocus
-          placeholder="Search any item..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ width: '100%', marginBottom: 12 }}
-        />
-        {!query && (
-          <div style={{ color: 'var(--text-dim)', fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            From {slot.label}'s pool
-          </div>
-        )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {results.map((item) => (
-            <ItemIcon
-              key={item.id}
-              item={item}
-              size={48}
-              note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
-              onClick={() => onAdd(item.id)}
-            />
-          ))}
-          {results.length === 0 && (
+          {candidates.map((p) => {
+            const item = items.find((i) => i.id === p.itemId)
+            if (!item) return null
+            return (
+              <ItemIcon
+                key={p.itemId}
+                item={item}
+                size={48}
+                note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                onClick={() => onAdd(item.id)}
+              />
+            )
+          })}
+          {candidates.length === 0 && (
             <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-              {query ? `No items match "${search}".` : `No items in ${slot.label}'s pool yet — search above to add any item.`}
+              No items in {slot.label}'s pool yet — add some there first.
             </div>
           )}
         </div>
