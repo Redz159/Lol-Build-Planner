@@ -62,13 +62,33 @@ export function duplicateCategory(categories: Category[], slots: ItemSlot[], id:
 // Copies a category into another loadout's category list, re-keying its items onto that
 // loadout's own item slots. Keeps the source's label as-is (no "Copy" suffix) since it isn't
 // sitting next to its source anymore. Returns the clone's id so the caller can jump to it.
+//
+// If the target loadout has no categories yet, it's still showing its own plain runes/items —
+// switching it into category mode by just appending the copy would silently hide that plain
+// data behind the newly-created category tab (nothing reads the plain fields once any category
+// exists). So a "Default" category seeded from that plain data goes in first, the same way
+// addCategory seeds a loadout's first-ever category — the copy lands as a second tab instead of
+// replacing what was already there.
 export function copyCategoryToLoadout(
   targetCategories: Category[],
   targetSlots: ItemSlot[],
   source: Category,
+  targetDefaults?: { runePages: RunePage[]; items: BuildItems; exampleBuilds: ExampleBuild[] },
 ): { categories: Category[]; newId: string } {
   const clone = cloneCategory(source, targetSlots, source.label)
-  return { categories: [...targetCategories, clone], newId: clone.id }
+  const base: Category[] =
+    targetCategories.length === 0 && targetDefaults
+      ? [
+          {
+            id: newId(),
+            label: 'Default',
+            runePages: cloneRunePages(targetDefaults.runePages),
+            items: cloneItems(targetDefaults.items, targetSlots),
+            exampleBuilds: cloneExampleBuilds(targetDefaults.exampleBuilds, targetSlots),
+          },
+        ]
+      : targetCategories
+  return { categories: [...base, clone], newId: clone.id }
 }
 
 // The "All" tab's read-only view: every category's rune pages, concatenated in category order.

@@ -140,7 +140,11 @@ export function BuildDetailPage() {
     const source = activeLoadout.categories.find((c) => c.id === categoryCopySourceId)
     const target = build.loadouts.find((l) => l.id === targetLoadoutId)
     if (!source || !target) return
-    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source)
+    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source, {
+      runePages: target.runePages,
+      items: target.items,
+      exampleBuilds: target.exampleBuilds,
+    })
     save({ loadouts: build.loadouts.map((l) => (l.id === targetLoadoutId ? { ...l, categories } : l)) })
   }
 
