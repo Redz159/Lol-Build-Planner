@@ -87,15 +87,31 @@ export function ExampleBuildsSection({
         return { ...prev, [buildId]: next }
       })
     }
+    const clearPreview = (buildId: string) => {
+      setPreviewByBuild((prev) => {
+        if (!prev[buildId]) return prev
+        const next = { ...prev }
+        delete next[buildId]
+        return next
+      })
+    }
     return (
       <div style={{ marginTop: 24 }}>
         <div style={{ ...slotHeaderStyle, fontSize: 13, marginBottom: 10 }}>Example Builds</div>
         {exampleBuilds.map((build) => {
           const preview = previewByBuild[build.id] ?? {}
+          const hasSelection = Object.keys(preview).length > 0
           const excludedPlacementIds = exampleBuildPreviewExcludedPlacementIds(build, preview, itemExclusions, builtinExclusions, itemRequirements)
           return (
             <div key={build.id} className="panel" style={{ padding: 14, marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, color: 'var(--gold-bright)', marginBottom: 10 }}>{build.label}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, color: 'var(--gold-bright)' }}>{build.label}</div>
+                {hasSelection && (
+                  <button type="button" onClick={() => clearPreview(build.id)} style={{ marginLeft: 'auto', padding: '2px 8px', fontSize: 11 }}>
+                    Clear
+                  </button>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
                 {slots.map((slot) => {
                   const placements = (build.items[slot.id] ?? []).filter((p) => !excludedPlacementIds.has(p.id))
