@@ -23,6 +23,7 @@ import {
   removeExampleBuildItem,
 } from '../../lib/exampleBuilds'
 import { ItemIcon } from './ItemIcon'
+import { useConfirm } from '../shared/useConfirm'
 
 interface Props {
   mode: 'view' | 'edit'
@@ -72,6 +73,7 @@ export function ExampleBuildsSection({
   itemSlotNotes,
   itemNoteGlobal,
 }: Props) {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null)
   const [picker, setPicker] = useState<{ buildId: string; slotId: string } | null>(null)
   // Per-build "what if I go this way" preview, view mode only — keyed by build id, then slot id
@@ -175,7 +177,11 @@ export function ExampleBuildsSection({
             <button
               type="button"
               title="Delete"
-              onClick={() => onChange(deleteExampleBuild(exampleBuilds, build.id))}
+              onClick={async () => {
+                if (await confirm(`Delete example build "${build.label}"? This can't be undone.`)) {
+                  onChange(deleteExampleBuild(exampleBuilds, build.id))
+                }
+              }}
               style={{ ...iconBtnStyle, color: 'var(--danger)' }}
             >
               ×
@@ -311,6 +317,7 @@ export function ExampleBuildsSection({
           onCancel={() => setWizardTarget(null)}
         />
       )}
+      {confirmDialog}
     </div>
   )
 }

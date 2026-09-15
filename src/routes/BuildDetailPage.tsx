@@ -33,6 +33,7 @@ import {
 import { cloneRunePages } from '../lib/runeRules'
 import { RoleIcon } from '../components/shared/RoleIcon'
 import { CopyToPicker } from '../components/shared/CopyToPicker'
+import { useConfirm } from '../components/shared/useConfirm'
 import type { RunePage } from '../types/runes'
 import type { Build, Loadout, Role } from '../types/build'
 
@@ -42,6 +43,7 @@ export function BuildDetailPage() {
   const { champions, items } = useGameData()
   const navigate = useNavigate()
   const location = useLocation()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const build = builds.find((b) => b.id === buildId)
   const champion = champions.find((c) => c.id === build?.champion.id)
   const [mode, setMode] = useState<'view' | 'edit'>(
@@ -191,8 +193,8 @@ export function BuildDetailPage() {
     setActiveLoadoutId(newLoadoutId)
   }
 
-  const deleteVariant = () => {
-    save(removeLoadout(build, activeLoadout.id))
+  const deleteVariant = async () => {
+    if (await confirm("Delete this variant? This can't be undone.")) save(removeLoadout(build, activeLoadout.id))
   }
 
   const enterEdit = () => {
@@ -298,9 +300,11 @@ export function BuildDetailPage() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            deleteBuild(build.id)
-            navigate('/')
+          onClick={async () => {
+            if (await confirm(`Delete "${build.title}"? This can't be undone.`)) {
+              deleteBuild(build.id)
+              navigate('/')
+            }
           }}
           style={{ color: 'var(--danger)' }}
         >
@@ -478,6 +482,7 @@ export function BuildDetailPage() {
           onClose={() => setRuneCopySource(null)}
         />
       )}
+      {confirmDialog}
     </div>
   )
 }

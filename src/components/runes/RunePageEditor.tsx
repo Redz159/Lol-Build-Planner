@@ -15,6 +15,7 @@ import {
 } from '../../lib/runeRules'
 import { reorder } from '../../lib/reorder'
 import { OFFENSE_SHARDS, FLEX_SHARDS, DEFENSE_SHARDS } from '../../data/statShards'
+import { useConfirm } from '../shared/useConfirm'
 
 interface Props {
   page: RunePage
@@ -37,6 +38,7 @@ const arrowButtonStyle = { padding: '2px 8px', lineHeight: 1 }
 
 export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPreferredKeystone, runeGameCounts }: Props) {
   const { runeTrees } = useGameData()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   if (runeTrees.length === 0) return null
 
   const primaryTree = runeTrees.find((t) => t.id === page.primaryTreeId)
@@ -60,7 +62,13 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
         <button type="button" onClick={onDuplicate}>
           Duplicate page
         </button>
-        <button type="button" onClick={onRemove} style={{ color: 'var(--danger)' }}>
+        <button
+          type="button"
+          onClick={async () => {
+            if (await confirm("Remove this rune page? This can't be undone.")) onRemove()
+          }}
+          style={{ color: 'var(--danger)' }}
+        >
           Remove page
         </button>
       </div>
@@ -167,7 +175,9 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                 <button
                   type="button"
                   disabled={page.variants.length <= 1}
-                  onClick={() => onChange(removeVariant(page, variant.id))}
+                  onClick={async () => {
+                    if (await confirm("Remove this secondary tree option? This can't be undone.")) onChange(removeVariant(page, variant.id))
+                  }}
                   style={{ color: 'var(--danger)' }}
                 >
                   Remove
@@ -177,6 +187,7 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
           )
         })}
       </div>
+      {confirmDialog}
     </div>
   )
 }

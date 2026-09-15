@@ -4,6 +4,7 @@ import type { Category } from '../../types/build'
 import type { ItemNoteGlobalFlags, ItemNotes, ItemSituationalFlags, ItemSlot, ItemSlotNotes } from '../../types/items'
 import { categoryHasPlacement, mergedCategoryItems } from '../../lib/categories'
 import { BuildSlotsPanel } from '../items/BuildSlotsPanel'
+import { useConfirm } from './useConfirm'
 
 interface Props {
   categories: Category[]
@@ -68,6 +69,7 @@ export function CategoryTabs({
   const [addingNew, setAddingNew] = useState(false)
   const [newLabelDraft, setNewLabelDraft] = useState('')
   const [quickAddCategoryId, setQuickAddCategoryId] = useState<string | null>(null)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   // Category CRUD (rename/duplicate/delete/add, and the cross-category quick-add) is edit-mode
   // only, matching how slot rename/delete works — view mode only ever switches between tabs.
@@ -175,7 +177,9 @@ export function CategoryTabs({
                   <button
                     type="button"
                     title="Delete category"
-                    onClick={() => onDelete(category.id)}
+                    onClick={async () => {
+                      if (await confirm(`Delete category "${category.label}"? This can't be undone.`)) onDelete(category.id)
+                    }}
                     style={{ ...iconBtnStyle, color: 'var(--danger)' }}
                   >
                     ×
@@ -220,6 +224,7 @@ export function CategoryTabs({
           onClose={() => setQuickAddCategoryId(null)}
         />
       )}
+      {confirmDialog}
     </div>
   )
 }

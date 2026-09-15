@@ -10,6 +10,7 @@ import {
   type ItemSlotNotes,
 } from '../../types/items'
 import { ItemIcon, type ItemRelationOutline } from './ItemIcon'
+import { useConfirm } from '../shared/useConfirm'
 import './items.css'
 
 interface Props {
@@ -76,6 +77,7 @@ export function BuildSlotsPanel({
   onToggleSelection,
   itemGameCounts,
 }: Props) {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
   const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
@@ -211,7 +213,11 @@ export function BuildSlotsPanel({
                     type="button"
                     aria-label={`Delete ${slot.label}`}
                     title="Delete slot"
-                    onClick={() => onDeleteSlot(slotId)}
+                    onClick={async () => {
+                      if (await confirm(`Delete slot "${slot.label}"? This removes it from every category and example build.`)) {
+                        onDeleteSlot(slotId)
+                      }
+                    }}
                     style={{ padding: '2px 7px', fontSize: 12, color: 'var(--danger)' }}
                   >
                     ×
@@ -361,6 +367,7 @@ export function BuildSlotsPanel({
           + Add slot
         </button>
       )}
+      {confirmDialog}
     </div>
   )
 }
