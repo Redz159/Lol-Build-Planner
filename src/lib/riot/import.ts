@@ -67,7 +67,7 @@ export async function importBuildFromRiot(
         let classified: { starterItems?: number[]; bootsItem?: number; coreItemsInOrder?: number[] } = {}
         try {
           const timeline = await getMatchTimeline(regionHost, matchId)
-          classified = classifyGameItems(timeline, participant, items)
+          classified = classifyGameItems(timeline, participant, items, role)
         } catch {
           // Timeline can 404/fail independently of the match itself — still keep the game for
           // rune aggregation, just without item data.

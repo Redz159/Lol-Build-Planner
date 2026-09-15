@@ -390,7 +390,12 @@ function isCoreImportItem(item: DDragonItem, purchasableItems: DDragonItem[]): b
 // Classifies one game's reconstructed purchase sequence into starter/boots/core buckets using
 // the same item-attribute rules the rest of the app uses (isBoots, isStarterItem, etc.), so an
 // imported build reads consistently with a hand-built one.
-export function classifyGameItems(timeline: RiotTimeline, participant: RiotParticipant, items: DDragonItem[]): Omit<RoleGameData, 'participant'> {
+export function classifyGameItems(
+  timeline: RiotTimeline,
+  participant: RiotParticipant,
+  items: DDragonItem[],
+  role: Role,
+): Omit<RoleGameData, 'participant'> {
   const sequence = reconstructBuildOrder(timeline, participant.participantId)
   const starterItems: number[] = []
   let bootsItem: number | undefined
@@ -405,6 +410,11 @@ export function classifyGameItems(timeline: RiotTimeline, participant: RiotParti
   // recognized. Either way it vanished from classification entirely before.
   let supportItem: number | undefined
 
+  // For support, the starter slot is reserved for the support item itself — potions/wards/
+  // Doran's items bought alongside it are real starter buys too, but mixing them in here
+  // buried the one pick that actually matters for a support's starter choice. They're cheap
+  // enough that isCoreImportItem excludes them too, so they're just dropped rather than
+  // misclassified as core.
   for (const { itemId, timestamp } of sequence) {
     const item = items.find((i) => i.id === String(itemId))
     if (!item) continue
@@ -412,7 +422,7 @@ export function classifyGameItems(timeline: RiotTimeline, participant: RiotParti
       supportItem = itemId
     } else if (isBoots(item)) {
       bootsItem = itemId
-    } else if (timestamp <= STARTER_PHASE_MS && isStarterItem(item) && !item.tags.includes('Trinket')) {
+    } else if (role !== 'support' && timestamp <= STARTER_PHASE_MS && isStarterItem(item) && !item.tags.includes('Trinket')) {
       starterItems.push(itemId)
     } else if (isCoreImportItem(item, items)) {
       coreItemsInOrder.push(itemId)
