@@ -7,6 +7,16 @@ import { NewBuildButton } from '../components/collection/NewBuildButton'
 import { ImportBuildButton } from '../components/collection/ImportBuildButton'
 import { RiotImportButton } from '../components/collection/RiotImportButton'
 import { buildRoles } from '../lib/loadouts'
+import { exportBuild } from '../lib/exportImport'
+
+// Browsers can choke on a burst of simultaneous downloads (some show a "this site is downloading
+// multiple files" block), so builds are downloaded one at a time with a small gap rather than
+// all at once.
+const MASS_DOWNLOAD_GAP_MS = 150
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms))
+}
 
 export function CollectionPage() {
   const { builds } = useCollection()
@@ -15,6 +25,10 @@ export function CollectionPage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('fill')
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
+  // Bulk-export selection — off by default, and cleared whenever it's turned off so re-entering
+  // starts fresh rather than remembering a stale pick.
+  const [exportMode, setExportMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const visibleBuilds = useMemo(() => {
     const filtered = builds.filter((b) => {
@@ -38,6 +52,35 @@ export function CollectionPage() {
       <div style={{ padding: 32, color: 'var(--danger)' }}>Failed to load game data: {error}</div>
     )
 
+  const toggleExportMode = () => {
+    setExportMode((prev) => {
+      if (prev) setSelectedIds(new Set())
+      return !prev
+    })
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const allSelected = visibleBuilds.length > 0 && visibleBuilds.every((b) => selectedIds.has(b.id))
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(visibleBuilds.map((b) => b.id)))
+  }
+
+  const downloadSelected = async () => {
+    for (const build of visibleBuilds) {
+      if (!selectedIds.has(build.id)) continue
+      exportBuild(build)
+      await sleep(MASS_DOWNLOAD_GAP_MS)
+    }
+  }
+
   return (
     <div style={{ padding: '32px 28px', maxWidth: 1160, margin: '0 auto' }}>
       <h1 style={{ fontSize: 32, marginBottom: 4 }}>My collection</h1>
@@ -58,10 +101,29 @@ export function CollectionPage() {
         <NewBuildButton />
         <ImportBuildButton />
         {import.meta.env.DEV && <RiotImportButton />}
+        <button type="button" onClick={toggleExportMode}>
+          {exportMode ? 'Cancel export' : 'Export builds…'}
+        </button>
       </div>
+      {exportMode && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+          <button type="button" onClick={toggleSelectAll} disabled={visibleBuilds.length === 0}>
+            {allSelected ? 'Deselect all' : 'Select all'}
+          </button>
+          <button type="button" disabled={selectedIds.size === 0} onClick={() => void downloadSelected()}>
+            Download ({selectedIds.size})
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 26 }}>
         {visibleBuilds.map((build) => (
-          <BuildCard key={build.id} build={build} />
+          <BuildCard
+            key={build.id}
+            build={build}
+            selectionMode={exportMode}
+            selected={selectedIds.has(build.id)}
+            onToggleSelect={toggleSelect}
+          />
         ))}
       </div>
     </div>
