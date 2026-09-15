@@ -32,6 +32,14 @@ export interface Category {
   exampleBuilds: ExampleBuild[]
 }
 
+// How many of an API import's sampled games picked a given item (per slot) or rune/shard —
+// purely informational, shown as an optional "(x)" overlay on top of the normal view. Only ever
+// set by the Riot import; a hand-built loadout has no games to count, so this stays undefined.
+export interface ImportStats {
+  items: Record<string, Record<string, number>> // slotId -> itemId -> game count
+  runes: Record<number, number> // runeId/shardId -> game count (ids are unique across trees/rows)
+}
+
 export interface Loadout {
   id: string
   roles: Role[]
@@ -46,6 +54,7 @@ export interface Loadout {
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
   itemSituational: ItemSituationalFlags
+  importStats?: ImportStats
 }
 
 export interface Build {

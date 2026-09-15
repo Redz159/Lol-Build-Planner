@@ -20,9 +20,11 @@ interface Props {
   pages: RunePage[]
   selectedKeystoneId: number | null
   onSelectKeystoneId: (keystoneId: number) => void
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  runeGameCounts?: Record<number, number>
 }
 
-export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId }: Props) {
+export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId, runeGameCounts }: Props) {
   const { runeTrees } = useGameData()
   const groups = groupRunePages(pages)
 
@@ -86,6 +88,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId 
                   preferredRuneIds={activeGroup.preferredPrimaryRuneIds}
                   readOnly
                   accentColor={treeAccentColor(primaryTree.key)}
+                  gameCounts={runeGameCounts}
                 />
               </div>
             )
@@ -108,18 +111,21 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId 
                 selectedIds={shards.offense}
                 preferredIds={preferredShards.offense}
                 readOnly
+                gameCounts={runeGameCounts}
               />
               <StatShardRow
                 options={FLEX_SHARDS}
                 selectedIds={shards.flex}
                 preferredIds={preferredShards.flex}
                 readOnly
+                gameCounts={runeGameCounts}
               />
               <StatShardRow
                 options={DEFENSE_SHARDS}
                 selectedIds={shards.defense}
                 preferredIds={preferredShards.defense}
                 readOnly
+                gameCounts={runeGameCounts}
               />
             </div>
           )
@@ -136,6 +142,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId 
                   preferredRuneIds={activeGroup.preferredPrimaryRuneIds}
                   readOnly
                   accentColor={treeAccentColor(primaryTree.key)}
+                  gameCounts={runeGameCounts}
                 />
                 <RuneTreeColumn
                   tree={lead.tree!}
@@ -145,6 +152,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId 
                   readOnly
                   accentColor={leadAccent}
                   extra={shardBlock(lead.shards, lead.preferredShards)}
+                  gameCounts={runeGameCounts}
                 />
               </div>
               {rest.length > 0 && (
@@ -163,6 +171,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId 
                         readOnly
                         accentColor={accentColor}
                         extra={shardsDiffer ? shardBlock(entry.shards, entry.preferredShards) : undefined}
+                        gameCounts={runeGameCounts}
                       />
                     )
                   })}

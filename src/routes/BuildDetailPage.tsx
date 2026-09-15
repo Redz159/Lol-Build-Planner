@@ -62,6 +62,9 @@ export function BuildDetailPage() {
   // Which rune page(s) are up for a cross-category "Copy to..." right now, if any, along with
   // where they came from (so the picker can exclude that exact spot as a destination).
   const [runeCopySource, setRuneCopySource] = useState<{ pages: RunePage[]; loadoutId: string; categoryId: string | null } | null>(null)
+  // "(x) games" overlay for an API-imported loadout — off by default, and only ever offered when
+  // there's actually import data to show.
+  const [showImportCounts, setShowImportCounts] = useState(false)
 
   useEffect(() => {
     if (build && !build.loadouts.some((l) => l.id === activeLoadoutId)) {
@@ -85,6 +88,10 @@ export function BuildDetailPage() {
   const activeCategory =
     effectiveCategoryId && effectiveCategoryId !== 'all' ? activeLoadout.categories.find((c) => c.id === effectiveCategoryId) : undefined
   const isAllCategoryView = effectiveCategoryId === 'all'
+  // importStats only ever describes the loadout's own plain runes/items (an API import never
+  // creates categories) — never a category's, and never the merged "All" view — so the overlay
+  // is only offered/applied while actually viewing that.
+  const importStats = !activeCategory && !isAllCategoryView ? activeLoadout.importStats : undefined
   const currentRunePages: RunePage[] = activeCategory
     ? activeCategory.runePages
     : isAllCategoryView
@@ -403,6 +410,13 @@ export function BuildDetailPage() {
         />
       )}
 
+      {importStats && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)', marginBottom: 10 }}>
+          <input type="checkbox" checked={showImportCounts} onChange={(e) => setShowImportCounts(e.target.checked)} />
+          Show game counts from import
+        </label>
+      )}
+
       <Tabs
         tabs={[
           {
@@ -417,6 +431,7 @@ export function BuildDetailPage() {
                   initialKeystoneId={selectedKeystoneId}
                   onGroupSelect={setSelectedKeystoneId}
                   onCopyOut={(pages) => setRuneCopySource({ pages, loadoutId: activeLoadout.id, categoryId: effectiveCategoryId })}
+                  runeGameCounts={showImportCounts ? importStats?.runes : undefined}
                 />
               ) : (
                 <>
@@ -430,6 +445,7 @@ export function BuildDetailPage() {
                     pages={currentRunePages}
                     selectedKeystoneId={selectedKeystoneId}
                     onSelectKeystoneId={setSelectedKeystoneId}
+                    runeGameCounts={showImportCounts ? importStats?.runes : undefined}
                   />
                 </>
               ),
@@ -446,6 +462,7 @@ export function BuildDetailPage() {
                 championKey={champion?.key}
                 buildTitle={build.title}
                 activeCategoryId={effectiveCategoryId}
+                itemGameCounts={showImportCounts ? importStats?.items : undefined}
               />
             ),
           },

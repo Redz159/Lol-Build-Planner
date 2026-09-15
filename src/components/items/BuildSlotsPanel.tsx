@@ -44,6 +44,8 @@ interface Props {
   // single-selection preview behavior.
   selectedPlacementIds?: Set<string>
   onToggleSelection?: (slotId: string, placementId: string) => void
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  itemGameCounts?: Record<string, Record<string, number>>
 }
 
 export function BuildSlotsPanel({
@@ -72,6 +74,7 @@ export function BuildSlotsPanel({
   onHoverPlacement,
   selectedPlacementIds,
   onToggleSelection,
+  itemGameCounts,
 }: Props) {
   const [dragOverSlotId, setDragOverSlotId] = useState<string | null>(null)
   const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
@@ -322,6 +325,7 @@ export function BuildSlotsPanel({
                           }
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
                           outline={hoverOutlines.get(placement.id)}
+                          badge={itemGameCounts?.[slotId]?.[item.id]}
                           note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
                           draggable={mode === 'edit'}
                           onDragStart={(e) => {

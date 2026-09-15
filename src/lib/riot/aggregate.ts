@@ -2,7 +2,7 @@ import type { ExampleBuild, Loadout, Role } from '../../types/build'
 import type { DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import type { BuildItems, ItemExclusionPair, ItemPlacement, ItemSlot } from '../../types/items'
 import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../../types/items'
-import { isBoots, isStarterItem } from '../itemAttributes'
+import { isBoots, isStarterItem, isSupportItem } from '../itemAttributes'
 import { MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT } from '../exampleBuilds'
 import { newId } from '../id'
 import type { RiotMatch, RiotParticipant, RiotTimeline } from './types'
@@ -38,8 +38,8 @@ function topByFrequency(counts: Map<number, number>): number | undefined {
   return best
 }
 
-function bump(map: Map<number, number>, id: number): void {
-  map.set(id, (map.get(id) ?? 0) + 1)
+function bump(map: Map<number, number>, id: number, by = 1): void {
+  map.set(id, (map.get(id) ?? 0) + by)
 }
 
 // Reconstructs the order items actually remained in a player's inventory, from the match
@@ -108,10 +108,14 @@ const MAX_EXAMPLE_BUILDS_FROM_IMPORT = 3
 // one build with a couple of interchangeable early picks.
 const CLUSTER_KEY_CORE_SLOTS = 1
 
-function rankByFrequency(ids: number[]): number[] {
+function countByFrequency(ids: number[]): Map<number, number> {
   const counts = new Map<number, number>()
   for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1)
-  return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
+  return counts
+}
+
+function rankByFrequency(ids: number[]): number[] {
+  return [...countByFrequency(ids).entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id)
 }
 
 // Aggregates one cluster of games into a single example build, the same "rank every distinct
@@ -195,6 +199,10 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   }
 
   // --- Runes ---
+  // Flat across every keystone group/variant — a rune, shard, or keystone id is unique to its
+  // own row/tree, so counts from different groups simply add rather than needing to be scoped.
+  // Surfaced as Loadout.importStats for the optional "(x) games" overlay.
+  const runeGameCounts = new Map<number, number>()
   const byKeystone = new Map<number, RiotParticipant[]>()
   for (const g of games) {
     const primary = g.participant.perks.styles.find((s) => s.description === 'primaryStyle')
@@ -208,6 +216,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   const runePages = [...byKeystone.entries()]
     .sort((a, b) => b[1].length - a[1].length)
     .map(([keystoneId, participants], groupIndex) => {
+      bump(runeGameCounts, keystoneId, participants.length)
       const primary = participants[0].perks.styles.find((s) => s.description === 'primaryStyle')!
       const primaryTreeId = primary.style
       const primaryRowCounts = new Map<number, Map<number, number>>()
@@ -219,6 +228,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
           const row = perkRow.get(sel.perk)
           if (row === undefined) continue
           primaryRuneIds.add(sel.perk)
+          bump(runeGameCounts, sel.perk)
           const rowCounts = primaryRowCounts.get(row) ?? new Map<number, number>()
           bump(rowCounts, sel.perk)
           primaryRowCounts.set(row, rowCounts)
@@ -249,6 +259,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
                 const row = perkRow.get(sel.perk)
                 if (row === undefined) continue
                 secondaryRuneIds.add(sel.perk)
+                bump(runeGameCounts, sel.perk)
                 const rowCounts = secondaryRowCounts.get(row) ?? new Map<number, number>()
                 bump(rowCounts, sel.perk)
                 secondaryRowCounts.set(row, rowCounts)
@@ -260,6 +271,9 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
             bump(shardCounts.offense, p.perks.statPerks.offense)
             bump(shardCounts.flex, p.perks.statPerks.flex)
             bump(shardCounts.defense, p.perks.statPerks.defense)
+            bump(runeGameCounts, p.perks.statPerks.offense)
+            bump(runeGameCounts, p.perks.statPerks.flex)
+            bump(runeGameCounts, p.perks.statPerks.defense)
           }
           const preferredSecondaryRuneIds = [...secondaryRowCounts.values()].map(topByFrequency).filter((id): id is number => id !== undefined)
           const top = (m: Map<number, number>) => {
@@ -290,16 +304,22 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   // --- Items ---
   const itemSlots = DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
   const buildItems = emptyBuildItems(itemSlots)
+  // Per-slot game counts, surfaced as Loadout.importStats for the optional "(x) games" overlay.
+  const itemGameCounts: Record<string, Record<string, number>> = {}
   // Every distinct item seen is kept (like primaryRuneIds' "viable" set), ordered most- to
   // least-bought rather than first-seen, so the build reads the same way the player's own
   // choices trended.
-  const placementsByFrequency = (ids: number[]): ItemPlacement[] => rankByFrequency(ids).map((id) => ({ id: newId(), itemId: String(id) }))
+  const placementsByFrequency = (ids: number[], slotId: string): ItemPlacement[] => {
+    const counts = countByFrequency(ids)
+    itemGameCounts[slotId] = Object.fromEntries([...counts.entries()].map(([id, count]) => [String(id), count]))
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => ({ id: newId(), itemId: String(id) }))
+  }
 
   const starterIds = games.flatMap((g) => g.starterItems ?? [])
-  buildItems.starter = placementsByFrequency(starterIds)
+  buildItems.starter = placementsByFrequency(starterIds, 'starter')
 
   const bootsIds = games.map((g) => g.bootsItem).filter((id): id is number => id !== undefined)
-  buildItems.boots = placementsByFrequency(bootsIds)
+  buildItems.boots = placementsByFrequency(bootsIds, 'boots')
 
   const perPosition: number[][] = CORE_SLOT_IDS.map(() => [])
   const gameCoreSets: Set<number>[] = []
@@ -315,7 +335,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
   }
   CORE_SLOT_IDS.forEach((slotId, i) => {
     if (slotId === 'item6' && role !== 'adc') return
-    buildItems[slotId] = placementsByFrequency(perPosition[i])
+    buildItems[slotId] = placementsByFrequency(perPosition[i], slotId)
   })
 
   // --- Exclusions: only inferred with a reasonable sample, and only for items that are each
@@ -352,6 +372,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
     itemSlotNotes: {},
     itemNoteGlobal: {},
     itemSituational: {},
+    importStats: { items: itemGameCounts, runes: Object.fromEntries(runeGameCounts) },
   }
 }
 
@@ -369,16 +390,27 @@ function isCoreImportItem(item: DDragonItem, purchasableItems: DDragonItem[]): b
 // Classifies one game's reconstructed purchase sequence into starter/boots/core buckets using
 // the same item-attribute rules the rest of the app uses (isBoots, isStarterItem, etc.), so an
 // imported build reads consistently with a hand-built one.
-export function classifyGameItems(timeline: RiotTimeline, participantId: number, items: DDragonItem[]): Omit<RoleGameData, 'participant'> {
-  const sequence = reconstructBuildOrder(timeline, participantId)
+export function classifyGameItems(timeline: RiotTimeline, participant: RiotParticipant, items: DDragonItem[]): Omit<RoleGameData, 'participant'> {
+  const sequence = reconstructBuildOrder(timeline, participant.participantId)
   const starterItems: number[] = []
   let bootsItem: number | undefined
   const coreItemsInOrder: number[] = []
+  // The support item quest line (World Atlas -> Runic Compass -> Bounty of Worlds -> one of
+  // five final choices) upgrades for free well past the starter window, and every tier keeps
+  // World Atlas's own 400g value in Data Dragon rather than a "real" cost — it's never actually
+  // shop-bought again after the first buy. That fails both the starter-timing check below and
+  // isCoreImportItem's minimum-value check. Worse, the free upgrade steps themselves may never
+  // log a purchase event at all (the item's own tooltip calls it a free "Upgrade"), so the
+  // timeline can miss which final tier was actually reached even once World Atlas itself is
+  // recognized. Either way it vanished from classification entirely before.
+  let supportItem: number | undefined
 
   for (const { itemId, timestamp } of sequence) {
     const item = items.find((i) => i.id === String(itemId))
     if (!item) continue
-    if (isBoots(item)) {
+    if (isSupportItem(item)) {
+      supportItem = itemId
+    } else if (isBoots(item)) {
       bootsItem = itemId
     } else if (timestamp <= STARTER_PHASE_MS && isStarterItem(item) && !item.tags.includes('Trinket')) {
       starterItems.push(itemId)
@@ -386,5 +418,24 @@ export function classifyGameItems(timeline: RiotTimeline, participantId: number,
       coreItemsInOrder.push(itemId)
     }
   }
+
+  // The end-of-game inventory is authoritative for which tier was actually reached, regardless
+  // of whether the free upgrade steps showed up as purchases above.
+  const finalInventory = [
+    participant.item0,
+    participant.item1,
+    participant.item2,
+    participant.item3,
+    participant.item4,
+    participant.item5,
+    participant.item6,
+  ]
+  for (const id of finalInventory) {
+    if (!id) continue
+    const item = items.find((i) => i.id === String(id))
+    if (item && isSupportItem(item)) supportItem = id
+  }
+
+  if (supportItem !== undefined) starterItems.push(supportItem)
   return { starterItems, bootsItem, coreItemsInOrder }
 }

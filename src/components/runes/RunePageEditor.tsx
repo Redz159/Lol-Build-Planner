@@ -22,6 +22,7 @@ interface Props {
   onDuplicate: () => void
   onRemove: () => void
   onSetPreferredKeystone: (preferred: boolean) => void
+  runeGameCounts?: Record<number, number>
 }
 
 const labelStyle = {
@@ -34,7 +35,7 @@ const labelStyle = {
 
 const arrowButtonStyle = { padding: '2px 8px', lineHeight: 1 }
 
-export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPreferredKeystone }: Props) {
+export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPreferredKeystone, runeGameCounts }: Props) {
   const { runeTrees } = useGameData()
   if (runeTrees.length === 0) return null
 
@@ -90,6 +91,7 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                   if (preferred) onSetPreferredKeystone(!(page.keystoneId === id && page.preferredKeystone))
                 }}
                 onSelectRune={(_rowIndex, id, preferred) => onChange(selectPrimaryRune(page, id, preferred))}
+                gameCounts={runeGameCounts}
               />
             </div>
           )}
@@ -116,6 +118,7 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                     onSelectRune={(_rowIndex, id, preferred) =>
                       onChange(selectSecondaryRune(page, variant.id, id, preferred))
                     }
+                    gameCounts={runeGameCounts}
                   />
                 </div>
               )}
@@ -125,18 +128,21 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                   selectedIds={variant.shards.offense}
                   preferredIds={variant.preferredShards.offense}
                   onSelect={(id, preferred) => onChange(selectShard(page, variant.id, 'offense', id, preferred))}
+                  gameCounts={runeGameCounts}
                 />
                 <StatShardRow
                   options={FLEX_SHARDS}
                   selectedIds={variant.shards.flex}
                   preferredIds={variant.preferredShards.flex}
                   onSelect={(id, preferred) => onChange(selectShard(page, variant.id, 'flex', id, preferred))}
+                  gameCounts={runeGameCounts}
                 />
                 <StatShardRow
                   options={DEFENSE_SHARDS}
                   selectedIds={variant.shards.defense}
                   preferredIds={variant.preferredShards.defense}
                   onSelect={(id, preferred) => onChange(selectShard(page, variant.id, 'defense', id, preferred))}
+                  gameCounts={runeGameCounts}
                 />
               </div>
               <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>

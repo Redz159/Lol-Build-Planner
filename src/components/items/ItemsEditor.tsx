@@ -30,9 +30,11 @@ interface Props {
   // Resolved one level up (shared with the Runes tab): a category id, 'all' for the merged
   // read-only view, or null when the loadout has no categories at all.
   activeCategoryId: string | null
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  itemGameCounts?: Record<string, Record<string, number>>
 }
 
-export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, activeCategoryId }: Props) {
+export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, activeCategoryId, itemGameCounts }: Props) {
   const { items } = useGameData()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
@@ -600,6 +602,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           excludedPlacementIds={excludedPlacementIds}
           hoverOutlines={hoverOutlines}
           onHoverPlacement={setHoveredPlacementId}
+          itemGameCounts={itemGameCounts}
         />
         <ExampleBuildsSection
           mode="view"
@@ -701,6 +704,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
                 excludedPlacementIds={excludedPlacementIds}
                 hoverOutlines={hoverOutlines}
                 onHoverPlacement={setHoveredPlacementId}
+                itemGameCounts={itemGameCounts}
               />
             </div>
             <div style={{ flex: '2 1 420px', minWidth: 280 }}>

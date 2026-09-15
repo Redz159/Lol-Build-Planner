@@ -1,7 +1,7 @@
 import type { Build, Role } from '../../types/build'
 import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import { newId } from '../id'
-import { getAccountByRiotId, getMatch, getMatchIdsByPuuid, getMatchTimeline, sleep } from './client'
+import { getAccountByRiotId, getMatch, getMatchIdsByPuuid, getMatchTimeline } from './client'
 import { buildLoadoutForRole, classifyGameItems, findParticipant, roleForParticipant } from './aggregate'
 
 export interface ImportProgress {
@@ -11,7 +11,8 @@ export interface ImportProgress {
   target: number
 }
 
-const REQUEST_DELAY_MS = 90
+// Request pacing itself lives in client.ts, shared across every call — no per-request delay
+// needed here.
 const PAGE_SIZE = 100
 // Riot's match list has no champion filter (see client.ts), so every candidate match costs a
 // full match-detail fetch just to check who was played — this bounds worst case for a champion
@@ -37,7 +38,6 @@ export async function importBuildFromRiot(
 ): Promise<Build> {
   onProgress({ stage: 'account', scanned: 0, found: 0, target: sampleSize })
   const account = await getAccountByRiotId(regionHost, gameName, tagLine)
-  await sleep(REQUEST_DELAY_MS)
 
   const championId = Number(champion.key)
   const byRole = new Map<Role, RoleGameEntry[]>()
@@ -47,7 +47,6 @@ export async function importBuildFromRiot(
 
   while (found < sampleSize && scanned < MAX_MATCHES_TO_SCAN) {
     const page = await getMatchIdsByPuuid(regionHost, account.puuid, start, PAGE_SIZE)
-    await sleep(REQUEST_DELAY_MS)
     if (page.length === 0) break
     start += page.length
 
@@ -57,7 +56,6 @@ export async function importBuildFromRiot(
       onProgress({ stage: 'scanning', scanned, found, target: sampleSize })
       try {
         const match = await getMatch(regionHost, matchId)
-        await sleep(REQUEST_DELAY_MS)
         const participant = findParticipant(match, account.puuid)
         if (!participant || participant.championId !== championId) continue
         found++
@@ -69,8 +67,7 @@ export async function importBuildFromRiot(
         let classified: { starterItems?: number[]; bootsItem?: number; coreItemsInOrder?: number[] } = {}
         try {
           const timeline = await getMatchTimeline(regionHost, matchId)
-          await sleep(REQUEST_DELAY_MS)
-          classified = classifyGameItems(timeline, participant.participantId, items)
+          classified = classifyGameItems(timeline, participant, items)
         } catch {
           // Timeline can 404/fail independently of the match itself — still keep the game for
           // rune aggregation, just without item data.

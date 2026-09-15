@@ -9,9 +9,11 @@ interface Props {
   readOnly?: boolean
   accentColor?: string
   onSelect?: (id: number, preferred: boolean) => void
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  gameCounts?: Record<number, number>
 }
 
-export function StatShardRow({ options, selectedIds, preferredIds, readOnly, accentColor, onSelect }: Props) {
+export function StatShardRow({ options, selectedIds, preferredIds, readOnly, accentColor, onSelect, gameCounts }: Props) {
   return (
     <div style={{ display: 'flex', gap: 8 }}>
       {options.map((opt) => {
@@ -48,6 +50,7 @@ export function StatShardRow({ options, selectedIds, preferredIds, readOnly, acc
               aria-label={opt.name}
               onClick={readOnly ? undefined : (e) => onSelect?.(opt.id, e.ctrlKey || e.metaKey)}
               style={{
+                position: 'relative',
                 border,
                 borderRadius: '50%',
                 padding: 3,
@@ -68,6 +71,28 @@ export function StatShardRow({ options, selectedIds, preferredIds, readOnly, acc
                   filter: selected ? 'none' : 'grayscale(1) brightness(1.3)',
                 }}
               />
+              {gameCounts?.[opt.id] !== undefined && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -6,
+                    right: -6,
+                    fontSize: 10,
+                    minWidth: 16,
+                    height: 16,
+                    padding: '0 2px',
+                    background: 'var(--accent)',
+                    color: '#0a0e14',
+                    fontWeight: 700,
+                    borderRadius: '50%',
+                    lineHeight: '16px',
+                    textAlign: 'center',
+                    boxShadow: 'var(--shadow-sm)',
+                  }}
+                >
+                  {gameCounts[opt.id]}
+                </span>
+              )}
             </button>
           </Tooltip>
         )

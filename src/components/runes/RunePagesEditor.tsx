@@ -21,6 +21,8 @@ interface Props {
   // off to the caller for a cross-category/cross-loadout "Copy to..." action. Left out of this
   // component entirely since it has no notion of loadouts or categories.
   onCopyOut?: (pages: RunePage[]) => void
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  runeGameCounts?: Record<number, number>
 }
 
 type Selection = { kind: 'group'; keystoneId: number } | { kind: 'draft'; pageId: string }
@@ -31,7 +33,7 @@ function sameSelection(a: Selection, b: Selection): boolean {
   return false
 }
 
-export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSelect, onCopyOut }: Props) {
+export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSelect, onCopyOut, runeGameCounts }: Props) {
   const { runeTrees } = useGameData()
   const [selected, setSelected] = useState<Selection | null>(
     initialKeystoneId != null ? { kind: 'group', keystoneId: initialKeystoneId } : null,
@@ -185,6 +187,7 @@ export function RunePagesEditor({ pages, onChange, initialKeystoneId, onGroupSel
           }}
           onRemove={() => onChange(pages.filter((p) => p.id !== page.id))}
           onSetPreferredKeystone={(preferred) => onChange(setPreferredKeystone(pages, page.id, preferred))}
+          runeGameCounts={runeGameCounts}
         />
       ))}
     </div>

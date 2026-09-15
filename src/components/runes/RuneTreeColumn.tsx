@@ -16,6 +16,8 @@ interface Props {
   extra?: ReactNode
   onSelectKeystone?: (runeId: number, preferred: boolean) => void
   onSelectRune?: (rowIndex: number, runeId: number, preferred: boolean) => void
+  // "(x) games" overlay from an API import — undefined when there's none, or the toggle is off.
+  gameCounts?: Record<number, number>
 }
 
 export function RuneTreeColumn({
@@ -31,6 +33,7 @@ export function RuneTreeColumn({
   extra,
   onSelectKeystone,
   onSelectRune,
+  gameCounts,
 }: Props) {
   const rows = mode === 'primary' ? tree.slots : tree.slots.slice(1)
   const runeSize = compact ? 24 : 26
@@ -98,6 +101,7 @@ export function RuneTreeColumn({
                                 : onSelectRune?.(rowIndex, rune.id, e.ctrlKey || e.metaKey)
                       }
                       style={{
+                        position: 'relative',
                         border,
                         borderRadius: '50%',
                         padding: 3,
@@ -118,6 +122,28 @@ export function RuneTreeColumn({
                           filter: selected ? 'none' : 'grayscale(1) brightness(1.3)',
                         }}
                       />
+                      {gameCounts?.[rune.id] !== undefined && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: -6,
+                            right: -6,
+                            fontSize: 10,
+                            minWidth: 16,
+                            height: 16,
+                            padding: '0 2px',
+                            background: 'var(--accent)',
+                            color: '#0a0e14',
+                            fontWeight: 700,
+                            borderRadius: '50%',
+                            lineHeight: '16px',
+                            textAlign: 'center',
+                            boxShadow: 'var(--shadow-sm)',
+                          }}
+                        >
+                          {gameCounts[rune.id]}
+                        </span>
+                      )}
                     </button>
                   </Tooltip>
                 )

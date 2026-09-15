@@ -28,6 +28,17 @@ export interface RiotParticipant {
   championId: number
   teamPosition: string
   perks: RiotPerks
+  // End-of-game inventory slots (0 means empty). Used as a fallback for items whose acquisition
+  // never shows up as a real purchase in the timeline (e.g. the support item quest line's free
+  // upgrades) — the final inventory is authoritative regardless of how (or whether) a given item
+  // got there.
+  item0: number
+  item1: number
+  item2: number
+  item3: number
+  item4: number
+  item5: number
+  item6: number
 }
 
 export interface RiotMatch {
