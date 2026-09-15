@@ -620,7 +620,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
         />
         {showExportPopup && (
           <ExportItemSetPopup
-            itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems)}
+            itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems, currentExampleBuilds)}
             onClose={() => setShowExportPopup(false)}
           />
         )}

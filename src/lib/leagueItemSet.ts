@@ -1,3 +1,4 @@
+import type { ExampleBuild } from '../types/build'
 import type { BuildItems, ItemSlot } from '../types/items'
 import { newId } from './id'
 
@@ -20,9 +21,39 @@ export interface LeagueItemSet {
   blocks: LeagueItemSetBlock[]
 }
 
+// "Most common (8 games)" / "Alternative 2 (6 games)" -> "Example build: 8 Games" / "Example
+// build: 6 Games" — the game count is what actually matters once this is its own titled block;
+// a hand-typed label (no game count to find) is just used as-is instead.
+function exampleBuildBlockTitle(label: string): string {
+  const match = label.match(/(\d+)\s*games?/i)
+  return match ? `Example build: ${match[1]} Games` : `Example build: ${label}`
+}
+
+// Each example build becomes its own block/row, holding only its most-used pick per slot — the
+// flexible pool's "every candidate" block already covers alternatives, so this row is meant to
+// read as one concrete, unambiguous build. Boots is the one exception: up to 2 alternatives,
+// since picking the wrong single boots there is a much bigger tempo loss than any other slot.
+function exampleBuildBlocks(exampleBuilds: ExampleBuild[], slots: ItemSlot[]): LeagueItemSetBlock[] {
+  return exampleBuilds
+    .map((build) => ({
+      type: exampleBuildBlockTitle(build.label),
+      items: slots.flatMap((slot) => {
+        const cap = slot.kind === 'boots' ? 2 : 1
+        return (build.items[slot.id] ?? []).slice(0, cap).map((p) => ({ id: p.itemId, count: 1 }))
+      }),
+    }))
+    .filter((block) => block.items.length > 0)
+}
+
 // `championKey` is Data Dragon's numeric champion id (as a string, e.g. "266" for Aatrox) —
 // what the client's associatedChampions field expects, not the champion's slug id.
-export function buildLeagueItemSet(title: string, championKey: string | undefined, slots: ItemSlot[], buildItems: BuildItems): LeagueItemSet {
+export function buildLeagueItemSet(
+  title: string,
+  championKey: string | undefined,
+  slots: ItemSlot[],
+  buildItems: BuildItems,
+  exampleBuilds: ExampleBuild[] = [],
+): LeagueItemSet {
   const championId = championKey ? Number(championKey) : NaN
   const blocks = slots
     .map((slot) => ({
@@ -40,7 +71,7 @@ export function buildLeagueItemSet(title: string, championKey: string | undefine
     sortrank: 0,
     associatedChampions: Number.isFinite(championId) ? [championId] : [],
     associatedMaps: [],
-    blocks,
+    blocks: [...blocks, ...exampleBuildBlocks(exampleBuilds, slots)],
   }
 }
 
