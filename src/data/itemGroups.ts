@@ -34,7 +34,6 @@ export const ITEM_GROUPS: string[][] = [
   ["Archangel's Staff", 'Hexdrinker', 'Immortal Shieldbow', 'Maw of Malmortius', 'Protoplasm Harness', "Seraph's Embrace", "Sterak's Gage"],
   ["Archangel's Staff", 'Manamune', 'Tear of the Goddess', 'Whispering Circlet', "Winter's Approach"],
   ["Dead Man's Plate"],
-  ['Health Potion', 'Refillable Potion'],
   ['Mercurial Scimitar', 'Quicksilver Sash'],
   ['Lifeline', 'Spectral Cutlass'],
   ['Sheen', 'Bloodsong', 'Dusk and Dawn', 'Essence Reaver', 'Iceborn Gauntlet', 'Lich Bane', 'Trinity Force'],
