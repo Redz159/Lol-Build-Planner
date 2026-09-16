@@ -1,5 +1,5 @@
 import { DDRAGON_VERSION } from '../data/ddragonVersion'
-import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../types/ddragon'
+import type { DDragonChampion, DDragonItem, DDragonRuneTree, DDragonSummonerSpell } from '../types/ddragon'
 
 const CDN = 'https://ddragon.leagueoflegends.com'
 
@@ -75,6 +75,16 @@ export async function getRuneTrees(): Promise<DDragonRuneTree[]> {
   )
 }
 
+export async function getSummonerSpells(): Promise<DDragonSummonerSpell[]> {
+  const raw = await cachedFetch<{ data: Record<string, DDragonSummonerSpell> }>(
+    `ddragon:${DDRAGON_VERSION}:summonerSpells`,
+    `${CDN}/cdn/${DDRAGON_VERSION}/data/en_US/summoner.json`,
+  )
+  return Object.values(raw.data)
+    .filter((spell) => spell.modes.includes('CLASSIC'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export function championImageUrl(fullImageName: string): string {
   return `${CDN}/cdn/${DDRAGON_VERSION}/img/champion/${fullImageName}`
 }
@@ -85,6 +95,10 @@ export function itemImageUrl(fullImageName: string): string {
 
 export function runeIconUrl(icon: string): string {
   return `${CDN}/cdn/img/${icon}`
+}
+
+export function summonerSpellImageUrl(fullImageName: string): string {
+  return `${CDN}/cdn/${DDRAGON_VERSION}/img/spell/${fullImageName}`
 }
 
 const WIKI_IMG_CDN = 'https://wiki.leagueoflegends.com/en-us/images/thumb'

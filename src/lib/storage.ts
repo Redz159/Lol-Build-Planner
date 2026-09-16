@@ -66,6 +66,10 @@ function normalizeRunePages(value: unknown): RunePage[] {
   return Array.isArray(value) ? value.map(normalizeRunePage) : []
 }
 
+function normalizeSummonerSpellIds(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []
+}
+
 function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild[] {
   if (!Array.isArray(value)) return []
   const result: ExampleBuild[] = []
@@ -125,6 +129,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       id: newId(),
       roles: [],
       runePages: normalizeRunePages(raw.runePages),
+      summonerSpellIds: normalizeSummonerSpellIds(raw.summonerSpellIds),
       itemSlots,
       items,
       categories,
@@ -143,6 +148,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       id: newId(),
       roles: [],
       runePages: [],
+      summonerSpellIds: [],
       itemSlots,
       items,
       categories,
@@ -169,6 +175,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     itemSlotNotes,
     itemNoteGlobal,
     itemSituational,
+    summonerSpellIds: [],
     runePages: [
       {
         id: newId(),
@@ -204,6 +211,7 @@ export function migrateBuild(raw: any): Build {
           id: l?.id ?? newId(),
           roles: normalizeRoles(l?.roles),
           runePages: normalizeRunePages(l?.runePages),
+          summonerSpellIds: normalizeSummonerSpellIds(l?.summonerSpellIds),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
           categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots),

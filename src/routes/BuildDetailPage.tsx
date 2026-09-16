@@ -6,6 +6,7 @@ import { Tabs } from '../components/shared/Tabs'
 import { CategoryTabs } from '../components/shared/CategoryTabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
+import { SummonerSpellRow } from '../components/runes/SummonerSpellRow'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
@@ -40,7 +41,7 @@ import type { Build, Loadout, Role } from '../types/build'
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
   const { builds, updateBuild, deleteBuild, duplicateBuild } = useCollection()
-  const { champions, items } = useGameData()
+  const { champions, items, summonerSpells } = useGameData()
   const navigate = useNavigate()
   const location = useLocation()
   const { confirm, dialog: confirmDialog } = useConfirm()
@@ -116,6 +117,15 @@ export function BuildDetailPage() {
     } else if (!isAllCategoryView) {
       saveLoadout({ runePages })
     }
+  }
+
+  const toggleSummonerSpell = (id: string) => {
+    const selected = activeLoadout.summonerSpellIds.includes(id)
+    saveLoadout({
+      summonerSpellIds: selected
+        ? activeLoadout.summonerSpellIds.filter((s) => s !== id)
+        : [...activeLoadout.summonerSpellIds, id],
+    })
   }
 
   const addCategoryHandler = (label: string) => {
@@ -426,33 +436,45 @@ export function BuildDetailPage() {
           {
             key: 'runes',
             label: 'Runes',
-            content:
-              mode === 'edit' && !isAllCategoryView ? (
-                <RunePagesEditor
-                  key={`${activeLoadout.id}:${effectiveCategoryId}`}
-                  pages={currentRunePages}
-                  onChange={setCurrentRunePages}
-                  initialKeystoneId={selectedKeystoneId}
-                  onGroupSelect={setSelectedKeystoneId}
-                  onCopyOut={(pages) => setRuneCopySource({ pages, loadoutId: activeLoadout.id, categoryId: effectiveCategoryId })}
-                  runeGameCounts={showImportCounts ? importStats?.runes : undefined}
-                />
-              ) : (
-                <>
-                  {isAllCategoryView && (
-                    <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
-                      "All" is a read-only merge of every category — pick a category to edit its runes.
-                    </div>
-                  )}
-                  <RunePagesViewer
+            content: (
+              <>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
+                  <SummonerSpellRow
+                    options={summonerSpells}
+                    selectedIds={activeLoadout.summonerSpellIds}
+                    readOnly={mode !== 'edit'}
+                    onToggle={toggleSummonerSpell}
+                  />
+                </div>
+                {mode === 'edit' && !isAllCategoryView ? (
+                  <RunePagesEditor
                     key={`${activeLoadout.id}:${effectiveCategoryId}`}
                     pages={currentRunePages}
-                    selectedKeystoneId={selectedKeystoneId}
-                    onSelectKeystoneId={setSelectedKeystoneId}
+                    onChange={setCurrentRunePages}
+                    initialKeystoneId={selectedKeystoneId}
+                    onGroupSelect={setSelectedKeystoneId}
+                    onCopyOut={(pages) => setRuneCopySource({ pages, loadoutId: activeLoadout.id, categoryId: effectiveCategoryId })}
                     runeGameCounts={showImportCounts ? importStats?.runes : undefined}
                   />
-                </>
-              ),
+                ) : (
+                  <>
+                    {isAllCategoryView && (
+                      <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
+                        "All" is a read-only merge of every category — pick a category to edit its runes.
+                      </div>
+                    )}
+                    <RunePagesViewer
+                      key={`${activeLoadout.id}:${effectiveCategoryId}`}
+                      pages={currentRunePages}
+                      selectedKeystoneId={selectedKeystoneId}
+                      onSelectKeystoneId={setSelectedKeystoneId}
+                      runeGameCounts={showImportCounts ? importStats?.runes : undefined}
+                    />
+                  </>
+                )}
+              </>
+            ),
           },
           {
             key: 'items',

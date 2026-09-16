@@ -39,3 +39,11 @@ export interface DDragonRuneTree {
   name: string
   slots: DDragonRuneSlot[]
 }
+
+export interface DDragonSummonerSpell {
+  id: string
+  name: string
+  description: string
+  image: { full: string }
+  modes: string[]
+}

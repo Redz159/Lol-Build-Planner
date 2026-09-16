@@ -362,6 +362,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
     id: newId(),
     roles: [role],
     runePages,
+    summonerSpellIds: [],
     itemSlots,
     items: buildItems,
     categories: [],

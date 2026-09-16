@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getChampions, getItems, getRuneTrees } from '../lib/ddragon'
-import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../types/ddragon'
+import { getChampions, getItems, getRuneTrees, getSummonerSpells } from '../lib/ddragon'
+import type { DDragonChampion, DDragonItem, DDragonRuneTree, DDragonSummonerSpell } from '../types/ddragon'
 
 interface GameData {
   champions: DDragonChampion[]
   items: DDragonItem[]
   runeTrees: DDragonRuneTree[]
+  summonerSpells: DDragonSummonerSpell[]
   loading: boolean
   error: string | null
 }
@@ -17,16 +18,17 @@ export function GameDataProvider({ children }: { children: ReactNode }) {
     champions: [],
     items: [],
     runeTrees: [],
+    summonerSpells: [],
     loading: true,
     error: null,
   })
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([getChampions(), getItems(), getRuneTrees()])
-      .then(([champions, items, runeTrees]) => {
+    Promise.all([getChampions(), getItems(), getRuneTrees(), getSummonerSpells()])
+      .then(([champions, items, runeTrees, summonerSpells]) => {
         if (cancelled) return
-        setState({ champions, items, runeTrees, loading: false, error: null })
+        setState({ champions, items, runeTrees, summonerSpells, loading: false, error: null })
       })
       .catch((err: Error) => {
         if (cancelled) return

@@ -43,6 +43,7 @@ export function emptyLoadout(roles: Role[] = []): Loadout {
     id: newId(),
     roles,
     runePages: [],
+    summonerSpellIds: [],
     itemSlots,
     items: emptyBuildItems(itemSlots),
     categories: [],
@@ -126,6 +127,7 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
     ? {
         ...emptyLoadout(),
         runePages: source.runePages,
+        summonerSpellIds: source.summonerSpellIds,
         itemSlots: source.itemSlots,
         items: source.items,
         categories: source.categories,

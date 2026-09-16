@@ -44,6 +44,7 @@ export interface Loadout {
   id: string
   roles: Role[]
   runePages: RunePage[]
+  summonerSpellIds: string[]
   itemSlots: ItemSlot[]
   items: BuildItems
   categories: Category[]
