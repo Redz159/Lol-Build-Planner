@@ -30,6 +30,10 @@ export interface Category {
   runePages: RunePage[]
   items: BuildItems
   exampleBuilds: ExampleBuild[]
+  // Whether this category has already been through the item-set layout picker (Standard /
+  // Core-based / Blank / Skip) — once true, an empty item pool shows the normal slot editor
+  // instead of the picker again. Absent means false, same as the other per-item-set flags.
+  layoutChosen?: boolean
 }
 
 // How many of an API import's sampled games picked a given item (per slot) or rune/shard —
@@ -56,6 +60,9 @@ export interface Loadout {
   itemNoteGlobal: ItemNoteGlobalFlags
   itemSituational: ItemSituationalFlags
   importStats?: ImportStats
+  // Same meaning as Category.layoutChosen, for the loadout's own plain item pool — only read
+  // while the loadout has no categories at all (see ItemsEditor's currentItems scoping).
+  layoutChosen?: boolean
 }
 
 export interface Build {

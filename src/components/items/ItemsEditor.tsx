@@ -10,6 +10,7 @@ import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../li
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
 import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
 import { addSlotToExampleBuilds, removeSlotFromExampleBuilds } from '../../lib/exampleBuilds'
+import { ITEM_SET_LAYOUTS, newSlotsForLayout, type LayoutTemplate } from '../../lib/itemSetLayouts'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { useGameData } from '../../state/GameDataContext'
@@ -17,6 +18,7 @@ import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ExampleBuildsSection } from './ExampleBuildsSection'
+import { LayoutPicker } from './LayoutPicker'
 import { ExportItemSetPopup } from './ExportItemSetPopup'
 import { ImportItemSetPopup } from './ImportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
@@ -79,6 +81,45 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     : isAllCategoryView
       ? mergedCategoryItems(loadout.categories, loadout.itemSlots)
       : loadout.items
+
+  // The item-set layout picker (Standard / Core-based / Blank) replaces the normal editor
+  // whenever the current item-set has nothing placed yet and hasn't been through it before —
+  // never on the read-only "All" merge, which has no single item-set to bootstrap.
+  const currentLayoutChosen = activeCategory ? !!activeCategory.layoutChosen : !!loadout.layoutChosen
+  const currentIsEmpty = visibleSlots.every((slot) => (currentItems[slot.id] ?? []).length === 0)
+  const showLayoutPicker = !isAllCategoryView && !currentLayoutChosen && currentIsEmpty
+
+  // Applying a layout only ever adds the slots it calls for that don't already exist (matched by
+  // label — see newSlotsForLayout) and syncs an empty placement array for each into every
+  // item-set, the same way addSlot/importItemSet do.
+  const chooseLayout = (layoutId: LayoutTemplate['id']) => {
+    if (isAllCategoryView) return
+    const template = ITEM_SET_LAYOUTS.find((t) => t.id === layoutId)
+    const newSlots = template ? newSlotsForLayout(loadout.itemSlots, template) : []
+    const nextSlots = newSlots.length > 0 ? [...loadout.itemSlots, ...newSlots] : loadout.itemSlots
+
+    const withNewSlotKeys = (buildItems: BuildItems): BuildItems => {
+      if (newSlots.length === 0) return buildItems
+      const next = { ...buildItems }
+      for (const slot of newSlots) next[slot.id] = []
+      return next
+    }
+    const withNewSlotKeysInExampleBuilds = (list: ExampleBuild[]): ExampleBuild[] =>
+      newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), list)
+
+    onChange({
+      itemSlots: nextSlots,
+      items: withNewSlotKeys(loadout.items),
+      exampleBuilds: withNewSlotKeysInExampleBuilds(loadout.exampleBuilds),
+      categories: loadout.categories.map((c) => ({
+        ...c,
+        items: withNewSlotKeys(c.items),
+        exampleBuilds: withNewSlotKeysInExampleBuilds(c.exampleBuilds),
+        layoutChosen: c.id === activeCategory?.id ? true : c.layoutChosen,
+      })),
+      ...(activeCategory ? {} : { layoutChosen: true }),
+    })
+  }
 
   // Writes go to whichever item-set is active; a no-op while viewing the merged "All" tab, since
   // it has no single category to write into.
@@ -722,6 +763,8 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             itemSituational={loadout.itemSituational}
           />
         </>
+      ) : showLayoutPicker ? (
+        <LayoutPicker onChoose={chooseLayout} />
       ) : (
         <>
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>

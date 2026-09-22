@@ -1,6 +1,6 @@
 import type { Build, Loadout, Role } from '../types/build'
 import type { DDragonItem } from '../types/ddragon'
-import { DEFAULT_ITEM_SLOTS, emptyBuildItems, type ItemSlot } from '../types/items'
+import { emptyBuildItems, type ItemSlot } from '../types/items'
 import { newId } from './id'
 
 export const ROLES: Role[] = ['top', 'jungle', 'mid', 'adc', 'support']
@@ -37,8 +37,10 @@ export function roleIconUrl(role: Role): string {
 // than the individual position icons above.
 export const FILL_ICON_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-parties/global/default/icon-position-fill.png'
 
+// Starts with zero item slots — the Items tab shows the layout picker (Standard / Core-based /
+// Blank / Skip) until one is chosen, rather than pre-seeding League's own 9-slot panel.
 export function emptyLoadout(roles: Role[] = []): Loadout {
-  const itemSlots = DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
+  const itemSlots: ItemSlot[] = []
   return {
     id: newId(),
     roles,

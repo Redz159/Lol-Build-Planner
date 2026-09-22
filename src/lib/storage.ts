@@ -97,6 +97,7 @@ function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
       runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
       items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),
       exampleBuilds: normalizeExampleBuilds((raw as Record<string, unknown>).exampleBuilds, slots),
+      ...((raw as Record<string, unknown>).layoutChosen === true ? { layoutChosen: true } : {}),
     })
   }
   return result
@@ -222,6 +223,7 @@ export function migrateBuild(raw: any): Build {
           itemSlotNotes: normalizeItemSlotNotes(l?.itemSlotNotes),
           itemNoteGlobal: normalizeItemNoteGlobalFlags(l?.itemNoteGlobal),
           itemSituational: normalizeItemSituationalFlags(l?.itemSituational),
+          ...(l?.layoutChosen === true ? { layoutChosen: true } : {}),
         }
       })
     : []

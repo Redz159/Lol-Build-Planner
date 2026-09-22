@@ -33,8 +33,10 @@ export const DEFAULT_ITEM_SLOTS: ItemSlot[] = [
 const VALID_SLOT_KINDS = new Set<ItemSlotKind>(['starter', 'boots', 'adc-bonus'])
 
 // `value` is untrusted data straight from JSON.parse (localStorage or an imported file). An
-// older schema version has no itemSlots at all, so falling back to the defaults both handles
-// that migration and guards against a build somehow ending up with zero slots.
+// older schema version has no itemSlots key at all, so falling back to the defaults handles
+// that migration. A validly-parsed but empty array is left as-is rather than reset to the
+// defaults — a loadout genuinely starting with zero slots (before picking an item-set layout)
+// is legitimate now, not a corrupted state to repair.
 export function normalizeItemSlots(value: unknown): ItemSlot[] {
   if (!Array.isArray(value)) return DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
   const seenIds = new Set<string>()
@@ -54,7 +56,7 @@ export function normalizeItemSlots(value: unknown): ItemSlot[] {
       ...(multiSelect === true ? { multiSelect: true } : {}),
     })
   }
-  return result.length > 0 ? result : DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
+  return result
 }
 
 export interface ItemPlacement {
