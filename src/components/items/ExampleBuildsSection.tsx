@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { ExampleBuild } from '../../types/build'
 import {
@@ -9,6 +9,7 @@ import {
   type ItemNotes,
   type ItemPlacement,
   type ItemRequirementPair,
+  type ItemSituationalFlags,
   type ItemSlot,
   type ItemSlotNotes,
 } from '../../types/items'
@@ -42,6 +43,7 @@ interface Props {
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
 }
 
 // Either "creating a brand-new build" (no id yet) or "re-opened the wizard on an existing one"
@@ -54,6 +56,30 @@ const slotHeaderStyle = { color: 'var(--gold)', fontSize: 11, fontWeight: 600, t
 
 function emptySlotItems(slots: ItemSlot[]): BuildItems {
   return Object.fromEntries(slots.map((s) => [s.id, []]))
+}
+
+// Pushes situational candidates after regular ones (stable within each group) and reports where
+// the situational group starts, so a picker/wizard candidate grid can drop a divider there — same
+// split BuildSlotsPanel already does for a slot's placed items.
+function situationalSplit(
+  candidates: ItemPlacement[],
+  itemSituational: ItemSituationalFlags,
+): { sorted: ItemPlacement[]; dividerIndex: number } {
+  const sorted = [...candidates].sort((a, b) => Number(!!itemSituational[a.itemId]) - Number(!!itemSituational[b.itemId]))
+  const dividerIndex = sorted.findIndex((p) => itemSituational[p.itemId])
+  return { sorted, dividerIndex }
+}
+
+const situationalDividerStyle = {
+  width: '100%',
+  borderTop: '1px dashed var(--gold)',
+  paddingTop: 6,
+  marginTop: 2,
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase' as const,
+  letterSpacing: 0.5,
+  color: 'var(--gold)',
 }
 
 // Below the flexible per-slot item pool: a handful of concrete, illustrative "here's what to
@@ -72,6 +98,7 @@ export function ExampleBuildsSection({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
+  itemSituational,
 }: Props) {
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null)
@@ -288,6 +315,7 @@ export function ExampleBuildsSection({
           itemNotes={itemNotes}
           itemSlotNotes={itemSlotNotes}
           itemNoteGlobal={itemNoteGlobal}
+          itemSituational={itemSituational}
           onAdd={(itemId) =>
             onChange(exampleBuilds.map((b) => (b.id === pickerBuild.id ? addExampleBuildItem(b, pickerSlot.id, itemId) : b)))
           }
@@ -306,6 +334,7 @@ export function ExampleBuildsSection({
           itemNotes={itemNotes}
           itemSlotNotes={itemSlotNotes}
           itemNoteGlobal={itemNoteGlobal}
+          itemSituational={itemSituational}
           onComplete={(label, builtItems) => {
             if (wizardTarget.buildId) {
               onChange(exampleBuilds.map((b) => (b.id === wizardTarget.buildId ? { ...b, label, items: builtItems } : b)))
@@ -334,6 +363,7 @@ function ExampleBuildItemPicker({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
+  itemSituational,
   onAdd,
   onClose,
 }: {
@@ -344,11 +374,15 @@ function ExampleBuildItemPicker({
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
   onAdd: (itemId: string) => void
   onClose: () => void
 }) {
   const placedHere = new Set((build.items[slot.id] ?? []).map((p) => p.itemId))
-  const candidates = (poolItems[slot.id] ?? []).filter((p) => !placedHere.has(p.itemId))
+  const { sorted: candidates, dividerIndex } = situationalSplit(
+    (poolItems[slot.id] ?? []).filter((p) => !placedHere.has(p.itemId)),
+    itemSituational,
+  )
 
   return (
     <div
@@ -369,17 +403,19 @@ function ExampleBuildItemPicker({
           </button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {candidates.map((p) => {
+          {candidates.map((p, index) => {
             const item = items.find((i) => i.id === p.itemId)
             if (!item) return null
             return (
-              <ItemIcon
-                key={p.itemId}
-                item={item}
-                size={48}
-                note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
-                onClick={() => onAdd(item.id)}
-              />
+              <Fragment key={p.itemId}>
+                {index === dividerIndex && index > 0 && <div style={situationalDividerStyle}>Situational</div>}
+                <ItemIcon
+                  item={item}
+                  size={48}
+                  note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                  onClick={() => onAdd(item.id)}
+                />
+              </Fragment>
             )
           })}
           {candidates.length === 0 && (
@@ -410,6 +446,7 @@ function ExampleBuildWizard({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
+  itemSituational,
   onComplete,
   onCancel,
 }: {
@@ -424,6 +461,7 @@ function ExampleBuildWizard({
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
+  itemSituational: ItemSituationalFlags
   onComplete: (label: string, items: BuildItems) => void
   onCancel: () => void
 }) {
@@ -490,7 +528,7 @@ function ExampleBuildWizard({
     setRenamingLabel(false)
   }
 
-  const candidates = poolItems[currentSlot.id] ?? []
+  const { sorted: candidates, dividerIndex } = situationalSplit(poolItems[currentSlot.id] ?? [], itemSituational)
   const isLastStep = stepIndex >= slots.length - 1
 
   return (
@@ -563,19 +601,21 @@ function ExampleBuildWizard({
         <div style={{ flex: 1, overflowY: 'auto', marginBottom: 16 }}>
           <div style={{ ...slotHeaderStyle, fontSize: 13, marginBottom: 14 }}>{currentSlot.label}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-            {candidates.map((p) => {
+            {candidates.map((p, index) => {
               const item = items.find((i) => i.id === p.itemId)
               if (!item) return null
               const selected = currentSelected.some((s) => s.itemId === p.itemId)
               return (
-                <ItemIcon
-                  key={p.itemId}
-                  item={item}
-                  size={56}
-                  selected={selected}
-                  note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, currentSlot.id, item.id)}
-                  onClick={() => handleItemClick(item.id)}
-                />
+                <Fragment key={p.itemId}>
+                  {index === dividerIndex && index > 0 && <div style={situationalDividerStyle}>Situational</div>}
+                  <ItemIcon
+                    item={item}
+                    size={56}
+                    selected={selected}
+                    note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, currentSlot.id, item.id)}
+                    onClick={() => handleItemClick(item.id)}
+                  />
+                </Fragment>
               )
             })}
             {currentSelected.length < MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT && (

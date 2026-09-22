@@ -660,6 +660,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           itemNotes={loadout.itemNotes}
           itemSlotNotes={loadout.itemSlotNotes}
           itemNoteGlobal={loadout.itemNoteGlobal}
+          itemSituational={loadout.itemSituational}
         />
         {showExportPopup && (
           <ExportItemSetPopup
@@ -718,6 +719,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
+            itemSituational={loadout.itemSituational}
           />
         </>
       ) : (
@@ -781,6 +783,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
+            itemSituational={loadout.itemSituational}
           />
         </>
       )}
