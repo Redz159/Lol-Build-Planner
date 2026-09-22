@@ -11,6 +11,10 @@ export interface ItemSlot {
   id: string
   label: string
   kind?: ItemSlotKind
+  // Lets view mode's build-path preview select several items in this slot at once (instead of
+  // just one) — all of them then count toward exclusion/requirement checks and Jack Of All
+  // Trades. Unlike `kind`, this is a plain user setting and survives a rename.
+  multiSelect?: boolean
 }
 
 // The slot layout every new loadout starts with, mirroring League's own build panel.
@@ -42,7 +46,13 @@ export function normalizeItemSlots(value: unknown): ItemSlot[] {
     if (typeof id !== 'string' || typeof label !== 'string' || seenIds.has(id)) continue
     seenIds.add(id)
     const kind = (raw as Record<string, unknown>).kind
-    result.push({ id, label, ...(typeof kind === 'string' && VALID_SLOT_KINDS.has(kind as ItemSlotKind) ? { kind: kind as ItemSlotKind } : {}) })
+    const multiSelect = (raw as Record<string, unknown>).multiSelect
+    result.push({
+      id,
+      label,
+      ...(typeof kind === 'string' && VALID_SLOT_KINDS.has(kind as ItemSlotKind) ? { kind: kind as ItemSlotKind } : {}),
+      ...(multiSelect === true ? { multiSelect: true } : {}),
+    })
   }
   return result.length > 0 ? result : DEFAULT_ITEM_SLOTS.map((s) => ({ ...s }))
 }

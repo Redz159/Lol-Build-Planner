@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ExampleBuild, Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
-import { effectiveItemNote, type BuildItems, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
+import { effectiveItemNote, type BuildItems, type ItemPlacement, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
 import { isBoots } from '../../lib/itemAttributes'
 import { joatStatNames } from '../../lib/joat'
@@ -45,7 +45,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   // Which of the popup's "Excludes" / "Only include" checklists is shown — resets to Excludes
   // each time the popup opens, since it's a view toggle rather than a per-item setting.
   const [popupRelationMode, setPopupRelationMode] = useState<ItemRelationMode>('exclude')
-  const [preview, setPreview] = useState<Partial<Record<string, string>>>({})
+  const [preview, setPreview] = useState<Partial<Record<string, string[]>>>({})
   const [showExportPopup, setShowExportPopup] = useState(false)
   const [showImportPopup, setShowImportPopup] = useState(false)
 
@@ -193,13 +193,13 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   const builtinExclusions = useMemo(() => builtinExclusionPairs(items), [items])
 
   const excludedPlacementIds = useMemo(() => {
-    const previewedPlacementIds = new Set(Object.values(preview))
+    const previewedPlacementIds = new Set(Object.values(preview).flatMap((ids) => ids ?? []))
     const previewedItemIds = new Set<string>()
     for (const slot of loadout.itemSlots) {
-      const placementId = preview[slot.id]
-      if (!placementId) continue
-      const placement = currentItems[slot.id]?.find((p) => p.id === placementId)
-      if (placement) previewedItemIds.add(placement.itemId)
+      for (const placementId of preview[slot.id] ?? []) {
+        const placement = currentItems[slot.id]?.find((p) => p.id === placementId)
+        if (placement) previewedItemIds.add(placement.itemId)
+      }
     }
     const result = new Set<string>()
     if (previewedItemIds.size === 0) return result
@@ -285,9 +285,12 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       placement ? { itemSlotNotes: withoutLocalNote(slotId, placement.itemId) } : {},
     )
     setPreview((prev) => {
-      if (prev[slotId] !== placementId) return prev
+      const current = prev[slotId]
+      if (!current || !current.includes(placementId)) return prev
+      const nextIds = current.filter((id) => id !== placementId)
       const next = { ...prev }
-      delete next[slotId]
+      if (nextIds.length === 0) delete next[slotId]
+      else next[slotId] = nextIds
       return next
     })
   }
@@ -373,13 +376,24 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const togglePreview = (slotId: string, placementId: string) => {
+    const isMulti = !!findSlot(slotId)?.multiSelect
     setPreview((prev) => {
-      if (prev[slotId] === placementId) {
+      const current = prev[slotId] ?? []
+      if (isMulti) {
+        const nextIds = current.includes(placementId) ? current.filter((id) => id !== placementId) : [...current, placementId]
+        if (nextIds.length === 0) {
+          const next = { ...prev }
+          delete next[slotId]
+          return next
+        }
+        return { ...prev, [slotId]: nextIds }
+      }
+      if (current.length === 1 && current[0] === placementId) {
         const next = { ...prev }
         delete next[slotId]
         return next
       }
-      return { ...prev, [slotId]: placementId }
+      return { ...prev, [slotId]: [placementId] }
     })
   }
 
@@ -463,7 +477,37 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     const trimmed = label.trim()
     const slot = findSlot(slotId)
     if (!slot || !trimmed || trimmed === slot.label) return
-    onChange({ itemSlots: loadout.itemSlots.map((s) => (s.id === slotId ? { id: s.id, label: trimmed } : s)) })
+    onChange({
+      itemSlots: loadout.itemSlots.map((s) =>
+        s.id === slotId ? { id: s.id, label: trimmed, ...(s.multiSelect ? { multiSelect: true } : {}) } : s,
+      ),
+    })
+  }
+
+  const toggleSlotMultiSelect = (slotId: string) => {
+    const slot = findSlot(slotId)
+    if (!slot) return
+    const turningOff = !!slot.multiSelect
+    onChange({
+      itemSlots: loadout.itemSlots.map((s) => {
+        if (s.id !== slotId) return s
+        if (turningOff) {
+          const { multiSelect: _multiSelect, ...rest } = s
+          return rest
+        }
+        return { ...s, multiSelect: true }
+      }),
+    })
+    // A slot going back to single-select can only ever show one gold ring going forward, so trim
+    // any leftover multi-selection now rather than leave a second one stuck on with no way to
+    // click it off.
+    if (turningOff) {
+      setPreview((prev) => {
+        const current = prev[slotId]
+        if (!current || current.length <= 1) return prev
+        return { ...prev, [slotId]: [current[0]] }
+      })
+    }
   }
 
   const deleteSlot = (slotId: string) => {
@@ -549,11 +593,9 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   // concrete build is picked out of the candidate pool, and that's what Jack Of All Trades would
   // actually be scaling off in-game.
   const selectedItems = visibleSlots
-    .map((slot) => {
-      const placementId = preview[slot.id]
-      const placement = placementId ? currentItems[slot.id]?.find((p) => p.id === placementId) : undefined
-      return placement ? items.find((i) => i.id === placement.itemId) : undefined
-    })
+    .flatMap((slot) => (preview[slot.id] ?? []).map((placementId) => currentItems[slot.id]?.find((p) => p.id === placementId)))
+    .filter((placement): placement is ItemPlacement => !!placement)
+    .map((placement) => items.find((i) => i.id === placement.itemId))
     .filter((item): item is DDragonItem => !!item)
   const joatNames = joatStatNames(selectedItems)
   const joatStacks = joatNames.length
@@ -599,6 +641,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           onAddSlot={() => {}}
           onRenameSlot={() => {}}
           onDeleteSlot={() => {}}
+          onToggleMultiSelect={() => {}}
           excludedPlacementIds={excludedPlacementIds}
           hoverOutlines={hoverOutlines}
           onHoverPlacement={setHoveredPlacementId}
@@ -657,6 +700,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             onAddSlot={() => {}}
             onRenameSlot={() => {}}
             onDeleteSlot={() => {}}
+            onToggleMultiSelect={() => {}}
             excludedPlacementIds={new Set()}
             hoverOutlines={hoverOutlines}
             onHoverPlacement={setHoveredPlacementId}
@@ -701,6 +745,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
                 onAddSlot={addSlot}
                 onRenameSlot={renameSlot}
                 onDeleteSlot={deleteSlot}
+                onToggleMultiSelect={toggleSlotMultiSelect}
                 excludedPlacementIds={excludedPlacementIds}
                 hoverOutlines={hoverOutlines}
                 onHoverPlacement={setHoveredPlacementId}

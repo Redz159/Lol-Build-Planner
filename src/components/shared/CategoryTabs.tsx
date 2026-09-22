@@ -303,6 +303,7 @@ function CategoryQuickAddPopup({
           onAddSlot={() => {}}
           onRenameSlot={() => {}}
           onDeleteSlot={() => {}}
+          onToggleMultiSelect={() => {}}
           excludedPlacementIds={new Set()}
           hoverOutlines={new Map()}
           onHoverPlacement={() => {}}

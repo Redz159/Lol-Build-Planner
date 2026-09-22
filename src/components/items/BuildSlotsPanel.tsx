@@ -24,7 +24,7 @@ interface Props {
   mode: 'view' | 'edit'
   activeSlotId: string | null
   onSetActiveSlot: (slotId: string | null) => void
-  preview: Partial<Record<string, string>>
+  preview: Partial<Record<string, string[]>>
   onTogglePreview: (slotId: string, placementId: string) => void
   onRemovePlacement: (slotId: string, placementId: string) => void
   onOpenPopup: (item: DDragonItem, slotId: string) => void
@@ -34,6 +34,7 @@ interface Props {
   onAddSlot: () => void
   onRenameSlot: (slotId: string, label: string) => void
   onDeleteSlot: (slotId: string) => void
+  onToggleMultiSelect: (slotId: string) => void
   excludedPlacementIds: Set<string>
   hoverOutlines: Map<string, ItemRelationOutline>
   onHoverPlacement: (placementId: string | null) => void
@@ -70,6 +71,7 @@ export function BuildSlotsPanel({
   onAddSlot,
   onRenameSlot,
   onDeleteSlot,
+  onToggleMultiSelect,
   excludedPlacementIds,
   hoverOutlines,
   onHoverPlacement,
@@ -163,7 +165,7 @@ export function BuildSlotsPanel({
               boxShadow: dragOver ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : undefined,
             }}
           >
-            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               {mode === 'edit' && editing ? (
                 <input
                   type="text"
@@ -194,18 +196,65 @@ export function BuildSlotsPanel({
                   {slot.label}
                 </button>
               ) : (
-                <div style={{ color: 'var(--gold)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, color: 'var(--gold)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   {slot.label}
+                  {slot.multiSelect && (
+                    <span
+                      title="Pick as many items as you like in this slot — they'll all be treated as part of the build"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        padding: '1px 6px',
+                        borderRadius: 10,
+                        border: '1px solid var(--gold)',
+                        background: 'rgba(200, 170, 110, 0.18)',
+                        color: 'var(--gold-bright)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        letterSpacing: 'normal',
+                      }}
+                    >
+                      ☑ Pick multiple
+                    </span>
+                  )}
                 </div>
               )}
               {mode === 'edit' && !editing && (
                 <>
                   <button
                     type="button"
+                    aria-label={`${slot.multiSelect ? 'Disable' : 'Enable'} picking multiple items at once in ${slot.label}`}
+                    title={
+                      slot.multiSelect
+                        ? 'Multiple items can be picked in this slot at once — click to go back to picking just one'
+                        : 'Click to allow picking multiple items in this slot at once'
+                    }
+                    aria-pressed={!!slot.multiSelect}
+                    onClick={() => onToggleMultiSelect(slotId)}
+                    style={{
+                      marginLeft: 'auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '2px 8px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      borderRadius: 10,
+                      color: slot.multiSelect ? 'var(--gold-bright)' : 'var(--text-dim)',
+                      background: slot.multiSelect ? 'rgba(200, 170, 110, 0.18)' : undefined,
+                      borderColor: slot.multiSelect ? 'var(--gold)' : undefined,
+                    }}
+                  >
+                    {slot.multiSelect ? '☑' : '☐'} Pick multiple
+                  </button>
+                  <button
+                    type="button"
                     aria-label={`Rename ${slot.label}`}
                     title="Rename slot"
                     onClick={() => startRename(slot)}
-                    style={{ marginLeft: 'auto', padding: '2px 7px', fontSize: 12 }}
+                    style={{ padding: '2px 7px', fontSize: 12 }}
                   >
                     ✎
                   </button>
@@ -327,7 +376,9 @@ export function BuildSlotsPanel({
                           item={item}
                           selected={
                             mode === 'view' &&
-                            (selectedPlacementIds ? selectedPlacementIds.has(placement.id) : preview[slotId] === placement.id)
+                            (selectedPlacementIds
+                              ? selectedPlacementIds.has(placement.id)
+                              : (preview[slotId] ?? []).includes(placement.id))
                           }
                           excluded={mode === 'view' && excludedPlacementIds.has(placement.id)}
                           outline={hoverOutlines.get(placement.id)}
