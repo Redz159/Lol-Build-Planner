@@ -508,6 +508,7 @@ function ExampleBuildWizard({
 
   const currentSlot = slots[stepIndex]
   const currentSelected = selections[currentSlot.id] ?? []
+  const { sorted: candidates, dividerIndex } = situationalSplit(poolItems[currentSlot.id] ?? [], itemSituational)
 
   const handleItemClick = (itemId: string) => {
     const exists = currentSelected.some((p) => p.itemId === itemId)
@@ -520,7 +521,14 @@ function ExampleBuildWizard({
     }
     const nextSelections = { ...selections, [currentSlot.id]: nextSlotItems }
     setSelections(nextSelections)
-    if (!exists && nextSlotItems.length >= MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT) advance(nextSelections)
+    // Also auto-advance once every option this slot's pool offers has been picked — no point
+    // sitting on a step with nothing left to click, even below the usual per-slot cap. Guarded
+    // on a non-empty pool so an empty-pool slot (nothing to exhaust) doesn't skip ahead the
+    // instant a single item is added via the full-database search escape hatch.
+    const exhaustedPool = candidates.length > 0 && nextSlotItems.length >= candidates.length
+    if (!exists && (nextSlotItems.length >= MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT || exhaustedPool)) {
+      advance(nextSelections)
+    }
   }
 
   const commitLabel = () => {
@@ -528,7 +536,6 @@ function ExampleBuildWizard({
     setRenamingLabel(false)
   }
 
-  const { sorted: candidates, dividerIndex } = situationalSplit(poolItems[currentSlot.id] ?? [], itemSituational)
   const isLastStep = stepIndex >= slots.length - 1
 
   return (
