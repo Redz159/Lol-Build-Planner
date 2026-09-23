@@ -72,6 +72,84 @@ function AbilityIcon({ skillKey, spell, size }: { skillKey: SkillKey; spell?: DD
   )
 }
 
+function MaxOrderIcons({ priority, spells }: { priority: SkillKey[]; spells: DDragonChampionSpell[] }) {
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      {priority.map((key, i) => (
+        <Fragment key={key}>
+          {i > 0 && <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>&gt;</span>}
+          <AbilityIcon skillKey={key} spell={spells[SKILL_KEYS.indexOf(key)]} size={24} />
+        </Fragment>
+      ))}
+    </span>
+  )
+}
+
+// A native <select> can't show the ability icons, so this is a small button + popup list; it
+// closes on blur/Escape the same way ChampionSelect's list does.
+function AutoFillDropdown({ spells, onPick }: { spells: DDragonChampionSpell[]; onPick: (priority: SkillKey[]) => void }) {
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(-1)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false)
+        }}
+        style={{ fontSize: 12, padding: '4px 9px' }}
+      >
+        Auto-fill ▾
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            background: 'var(--bg-panel)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 8,
+            boxShadow: 'var(--shadow-md)',
+            padding: 4,
+            zIndex: 20,
+          }}
+        >
+          {MAX_ORDERS.map((priority, i) => (
+            <div
+              key={priority.join('')}
+              role="option"
+              aria-selected={false}
+              aria-label={`Max ${priority.join(' > ')}`}
+              title={`Max ${priority.join(' > ')}, R whenever possible`}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                onPick(priority)
+                setOpen(false)
+              }}
+              onMouseEnter={() => setHighlight(i)}
+              style={{
+                padding: '5px 8px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                background: i === highlight ? 'var(--bg-panel-raised)' : 'transparent',
+              }}
+            >
+              <MaxOrderIcons priority={priority} spells={spells} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // One row per ability, one column per skill point, with the level numbers in a header row
 // above the columns rather than inside the chosen cells.
 export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChange }: Props) {
@@ -107,24 +185,7 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
     <div>
       {!readOnly && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10, fontSize: 12, color: 'var(--text-dim)' }}>
-          <span>Auto-fill:</span>
-          {MAX_ORDERS.map((priority) => (
-            <button
-              key={priority.join('')}
-              type="button"
-              title={`Max ${priority.join(' > ')}, R whenever possible`}
-              aria-label={`Auto-fill max ${priority.join(' > ')}`}
-              onClick={() => onChange?.(autoFillSkillOrder(priority, showElixir))}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px' }}
-            >
-              {priority.map((key, i) => (
-                <Fragment key={key}>
-                  {i > 0 && <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>&gt;</span>}
-                  <AbilityIcon skillKey={key} spell={spells[SKILL_KEYS.indexOf(key)]} size={24} />
-                </Fragment>
-              ))}
-            </button>
-          ))}
+          <AutoFillDropdown spells={spells} onPick={(priority) => onChange?.(autoFillSkillOrder(priority, showElixir))} />
           <button
             type="button"
             onClick={() => onChange?.(emptySkillOrder())}
