@@ -228,11 +228,11 @@ export function BuildDetailPage() {
   const renderSkillsAndSpells = (skills: SkillsAndSpells, runePages: RunePage[], readOnly: boolean) => {
     const tonicAvailable = hasTripleTonic(runePages)
     return (
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 40, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Skill Order</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 48, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 560px', minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 10 }}>Skill Order</div>
           {!readOnly && tonicAvailable && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-dim)', marginBottom: 10 }}>
               <input
                 type="checkbox"
                 checked={!!skills.tripleTonic}
@@ -251,11 +251,12 @@ export function BuildDetailPage() {
             />
           )}
         </div>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
+        <div style={{ flex: '0 0 260px' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 10 }}>Summoner Spells</div>
           <SummonerSpellSets
             options={summonerSpells}
             sets={skills.summonerSpellSets}
+            roles={activeLoadout.roles}
             readOnly={readOnly}
             onChange={(summonerSpellSets) => saveCurrentScope({ summonerSpellSets })}
           />

@@ -23,7 +23,9 @@ interface Props {
   onChange?: (order: SkillOrder) => void
 }
 
-const CELL = 24
+// The grid stretches to its container's width; cells stay square and grow with it.
+const ROW_ICON = 48
+const ELIXIR_ICON = 28
 // Every max order over the three basics, offered as one-click auto-fill presets.
 const MAX_ORDERS: SkillKey[][] = [
   ['Q', 'W', 'E'],
@@ -56,7 +58,7 @@ function AbilityIcon({ skillKey, spell, size }: { skillKey: SkillKey; spell?: DD
           position: 'absolute',
           right: -2,
           bottom: -2,
-          fontSize: size >= 32 ? 10 : 9,
+          fontSize: size >= 40 ? 12 : 10,
           fontWeight: 700,
           lineHeight: 1,
           padding: '1px 3px',
@@ -78,7 +80,7 @@ function MaxOrderIcons({ priority, spells }: { priority: SkillKey[]; spells: DDr
       {priority.map((key, i) => (
         <Fragment key={key}>
           {i > 0 && <span style={{ color: 'var(--text-dim)', fontWeight: 700 }}>&gt;</span>}
-          <AbilityIcon skillKey={key} spell={spells[SKILL_KEYS.indexOf(key)]} size={24} />
+          <AbilityIcon skillKey={key} spell={spells[SKILL_KEYS.indexOf(key)]} size={30} />
         </Fragment>
       ))}
     </span>
@@ -102,7 +104,7 @@ function AutoFillDropdown({ spells, onPick }: { spells: DDragonChampionSpell[]; 
         onKeyDown={(e) => {
           if (e.key === 'Escape') setOpen(false)
         }}
-        style={{ fontSize: 12, padding: '4px 9px' }}
+        style={{ fontSize: 13, padding: '6px 12px' }}
       >
         Auto-fill ▾
       </button>
@@ -174,7 +176,7 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
     if (i === ELIXIR_POINT_INDEX) {
       return (
         <Tooltip title="Elixir of Skill" descriptionHtml="Triple Tonic grants it at level 9 — its skill point is spent here.">
-          <img src={itemImageUrl(ELIXIR_OF_SKILL_IMAGE)} alt="Elixir of Skill" width={CELL - 2} height={CELL - 2} style={{ display: 'block', borderRadius: 3 }} />
+          <img src={itemImageUrl(ELIXIR_OF_SKILL_IMAGE)} alt="Elixir of Skill" width={ELIXIR_ICON} height={ELIXIR_ICON} style={{ display: 'block', borderRadius: 3 }} />
         </Tooltip>
       )
     }
@@ -184,13 +186,13 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
   return (
     <div>
       {!readOnly && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10, fontSize: 12, color: 'var(--text-dim)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12, fontSize: 13, color: 'var(--text-dim)' }}>
           <AutoFillDropdown spells={spells} onPick={(priority) => onChange?.(autoFillSkillOrder(priority, showElixir))} />
           <button
             type="button"
             onClick={() => onChange?.(emptySkillOrder())}
             disabled={order.every((k) => k === null)}
-            style={{ fontSize: 12, padding: '4px 9px', marginLeft: 8, color: 'var(--danger)' }}
+            style={{ fontSize: 13, padding: '6px 12px', marginLeft: 8, color: 'var(--danger)' }}
           >
             Clear
           </button>
@@ -198,15 +200,15 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
       )}
       <div
         style={{
-          display: 'inline-grid',
-          gridTemplateColumns: `36px repeat(${SKILL_POINTS}, ${CELL}px)`,
-          gap: 3,
+          display: 'grid',
+          gridTemplateColumns: `${ROW_ICON}px repeat(${SKILL_POINTS}, minmax(0, 1fr))`,
+          gap: 4,
           alignItems: 'center',
         }}
       >
         <div />
         {Array.from({ length: SKILL_POINTS }, (_, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-dim)' }}>
+          <div key={i} style={{ display: 'flex', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>
             {columnLabel(i)}
           </div>
         ))}
@@ -216,10 +218,10 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
           return [
             spell ? (
               <Tooltip key={`${key}-icon`} title={spell.name} descriptionHtml={spell.description}>
-                <AbilityIcon skillKey={key} spell={spell} size={32} />
+                <AbilityIcon skillKey={key} spell={spell} size={ROW_ICON} />
               </Tooltip>
             ) : (
-              <AbilityIcon key={`${key}-icon`} skillKey={key} size={32} />
+              <AbilityIcon key={`${key}-icon`} skillKey={key} size={ROW_ICON} />
             ),
             ...Array.from({ length: SKILL_POINTS }, (_, i) => {
               const filled = order[i] === key
@@ -232,10 +234,10 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
                   disabled={readOnly}
                   onClick={readOnly ? undefined : () => onChange?.(setSkillPoint(order, i, key))}
                   style={{
-                    width: CELL,
-                    height: CELL,
+                    width: '100%',
+                    aspectRatio: '1',
                     padding: 0,
-                    borderRadius: 2,
+                    borderRadius: 3,
                     border: '1px solid var(--border-strong)',
                     background: filled ? FILLED : 'var(--bg)',
                     boxShadow: 'none',
