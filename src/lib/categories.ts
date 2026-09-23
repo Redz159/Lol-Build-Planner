@@ -9,15 +9,15 @@ import { emptySkillOrder } from './skillOrder'
 
 // What a category holds besides its label — used to seed a first category from the loadout's
 // own plain values.
-export type CategorySeed = Pick<Category, 'runePages' | 'items' | 'exampleBuilds' | 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>
+export type CategorySeed = Pick<Category, 'runePages' | 'items' | 'exampleBuilds' | 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>
 
 // The summoner spells + skill order part of a category (or a loadout's plain values), copied as
 // one unit by the Skills & Spells tab's transfer actions.
-export type SkillsAndSpells = Pick<Category, 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>
+export type SkillsAndSpells = Pick<Category, 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>
 
 export function skillsAndSpellsOf(source: SkillsAndSpells): SkillsAndSpells {
   return {
-    summonerSpellIds: [...source.summonerSpellIds],
+    summonerSpellSets: source.summonerSpellSets.map((set) => [...set]),
     skillOrder: [...source.skillOrder],
     tripleTonic: source.tripleTonic ? true : undefined,
   }
@@ -42,7 +42,7 @@ export function addCategory(
   const runePages = seed ? cloneRunePages(seed.runePages) : []
   const items = seed ? cloneItems(seed.items, slots) : emptyBuildItems(slots)
   const exampleBuilds = seed ? cloneExampleBuilds(seed.exampleBuilds, slots) : []
-  const skills = seed ? skillsAndSpellsOf(seed) : { summonerSpellIds: [], skillOrder: emptySkillOrder() }
+  const skills = seed ? skillsAndSpellsOf(seed) : { summonerSpellSets: [], skillOrder: emptySkillOrder() }
   return [...categories, { id: newId(), label: trimmed, runePages, items, exampleBuilds, ...skills }]
 }
 

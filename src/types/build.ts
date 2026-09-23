@@ -19,6 +19,10 @@ export type SkillKey = 'Q' | 'W' | 'E' | 'R'
 // rather than a level-up — that only changes the grid's column labels, never this data.
 export type SkillOrder = (SkillKey | null)[]
 
+// One summoner spell pairing you'd take together (e.g. Flash + Ignite) — a category/loadout can
+// list several alternatives. Always two spell ids.
+export type SummonerSpellSet = string[]
+
 // One concrete, illustrative "finished build" — up to a few alternative items per slot (stacked
 // by preference), separate from the flexible per-slot candidate pool in `items`. Several of
 // these can sit side by side under the same category/loadout, each its own example.
@@ -37,7 +41,7 @@ export interface Category {
   runePages: RunePage[]
   items: BuildItems
   exampleBuilds: ExampleBuild[]
-  summonerSpellIds: string[]
+  summonerSpellSets: SummonerSpellSet[]
   skillOrder: SkillOrder
   // Whether the Elixir of Skill column is shown — only honored while one of the rune pages
   // actually takes Triple Tonic. Absent means false.
@@ -60,7 +64,7 @@ export interface Loadout {
   id: string
   roles: Role[]
   runePages: RunePage[]
-  summonerSpellIds: string[]
+  summonerSpellSets: SummonerSpellSet[]
   skillOrder: SkillOrder
   tripleTonic?: boolean
   itemSlots: ItemSlot[]

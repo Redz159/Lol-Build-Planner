@@ -6,7 +6,7 @@ import { Tabs } from '../components/shared/Tabs'
 import { CategoryTabs } from '../components/shared/CategoryTabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
-import { SummonerSpellRow } from '../components/runes/SummonerSpellRow'
+import { SummonerSpellSets } from '../components/skills/SummonerSpellSets'
 import { SkillOrderGrid } from '../components/skills/SkillOrderGrid'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
@@ -120,7 +120,7 @@ export function BuildDetailPage() {
 
   // Writes go to whichever category (or the loadout's plain set) is active; a no-op while viewing
   // the merged "All" tab, since it has no single category to write into.
-  const saveCurrentScope = (patch: Partial<Pick<Category, 'runePages' | 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>>) => {
+  const saveCurrentScope = (patch: Partial<Pick<Category, 'runePages' | 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>>) => {
     if (activeCategory) {
       saveLoadout({ categories: activeLoadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, ...patch } : c)) })
     } else if (!isAllCategoryView) {
@@ -129,13 +129,6 @@ export function BuildDetailPage() {
   }
 
   const setCurrentRunePages = (runePages: RunePage[]) => saveCurrentScope({ runePages })
-
-  const toggleSummonerSpell = (id: string) => {
-    const selected = currentSkills.summonerSpellIds.includes(id)
-    saveCurrentScope({
-      summonerSpellIds: selected ? currentSkills.summonerSpellIds.filter((s) => s !== id) : [...currentSkills.summonerSpellIds, id],
-    })
-  }
 
   const applySkillsToAllCategories = () => {
     saveLoadout({
@@ -235,32 +228,39 @@ export function BuildDetailPage() {
   const renderSkillsAndSpells = (skills: SkillsAndSpells, runePages: RunePage[], readOnly: boolean) => {
     const tonicAvailable = hasTripleTonic(runePages)
     return (
-      <>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
-          <SummonerSpellRow options={summonerSpells} selectedIds={skills.summonerSpellIds} readOnly={readOnly} onToggle={toggleSummonerSpell} />
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Skill Order</div>
-        {!readOnly && tonicAvailable && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
-            <input
-              type="checkbox"
-              checked={!!skills.tripleTonic}
-              onChange={(e) => saveCurrentScope({ tripleTonic: e.target.checked ? true : undefined })}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 40, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Skill Order</div>
+          {!readOnly && tonicAvailable && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
+              <input
+                type="checkbox"
+                checked={!!skills.tripleTonic}
+                onChange={(e) => saveCurrentScope({ tripleTonic: e.target.checked ? true : undefined })}
+              />
+              Triple Tonic: Elixir of Skill as the 10th skill point
+            </label>
+          )}
+          {champion && (
+            <SkillOrderGrid
+              championId={champion.id}
+              order={skills.skillOrder}
+              showElixir={!!skills.tripleTonic && tonicAvailable}
+              readOnly={readOnly}
+              onChange={(skillOrder) => saveCurrentScope({ skillOrder })}
             />
-            Triple Tonic: Elixir of Skill as the 10th skill point
-          </label>
-        )}
-        {champion && (
-          <SkillOrderGrid
-            championId={champion.id}
-            order={skills.skillOrder}
-            showElixir={!!skills.tripleTonic && tonicAvailable}
+          )}
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
+          <SummonerSpellSets
+            options={summonerSpells}
+            sets={skills.summonerSpellSets}
             readOnly={readOnly}
-            onChange={(skillOrder) => saveCurrentScope({ skillOrder })}
+            onChange={(summonerSpellSets) => saveCurrentScope({ summonerSpellSets })}
           />
-        )}
-      </>
+        </div>
+      </div>
     )
   }
 
