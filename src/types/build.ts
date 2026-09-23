@@ -12,6 +12,13 @@ import type {
 
 export type Role = 'top' | 'jungle' | 'mid' | 'adc' | 'support'
 
+export type SkillKey = 'Q' | 'W' | 'E' | 'R'
+
+// Entry i is the ability taken with the (i+1)-th skill point; always SKILL_POINTS long, null for
+// a point not planned yet. With Triple Tonic's Elixir of Skill the 10th point is the elixir
+// rather than a level-up — that only changes the grid's column labels, never this data.
+export type SkillOrder = (SkillKey | null)[]
+
 // One concrete, illustrative "finished build" — up to a few alternative items per slot (stacked
 // by preference), separate from the flexible per-slot candidate pool in `items`. Several of
 // these can sit side by side under the same category/loadout, each its own example.
@@ -30,6 +37,11 @@ export interface Category {
   runePages: RunePage[]
   items: BuildItems
   exampleBuilds: ExampleBuild[]
+  summonerSpellIds: string[]
+  skillOrder: SkillOrder
+  // Whether the Elixir of Skill column is shown — only honored while one of the rune pages
+  // actually takes Triple Tonic. Absent means false.
+  tripleTonic?: boolean
   // Whether this category has already been through the item-set layout picker (Standard /
   // Core-based / Blank / Skip) — once true, an empty item pool shows the normal slot editor
   // instead of the picker again. Absent means false, same as the other per-item-set flags.
@@ -49,6 +61,8 @@ export interface Loadout {
   roles: Role[]
   runePages: RunePage[]
   summonerSpellIds: string[]
+  skillOrder: SkillOrder
+  tripleTonic?: boolean
   itemSlots: ItemSlot[]
   items: BuildItems
   categories: Category[]

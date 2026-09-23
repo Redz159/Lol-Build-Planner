@@ -47,3 +47,10 @@ export interface DDragonSummonerSpell {
   image: { full: string }
   modes: string[]
 }
+
+export interface DDragonChampionSpell {
+  id: string
+  name: string
+  description: string
+  image: { full: string }
+}

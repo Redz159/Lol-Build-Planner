@@ -5,6 +5,23 @@ import { emptyBuildItems } from '../types/items'
 import { newId } from './id'
 import { cloneRunePages } from './runeRules'
 import { cloneExampleBuilds } from './exampleBuilds'
+import { emptySkillOrder } from './skillOrder'
+
+// What a category holds besides its label — used to seed a first category from the loadout's
+// own plain values.
+export type CategorySeed = Pick<Category, 'runePages' | 'items' | 'exampleBuilds' | 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>
+
+// The summoner spells + skill order part of a category (or a loadout's plain values), copied as
+// one unit by the Skills & Spells tab's transfer actions.
+export type SkillsAndSpells = Pick<Category, 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>
+
+export function skillsAndSpellsOf(source: SkillsAndSpells): SkillsAndSpells {
+  return {
+    summonerSpellIds: [...source.summonerSpellIds],
+    skillOrder: [...source.skillOrder],
+    tripleTonic: source.tripleTonic ? true : undefined,
+  }
+}
 
 // Deep-copies a BuildItems map onto the given slots, minting fresh placement ids so the copy
 // never shares identity with its source (used when seeding, duplicating, or cloning a category).
@@ -19,13 +36,14 @@ export function addCategory(
   categories: Category[],
   slots: ItemSlot[],
   label: string,
-  seed?: { runePages: RunePage[]; items: BuildItems; exampleBuilds: ExampleBuild[] },
+  seed?: CategorySeed,
 ): Category[] {
   const trimmed = label.trim() || 'New Category'
   const runePages = seed ? cloneRunePages(seed.runePages) : []
   const items = seed ? cloneItems(seed.items, slots) : emptyBuildItems(slots)
   const exampleBuilds = seed ? cloneExampleBuilds(seed.exampleBuilds, slots) : []
-  return [...categories, { id: newId(), label: trimmed, runePages, items, exampleBuilds }]
+  const skills = seed ? skillsAndSpellsOf(seed) : { summonerSpellIds: [], skillOrder: emptySkillOrder() }
+  return [...categories, { id: newId(), label: trimmed, runePages, items, exampleBuilds, ...skills }]
 }
 
 export function renameCategory(categories: Category[], id: string, label: string): Category[] {
@@ -45,6 +63,7 @@ function cloneCategory(source: Category, slots: ItemSlot[], label: string): Cate
     runePages: cloneRunePages(source.runePages),
     items: cloneItems(source.items, slots),
     exampleBuilds: cloneExampleBuilds(source.exampleBuilds, slots),
+    ...skillsAndSpellsOf(source),
   }
 }
 
@@ -73,7 +92,7 @@ export function copyCategoryToLoadout(
   targetCategories: Category[],
   targetSlots: ItemSlot[],
   source: Category,
-  targetDefaults?: { runePages: RunePage[]; items: BuildItems; exampleBuilds: ExampleBuild[] },
+  targetDefaults?: CategorySeed,
 ): { categories: Category[]; newId: string } {
   const clone = cloneCategory(source, targetSlots, source.label)
   const base: Category[] =
@@ -85,6 +104,7 @@ export function copyCategoryToLoadout(
             runePages: cloneRunePages(targetDefaults.runePages),
             items: cloneItems(targetDefaults.items, targetSlots),
             exampleBuilds: cloneExampleBuilds(targetDefaults.exampleBuilds, targetSlots),
+            ...skillsAndSpellsOf(targetDefaults),
           },
         ]
       : targetCategories

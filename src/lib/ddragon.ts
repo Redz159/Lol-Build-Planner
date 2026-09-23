@@ -1,5 +1,5 @@
 import { DDRAGON_VERSION } from '../data/ddragonVersion'
-import type { DDragonChampion, DDragonItem, DDragonRuneTree, DDragonSummonerSpell } from '../types/ddragon'
+import type { DDragonChampion, DDragonChampionSpell, DDragonItem, DDragonRuneTree, DDragonSummonerSpell } from '../types/ddragon'
 
 const CDN = 'https://ddragon.leagueoflegends.com'
 
@@ -25,6 +25,32 @@ export async function getChampions(): Promise<DDragonChampion[]> {
     `${CDN}/cdn/${DDRAGON_VERSION}/data/en_US/champion.json`,
   )
   return Object.values(raw.data).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+// A champion's Q/W/E/R, in that order. Only the trimmed spell list is cached — the full
+// per-champion file (lore, skins, tips, ...) would bloat localStorage across many champions.
+export async function getChampionSpells(championId: string): Promise<DDragonChampionSpell[]> {
+  const cacheKey = `ddragon:${DDRAGON_VERSION}:championSpells:${championId}`
+  const cached = localStorage.getItem(cacheKey)
+  if (cached) {
+    try {
+      return JSON.parse(cached) as DDragonChampionSpell[]
+    } catch {
+      // fall through and refetch
+    }
+  }
+  const url = `${CDN}/cdn/${DDRAGON_VERSION}/data/en_US/champion/${championId}.json`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`)
+  const raw = (await res.json()) as { data: Record<string, { spells: DDragonChampionSpell[] }> }
+  const spells = (raw.data[championId]?.spells ?? []).map(({ id, name, description, image }) => ({
+    id,
+    name,
+    description,
+    image: { full: image.full },
+  }))
+  localStorage.setItem(cacheKey, JSON.stringify(spells))
+  return spells
 }
 
 interface RawDDragonItem extends DDragonItem {
@@ -97,6 +123,7 @@ export function runeIconUrl(icon: string): string {
   return `${CDN}/cdn/img/${icon}`
 }
 
+// Summoner spells and champion abilities share Data Dragon's img/spell folder.
 export function summonerSpellImageUrl(fullImageName: string): string {
   return `${CDN}/cdn/${DDRAGON_VERSION}/img/spell/${fullImageName}`
 }

@@ -5,6 +5,7 @@ import { DEFAULT_ITEM_SLOTS, emptyBuildItems } from '../../types/items'
 import { isBoots, isStarterItem, isSupportItem } from '../itemAttributes'
 import { MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT } from '../exampleBuilds'
 import { newId } from '../id'
+import { emptySkillOrder } from '../skillOrder'
 import type { RiotMatch, RiotParticipant, RiotTimeline } from './types'
 
 const POSITION_TO_ROLE: Record<string, Role> = {
@@ -363,6 +364,7 @@ export function buildLoadoutForRole(role: Role, games: RoleGameData[], runeTrees
     roles: [role],
     runePages,
     summonerSpellIds: [],
+    skillOrder: emptySkillOrder(),
     itemSlots,
     items: buildItems,
     categories: [],

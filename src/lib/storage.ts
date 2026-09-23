@@ -1,5 +1,5 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
-import type { Build, Category, ExampleBuild, Loadout, Role } from '../types/build'
+import type { Build, Category, ExampleBuild, Loadout, Role, SkillOrder } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import {
   normalizeBuildItems,
@@ -13,6 +13,7 @@ import {
   type ItemSlot,
 } from '../types/items'
 import { ROLES } from './loadouts'
+import { SKILL_KEYS, SKILL_POINTS } from './skillOrder'
 import { newId } from './id'
 
 const STORAGE_KEY = 'lolbp:collection'
@@ -70,6 +71,11 @@ function normalizeSummonerSpellIds(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []
 }
 
+function normalizeSkillOrder(value: unknown): SkillOrder {
+  const raw = Array.isArray(value) ? value : []
+  return Array.from({ length: SKILL_POINTS }, (_, i) => SKILL_KEYS.find((k) => k === raw[i]) ?? null)
+}
+
 function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild[] {
   if (!Array.isArray(value)) return []
   const result: ExampleBuild[] = []
@@ -83,7 +89,9 @@ function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild
   return result
 }
 
-function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
+// `fallbackSummonerSpellIds` is the owning loadout's own spells — categories saved before spells
+// moved per-category inherit them, so existing builds keep their spells in every category.
+function normalizeCategories(value: unknown, slots: ItemSlot[], fallbackSummonerSpellIds: string[]): Category[] {
   if (!Array.isArray(value)) return []
   const result: Category[] = []
   for (const raw of value) {
@@ -97,6 +105,12 @@ function normalizeCategories(value: unknown, slots: ItemSlot[]): Category[] {
       runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
       items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),
       exampleBuilds: normalizeExampleBuilds((raw as Record<string, unknown>).exampleBuilds, slots),
+      summonerSpellIds:
+        'summonerSpellIds' in raw
+          ? normalizeSummonerSpellIds((raw as Record<string, unknown>).summonerSpellIds)
+          : fallbackSummonerSpellIds,
+      skillOrder: normalizeSkillOrder((raw as Record<string, unknown>).skillOrder),
+      ...((raw as Record<string, unknown>).tripleTonic === true ? { tripleTonic: true } : {}),
       ...((raw as Record<string, unknown>).layoutChosen === true ? { layoutChosen: true } : {}),
     })
   }
@@ -116,7 +130,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   const items = normalizeBuildItems(raw.items, itemSlots)
   // `raw.itemCategories` is the pre-restructure key (items-only categories, no runePages) — still
   // read so builds saved during that period migrate instead of losing their categories.
-  const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots)
+  const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots, normalizeSummonerSpellIds(raw.summonerSpellIds))
   const exampleBuilds = normalizeExampleBuilds(raw.exampleBuilds, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
@@ -131,6 +145,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       roles: [],
       runePages: normalizeRunePages(raw.runePages),
       summonerSpellIds: normalizeSummonerSpellIds(raw.summonerSpellIds),
+      skillOrder: normalizeSkillOrder(raw.skillOrder),
       itemSlots,
       items,
       categories,
@@ -150,6 +165,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
       roles: [],
       runePages: [],
       summonerSpellIds: [],
+      skillOrder: normalizeSkillOrder(undefined),
       itemSlots,
       items,
       categories,
@@ -177,6 +193,7 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
     itemNoteGlobal,
     itemSituational,
     summonerSpellIds: [],
+    skillOrder: normalizeSkillOrder(undefined),
     runePages: [
       {
         id: newId(),
@@ -208,14 +225,17 @@ export function migrateBuild(raw: any): Build {
   const parsedLoadouts: Loadout[] = Array.isArray(raw.loadouts)
     ? raw.loadouts.map((l: any) => {
         const itemSlots = normalizeItemSlots(l?.itemSlots)
+        const summonerSpellIds = normalizeSummonerSpellIds(l?.summonerSpellIds)
         return {
           id: l?.id ?? newId(),
           roles: normalizeRoles(l?.roles),
           runePages: normalizeRunePages(l?.runePages),
-          summonerSpellIds: normalizeSummonerSpellIds(l?.summonerSpellIds),
+          summonerSpellIds,
+          skillOrder: normalizeSkillOrder(l?.skillOrder),
+          ...(l?.tripleTonic === true ? { tripleTonic: true } : {}),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
-          categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots),
+          categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots, summonerSpellIds),
           exampleBuilds: normalizeExampleBuilds(l?.exampleBuilds, itemSlots),
           itemExclusions: normalizeItemExclusions(l?.itemExclusions),
           itemRequirements: normalizeItemRequirements(l?.itemRequirements),

@@ -21,6 +21,8 @@ interface Props {
   // none yet (used for copying a rune page/keystone group).
   mode: 'loadout' | 'category'
   exclude: Spot
+  // What a loadout's own plain (no-category) set is called as a target.
+  plainLabel?: string
   onPick: (loadoutId: string, categoryId: string | null) => void
   onClose: () => void
 }
@@ -28,7 +30,7 @@ interface Props {
 // Shared destination picker for the "Copy to..." actions — lets the user duplicate a category
 // into another role-variant, or a rune page/keystone group into another category, without
 // rebuilding it from scratch there. Always a copy: the source is left untouched.
-export function CopyToPicker({ title, build, mode, exclude, onPick, onClose }: Props) {
+export function CopyToPicker({ title, build, mode, exclude, plainLabel = 'Main rune page', onPick, onClose }: Props) {
   const [pickedLabel, setPickedLabel] = useState<string | null>(null)
 
   const pick = (loadoutId: string, categoryId: string | null, label: string) => {
@@ -87,7 +89,7 @@ export function CopyToPicker({ title, build, mode, exclude, onPick, onClose }: P
 
               const targets: { categoryId: string | null; label: string }[] =
                 loadout.categories.length === 0
-                  ? [{ categoryId: null, label: 'Main rune page' }]
+                  ? [{ categoryId: null, label: plainLabel }]
                   : loadout.categories.map((c) => ({ categoryId: c.id, label: c.label }))
 
               return (

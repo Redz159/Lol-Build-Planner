@@ -7,6 +7,7 @@ import { CategoryTabs } from '../components/shared/CategoryTabs'
 import { RunePagesEditor } from '../components/runes/RunePagesEditor'
 import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { SummonerSpellRow } from '../components/runes/SummonerSpellRow'
+import { SkillOrderGrid } from '../components/skills/SkillOrderGrid'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
@@ -29,14 +30,17 @@ import {
   duplicateCategory,
   mergedCategoryRunePages,
   renameCategory,
+  skillsAndSpellsOf,
   toggleCategoryPlacement,
+  type SkillsAndSpells,
 } from '../lib/categories'
 import { cloneRunePages } from '../lib/runeRules'
+import { hasTripleTonic } from '../lib/skillOrder'
 import { RoleIcon } from '../components/shared/RoleIcon'
 import { CopyToPicker } from '../components/shared/CopyToPicker'
 import { useConfirm } from '../components/shared/useConfirm'
 import type { RunePage } from '../types/runes'
-import type { Build, Loadout, Role } from '../types/build'
+import type { Build, Category, Loadout, Role } from '../types/build'
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -65,6 +69,8 @@ export function BuildDetailPage() {
   // Which rune page(s) are up for a cross-category "Copy to..." right now, if any, along with
   // where they came from (so the picker can exclude that exact spot as a destination).
   const [runeCopySource, setRuneCopySource] = useState<{ pages: RunePage[]; loadoutId: string; categoryId: string | null } | null>(null)
+  // Same idea for the Skills & Spells tab: the summoner spells + skill order up for "Copy to...".
+  const [skillsCopySource, setSkillsCopySource] = useState<{ skills: SkillsAndSpells; loadoutId: string; categoryId: string | null } | null>(null)
   // "(x) games" overlay for an API-imported loadout — off by default, and only ever offered when
   // there's actually import data to show.
   const [showImportCounts, setShowImportCounts] = useState(false)
@@ -100,6 +106,9 @@ export function BuildDetailPage() {
     : isAllCategoryView
       ? mergedCategoryRunePages(activeLoadout.categories)
       : activeLoadout.runePages
+  // Summoner spells + skill order follow the same scoping as rune pages; the "All" view has no
+  // single value, so the Skills & Spells tab renders every category's instead.
+  const currentSkills: SkillsAndSpells = activeCategory ?? activeLoadout
 
   const save = (patch: Partial<typeof build>) => {
     updateBuild({ ...build, ...patch, updatedAt: new Date().toISOString() })
@@ -109,22 +118,43 @@ export function BuildDetailPage() {
     save({ loadouts: build.loadouts.map((l) => (l.id === activeLoadout.id ? { ...l, ...patch } : l)) })
   }
 
-  // Writes go to whichever rune-page set is active; a no-op while viewing the merged "All" tab,
-  // since it has no single category to write into.
-  const setCurrentRunePages = (runePages: RunePage[]) => {
+  // Writes go to whichever category (or the loadout's plain set) is active; a no-op while viewing
+  // the merged "All" tab, since it has no single category to write into.
+  const saveCurrentScope = (patch: Partial<Pick<Category, 'runePages' | 'summonerSpellIds' | 'skillOrder' | 'tripleTonic'>>) => {
     if (activeCategory) {
-      saveLoadout({ categories: activeLoadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, runePages } : c)) })
+      saveLoadout({ categories: activeLoadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, ...patch } : c)) })
     } else if (!isAllCategoryView) {
-      saveLoadout({ runePages })
+      saveLoadout(patch)
     }
   }
 
+  const setCurrentRunePages = (runePages: RunePage[]) => saveCurrentScope({ runePages })
+
   const toggleSummonerSpell = (id: string) => {
-    const selected = activeLoadout.summonerSpellIds.includes(id)
+    const selected = currentSkills.summonerSpellIds.includes(id)
+    saveCurrentScope({
+      summonerSpellIds: selected ? currentSkills.summonerSpellIds.filter((s) => s !== id) : [...currentSkills.summonerSpellIds, id],
+    })
+  }
+
+  const applySkillsToAllCategories = () => {
     saveLoadout({
-      summonerSpellIds: selected
-        ? activeLoadout.summonerSpellIds.filter((s) => s !== id)
-        : [...activeLoadout.summonerSpellIds, id],
+      categories: activeLoadout.categories.map((c) => (c.id === activeCategory?.id ? c : { ...c, ...skillsAndSpellsOf(currentSkills) })),
+    })
+  }
+
+  // Overwrites (rather than appends, as rune pages do) — a spot only ever has one skill order.
+  const copySkillsHandler = (targetLoadoutId: string, targetCategoryId: string | null) => {
+    if (!skillsCopySource) return
+    save({
+      loadouts: build.loadouts.map((l) => {
+        if (l.id !== targetLoadoutId) return l
+        const skills = skillsAndSpellsOf(skillsCopySource.skills)
+        if (targetCategoryId) {
+          return { ...l, categories: l.categories.map((c) => (c.id === targetCategoryId ? { ...c, ...skills } : c)) }
+        }
+        return { ...l, ...skills }
+      }),
     })
   }
 
@@ -133,9 +163,7 @@ export function BuildDetailPage() {
       activeLoadout.categories,
       activeLoadout.itemSlots,
       label,
-      activeLoadout.categories.length === 0
-        ? { runePages: activeLoadout.runePages, items: activeLoadout.items, exampleBuilds: activeLoadout.exampleBuilds }
-        : undefined,
+      activeLoadout.categories.length === 0 ? activeLoadout : undefined,
     )
     saveLoadout({ categories })
     setSelectedCategoryId(categories[categories.length - 1].id)
@@ -159,11 +187,7 @@ export function BuildDetailPage() {
     const source = activeLoadout.categories.find((c) => c.id === categoryCopySourceId)
     const target = build.loadouts.find((l) => l.id === targetLoadoutId)
     if (!source || !target) return
-    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source, {
-      runePages: target.runePages,
-      items: target.items,
-      exampleBuilds: target.exampleBuilds,
-    })
+    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source, target)
     save({ loadouts: build.loadouts.map((l) => (l.id === targetLoadoutId ? { ...l, categories } : l)) })
   }
 
@@ -205,6 +229,39 @@ export function BuildDetailPage() {
 
   const deleteVariant = async () => {
     if (await confirm("Delete this variant? This can't be undone.")) save(removeLoadout(build, activeLoadout.id))
+  }
+
+  // Only the active category (or plain set) is ever editable — the "All" view passes readOnly.
+  const renderSkillsAndSpells = (skills: SkillsAndSpells, runePages: RunePage[], readOnly: boolean) => {
+    const tonicAvailable = hasTripleTonic(runePages)
+    return (
+      <>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
+          <SummonerSpellRow options={summonerSpells} selectedIds={skills.summonerSpellIds} readOnly={readOnly} onToggle={toggleSummonerSpell} />
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Skill Order</div>
+        {!readOnly && tonicAvailable && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>
+            <input
+              type="checkbox"
+              checked={!!skills.tripleTonic}
+              onChange={(e) => saveCurrentScope({ tripleTonic: e.target.checked ? true : undefined })}
+            />
+            Triple Tonic: Elixir of Skill as the 10th skill point
+          </label>
+        )}
+        {champion && (
+          <SkillOrderGrid
+            championId={champion.id}
+            order={skills.skillOrder}
+            showElixir={!!skills.tripleTonic && tonicAvailable}
+            readOnly={readOnly}
+            onChange={(skillOrder) => saveCurrentScope({ skillOrder })}
+          />
+        )}
+      </>
+    )
   }
 
   const enterEdit = () => {
@@ -438,15 +495,6 @@ export function BuildDetailPage() {
             label: 'Runes',
             content: (
               <>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 6 }}>Summoner Spells</div>
-                  <SummonerSpellRow
-                    options={summonerSpells}
-                    selectedIds={activeLoadout.summonerSpellIds}
-                    readOnly={mode !== 'edit'}
-                    onToggle={toggleSummonerSpell}
-                  />
-                </div>
                 {mode === 'edit' && !isAllCategoryView ? (
                   <RunePagesEditor
                     key={`${activeLoadout.id}:${effectiveCategoryId}`}
@@ -492,6 +540,44 @@ export function BuildDetailPage() {
               />
             ),
           },
+          {
+            key: 'skills',
+            label: 'Skills & Spells',
+            content: isAllCategoryView ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                  "All" shows every category read-only — pick a category to edit its spells and skill order.
+                </div>
+                {activeLoadout.categories.map((c) => (
+                  <div key={c.id}>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>{c.label}</div>
+                    {renderSkillsAndSpells(c, c.runePages, true)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {renderSkillsAndSpells(currentSkills, currentRunePages, mode !== 'edit')}
+                {mode === 'edit' && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                    {activeLoadout.categories.length > 1 && (
+                      <button type="button" onClick={applySkillsToAllCategories}>
+                        Apply to all categories
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSkillsCopySource({ skills: skillsAndSpellsOf(currentSkills), loadoutId: activeLoadout.id, categoryId: effectiveCategoryId })
+                      }
+                    >
+                      Copy to...
+                    </button>
+                  </div>
+                )}
+              </>
+            ),
+          },
         ]}
       />
       {runeCopySource && (
@@ -502,6 +588,17 @@ export function BuildDetailPage() {
           exclude={{ loadoutId: runeCopySource.loadoutId, categoryId: runeCopySource.categoryId }}
           onPick={(targetLoadoutId, targetCategoryId) => copyRunePagesHandler(targetLoadoutId, targetCategoryId)}
           onClose={() => setRuneCopySource(null)}
+        />
+      )}
+      {skillsCopySource && (
+        <CopyToPicker
+          title="Copy spells & skill order to..."
+          build={build}
+          mode="category"
+          plainLabel="Main"
+          exclude={{ loadoutId: skillsCopySource.loadoutId, categoryId: skillsCopySource.categoryId }}
+          onPick={(targetLoadoutId, targetCategoryId) => copySkillsHandler(targetLoadoutId, targetCategoryId)}
+          onClose={() => setSkillsCopySource(null)}
         />
       )}
       {confirmDialog}

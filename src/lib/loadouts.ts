@@ -2,6 +2,7 @@ import type { Build, Loadout, Role } from '../types/build'
 import type { DDragonItem } from '../types/ddragon'
 import { emptyBuildItems, type ItemSlot } from '../types/items'
 import { newId } from './id'
+import { emptySkillOrder } from './skillOrder'
 
 export const ROLES: Role[] = ['top', 'jungle', 'mid', 'adc', 'support']
 
@@ -46,6 +47,7 @@ export function emptyLoadout(roles: Role[] = []): Loadout {
     roles,
     runePages: [],
     summonerSpellIds: [],
+    skillOrder: emptySkillOrder(),
     itemSlots,
     items: emptyBuildItems(itemSlots),
     categories: [],
@@ -130,6 +132,8 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
         ...emptyLoadout(),
         runePages: source.runePages,
         summonerSpellIds: source.summonerSpellIds,
+        skillOrder: source.skillOrder,
+        ...(source.tripleTonic ? { tripleTonic: true } : {}),
         itemSlots: source.itemSlots,
         items: source.items,
         categories: source.categories,
