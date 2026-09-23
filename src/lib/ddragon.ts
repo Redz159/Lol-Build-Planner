@@ -101,14 +101,32 @@ export async function getRuneTrees(): Promise<DDragonRuneTree[]> {
   )
 }
 
+// Same order as the game's own spell list (Flash, Ignite, Smite, ...). Any spell Riot adds later
+// that isn't listed here goes after these, alphabetically.
+const SUMMONER_SPELL_ORDER = [
+  'SummonerFlash',
+  'SummonerDot',
+  'SummonerSmite',
+  'SummonerTeleport',
+  'SummonerBarrier',
+  'SummonerHeal',
+  'SummonerExhaust',
+  'SummonerHaste',
+  'SummonerBoost',
+]
+
 export async function getSummonerSpells(): Promise<DDragonSummonerSpell[]> {
   const raw = await cachedFetch<{ data: Record<string, DDragonSummonerSpell> }>(
     `ddragon:${DDRAGON_VERSION}:summonerSpells`,
     `${CDN}/cdn/${DDRAGON_VERSION}/data/en_US/summoner.json`,
   )
+  const rank = (spell: DDragonSummonerSpell) => {
+    const index = SUMMONER_SPELL_ORDER.indexOf(spell.id)
+    return index === -1 ? SUMMONER_SPELL_ORDER.length : index
+  }
   return Object.values(raw.data)
     .filter((spell) => spell.modes.includes('CLASSIC'))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
 }
 
 export function championImageUrl(fullImageName: string): string {
