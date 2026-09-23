@@ -133,6 +133,8 @@ export function splitLoadout(build: Build, loadoutId: string): { build: Build; n
         runePages: source.runePages,
         summonerSpellSets: source.summonerSpellSets,
         skillOrder: source.skillOrder,
+        skillOrderNote: source.skillOrderNote,
+        summonerSpellSetNotes: source.summonerSpellSetNotes,
         ...(source.tripleTonic ? { tripleTonic: true } : {}),
         itemSlots: source.itemSlots,
         items: source.items,

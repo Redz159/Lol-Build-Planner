@@ -12,6 +12,7 @@ import {
   setSkillPoint,
 } from '../../lib/skillOrder'
 import { Tooltip } from '../shared/Tooltip'
+import { NoteBadge, NoteEditor } from './SkillNotes'
 
 interface Props {
   championId: string
@@ -21,6 +22,8 @@ interface Props {
   showElixir: boolean
   readOnly: boolean
   onChange?: (order: SkillOrder) => void
+  note?: string
+  onNoteChange?: (note: string) => void
 }
 
 // The grid stretches to its container's width; cells stay square and grow with it.
@@ -154,8 +157,9 @@ function AutoFillDropdown({ spells, onPick }: { spells: DDragonChampionSpell[]; 
 
 // One row per ability, one column per skill point, with the level numbers in a header row
 // above the columns rather than inside the chosen cells.
-export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChange }: Props) {
+export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChange, note, onNoteChange }: Props) {
   const [spells, setSpells] = useState<DDragonChampionSpell[]>([])
+  const [editingNote, setEditingNote] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -196,6 +200,19 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
           >
             Clear
           </button>
+          <button
+            type="button"
+            aria-pressed={editingNote}
+            onClick={() => setEditingNote(!editingNote)}
+            style={{ fontSize: 13, padding: '6px 12px', ...(note || editingNote ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}) }}
+          >
+            ✎ Note
+          </button>
+        </div>
+      )}
+      {!readOnly && editingNote && (
+        <div style={{ marginBottom: 12 }}>
+          <NoteEditor note={note ?? ''} placeholder="Shown on the skill order's tooltip..." onChange={(text) => onNoteChange?.(text)} />
         </div>
       )}
       <div
@@ -206,7 +223,7 @@ export function SkillOrderGrid({ championId, order, showElixir, readOnly, onChan
           alignItems: 'center',
         }}
       >
-        <div />
+        <div style={{ display: 'flex', justifyContent: 'center' }}>{note && <NoteBadge note={note} />}</div>
         {Array.from({ length: SKILL_POINTS }, (_, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>
             {columnLabel(i)}

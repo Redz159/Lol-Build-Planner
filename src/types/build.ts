@@ -23,6 +23,10 @@ export type SkillOrder = (SkillKey | null)[]
 // list several alternatives. Always two spell ids.
 export type SummonerSpellSet = string[]
 
+export function spellSetKey(set: SummonerSpellSet): string {
+  return set.join('+')
+}
+
 // One concrete, illustrative "finished build" — up to a few alternative items per slot (stacked
 // by preference), separate from the flexible per-slot candidate pool in `items`. Several of
 // these can sit side by side under the same category/loadout, each its own example.
@@ -42,7 +46,10 @@ export interface Category {
   items: BuildItems
   exampleBuilds: ExampleBuild[]
   summonerSpellSets: SummonerSpellSet[]
+  // Tooltip note per spell set, keyed by spellSetKey(set). Absent means no notes.
+  summonerSpellSetNotes?: Record<string, string>
   skillOrder: SkillOrder
+  skillOrderNote?: string
   // Whether the Elixir of Skill column is shown — only honored while one of the rune pages
   // actually takes Triple Tonic. Absent means false.
   tripleTonic?: boolean
@@ -65,7 +72,9 @@ export interface Loadout {
   roles: Role[]
   runePages: RunePage[]
   summonerSpellSets: SummonerSpellSet[]
+  summonerSpellSetNotes?: Record<string, string>
   skillOrder: SkillOrder
+  skillOrderNote?: string
   tripleTonic?: boolean
   itemSlots: ItemSlot[]
   items: BuildItems

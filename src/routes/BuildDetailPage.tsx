@@ -120,7 +120,7 @@ export function BuildDetailPage() {
 
   // Writes go to whichever category (or the loadout's plain set) is active; a no-op while viewing
   // the merged "All" tab, since it has no single category to write into.
-  const saveCurrentScope = (patch: Partial<Pick<Category, 'runePages' | 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>>) => {
+  const saveCurrentScope = (patch: Partial<Pick<Category, 'runePages'> & SkillsAndSpells>) => {
     if (activeCategory) {
       saveLoadout({ categories: activeLoadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, ...patch } : c)) })
     } else if (!isAllCategoryView) {
@@ -248,6 +248,8 @@ export function BuildDetailPage() {
               showElixir={!!skills.tripleTonic && tonicAvailable}
               readOnly={readOnly}
               onChange={(skillOrder) => saveCurrentScope({ skillOrder })}
+              note={skills.skillOrderNote}
+              onNoteChange={(text) => saveCurrentScope({ skillOrderNote: text.trim() ? text : undefined })}
             />
           )}
         </div>
@@ -256,9 +258,12 @@ export function BuildDetailPage() {
           <SummonerSpellSets
             options={summonerSpells}
             sets={skills.summonerSpellSets}
+            notes={skills.summonerSpellSetNotes ?? {}}
             roles={activeLoadout.roles}
             readOnly={readOnly}
-            onChange={(summonerSpellSets) => saveCurrentScope({ summonerSpellSets })}
+            onChange={(summonerSpellSets, notes) =>
+              saveCurrentScope({ summonerSpellSets, summonerSpellSetNotes: Object.keys(notes).length > 0 ? notes : undefined })
+            }
           />
         </div>
       </div>

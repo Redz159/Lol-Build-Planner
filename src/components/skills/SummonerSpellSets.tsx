@@ -1,17 +1,20 @@
 import { useState } from 'react'
-import type { Role, SummonerSpellSet } from '../../types/build'
+import { spellSetKey, type Role, type SummonerSpellSet } from '../../types/build'
 import type { DDragonSummonerSpell } from '../../types/ddragon'
 import { summonerSpellImageUrl } from '../../lib/ddragon'
 import { SummonerSpellRow } from '../runes/SummonerSpellRow'
 import { Tooltip } from '../shared/Tooltip'
+import { NoteBadge, NoteEditor } from './SkillNotes'
 
 interface Props {
   options: DDragonSummonerSpell[]
   sets: SummonerSpellSet[]
+  // Tooltip note per set, keyed by spellSetKey.
+  notes: Record<string, string>
   // The variant's roles decide whether Smite may (or must) be taken.
   roles: Role[]
   readOnly: boolean
-  onChange?: (sets: SummonerSpellSet[]) => void
+  onChange?: (sets: SummonerSpellSet[], notes: Record<string, string>) => void
 }
 
 const SMITE_ID = 'SummonerSmite'
@@ -27,9 +30,17 @@ function smiteRule(roles: Role[]): 'forbidden' | 'allowed' | 'required' {
 
 // Alternative summoner spell pairings (Flash + Ignite, Flash + Exhaust, ...). A new set is picked
 // from the full spell pool and added as soon as its second spell is chosen.
-export function SummonerSpellSets({ options, sets, roles, readOnly, onChange }: Props) {
+export function SummonerSpellSets({ options, sets, notes, roles, readOnly, onChange }: Props) {
   const [draft, setDraft] = useState<string[] | null>(null)
   const [duplicate, setDuplicate] = useState(false)
+  const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null)
+
+  // Blank notes are dropped rather than stored, same as item notes.
+  const setNote = (key: string, text: string) => {
+    const { [key]: _previous, ...rest } = notes
+    onChange?.(sets, text.trim() ? { ...rest, [key]: text } : rest)
+  }
+
   const smite = smiteRule(roles)
   const pickable = smite === 'forbidden' ? options.filter((s) => s.id !== SMITE_ID) : options
   const initialDraft = smite === 'required' ? [SMITE_ID] : []
@@ -58,7 +69,7 @@ export function SummonerSpellSets({ options, sets, roles, readOnly, onChange }: 
       setDuplicate(true)
     } else {
       // A jungle-only set reads "spell + Smite", with the locked-in Smite second.
-      onChange?.([...sets, smite === 'required' ? [id, SMITE_ID] : next])
+      onChange?.([...sets, smite === 'required' ? [id, SMITE_ID] : next], notes)
       setDraft(null)
     }
   }
@@ -67,40 +78,65 @@ export function SummonerSpellSets({ options, sets, roles, readOnly, onChange }: 
     <div>
       {sets.length === 0 && readOnly && <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>None set</div>}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {sets.map((set, index) => (
-          <div key={set.join('+')} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {set.map((id) => {
-              const spell = options.find((s) => s.id === id)
-              if (!spell) return null
-              return (
-                <Tooltip key={id} title={spell.name} descriptionHtml={spell.description}>
-                  <img
-                    src={summonerSpellImageUrl(spell.image.full)}
-                    alt={spell.name}
-                    width={44}
-                    height={44}
-                    style={{ display: 'block', borderRadius: 4, border: '1px solid var(--border-strong)' }}
-                  />
-                </Tooltip>
-              )
-            })}
-            {problem(set) && (
-              <span title={problem(set) ?? undefined} aria-label={problem(set) ?? undefined} style={{ color: 'var(--preferred)', fontSize: 18, cursor: 'help' }}>
-                ⚠
-              </span>
-            )}
-            {!readOnly && (
-              <button
-                type="button"
-                aria-label="Remove set"
-                onClick={() => onChange?.(sets.filter((_, i) => i !== index))}
-                style={{ padding: '4px 9px', fontSize: 13, color: 'var(--danger)' }}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        ))}
+        {sets.map((set, index) => {
+          const key = spellSetKey(set)
+          const note = notes[key]
+          const names = set.map((id) => options.find((s) => s.id === id)?.name ?? id).join(' + ')
+          return (
+            <div key={key}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {set.map((id) => {
+                  const spell = options.find((s) => s.id === id)
+                  if (!spell) return null
+                  return (
+                    <Tooltip key={id} title={spell.name} descriptionHtml={spell.description} note={note}>
+                      <img
+                        src={summonerSpellImageUrl(spell.image.full)}
+                        alt={spell.name}
+                        width={44}
+                        height={44}
+                        style={{ display: 'block', borderRadius: 4, border: '1px solid var(--border-strong)' }}
+                      />
+                    </Tooltip>
+                  )
+                })}
+                {note && <NoteBadge note={note} />}
+                {problem(set) && (
+                  <span title={problem(set) ?? undefined} aria-label={problem(set) ?? undefined} style={{ color: 'var(--preferred)', fontSize: 18, cursor: 'help' }}>
+                    ⚠
+                  </span>
+                )}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    aria-label={`${editingNoteKey === key ? 'Close' : 'Edit'} note for ${names}`}
+                    aria-pressed={editingNoteKey === key}
+                    onClick={() => setEditingNoteKey(editingNoteKey === key ? null : key)}
+                    style={{ padding: '4px 9px', fontSize: 13, ...(note || editingNoteKey === key ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}) }}
+                  >
+                    ✎
+                  </button>
+                )}
+                {!readOnly && (
+                  <button
+                    type="button"
+                    aria-label="Remove set"
+                    onClick={() => {
+                      const { [key]: _removed, ...rest } = notes
+                      onChange?.(sets.filter((_, i) => i !== index), rest)
+                    }}
+                    style={{ padding: '4px 9px', fontSize: 13, color: 'var(--danger)' }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              {!readOnly && editingNoteKey === key && (
+                <NoteEditor note={note ?? ''} placeholder={`Shown on the ${names} tooltip...`} onChange={(text) => setNote(key, text)} />
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {!readOnly &&

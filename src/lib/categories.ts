@@ -9,16 +9,18 @@ import { emptySkillOrder } from './skillOrder'
 
 // What a category holds besides its label — used to seed a first category from the loadout's
 // own plain values.
-export type CategorySeed = Pick<Category, 'runePages' | 'items' | 'exampleBuilds' | 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>
+export type CategorySeed = Pick<Category, 'runePages' | 'items' | 'exampleBuilds' | keyof SkillsAndSpells>
 
 // The summoner spells + skill order part of a category (or a loadout's plain values), copied as
 // one unit by the Skills & Spells tab's transfer actions.
-export type SkillsAndSpells = Pick<Category, 'summonerSpellSets' | 'skillOrder' | 'tripleTonic'>
+export type SkillsAndSpells = Pick<Category, 'summonerSpellSets' | 'summonerSpellSetNotes' | 'skillOrder' | 'skillOrderNote' | 'tripleTonic'>
 
 export function skillsAndSpellsOf(source: SkillsAndSpells): SkillsAndSpells {
   return {
     summonerSpellSets: source.summonerSpellSets.map((set) => [...set]),
+    summonerSpellSetNotes: source.summonerSpellSetNotes ? { ...source.summonerSpellSetNotes } : undefined,
     skillOrder: [...source.skillOrder],
+    skillOrderNote: source.skillOrderNote,
     tripleTonic: source.tripleTonic ? true : undefined,
   }
 }

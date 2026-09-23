@@ -89,6 +89,16 @@ function normalizeSkillOrder(value: unknown): SkillOrder {
   return Array.from({ length: SKILL_POINTS }, (_, i) => SKILL_KEYS.find((k) => k === raw[i]) ?? null)
 }
 
+// The optional tooltip notes of the Skills & Spells tab — only present in the result when set.
+function normalizeSkillNotes(raw: Record<string, unknown>): Pick<Category, 'summonerSpellSetNotes' | 'skillOrderNote'> {
+  const setNotes = normalizeItemNotes(raw.summonerSpellSetNotes)
+  const skillOrderNote = typeof raw.skillOrderNote === 'string' && raw.skillOrderNote.trim() !== '' ? raw.skillOrderNote : undefined
+  return {
+    ...(Object.keys(setNotes).length > 0 ? { summonerSpellSetNotes: setNotes } : {}),
+    ...(skillOrderNote ? { skillOrderNote } : {}),
+  }
+}
+
 function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild[] {
   if (!Array.isArray(value)) return []
   const result: ExampleBuild[] = []
@@ -123,6 +133,7 @@ function normalizeCategories(value: unknown, slots: ItemSlot[], fallbackSummoner
           ? normalizeSummonerSpellSets((raw as Record<string, unknown>).summonerSpellSets, (raw as Record<string, unknown>).summonerSpellIds)
           : fallbackSummonerSpellSets,
       skillOrder: normalizeSkillOrder((raw as Record<string, unknown>).skillOrder),
+      ...normalizeSkillNotes(raw as Record<string, unknown>),
       ...((raw as Record<string, unknown>).tripleTonic === true ? { tripleTonic: true } : {}),
       ...((raw as Record<string, unknown>).layoutChosen === true ? { layoutChosen: true } : {}),
     })
@@ -246,6 +257,7 @@ export function migrateBuild(raw: any): Build {
           runePages: normalizeRunePages(l?.runePages),
           summonerSpellSets,
           skillOrder: normalizeSkillOrder(l?.skillOrder),
+          ...normalizeSkillNotes(l ?? {}),
           ...(l?.tripleTonic === true ? { tripleTonic: true } : {}),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),

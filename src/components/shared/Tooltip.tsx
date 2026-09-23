@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import './tooltip.css'
 
 interface Props {
-  title: string
+  // Optional so a tooltip can be just its note bubble (e.g. the Skills & Spells "?" badges).
+  title?: string
   descriptionHtml?: string
   extra?: ReactNode
   note?: string
@@ -48,11 +49,13 @@ export function Tooltip({ title, descriptionHtml, extra, note, children }: Props
 
   const bubble = (
     <div ref={bubbleRef} className="tooltip-group" style={phase === 'shown' ? style : HIDDEN_STYLE}>
-      <div className="tooltip-bubble" role="tooltip">
-        <div className="tooltip-title">{title}</div>
-        {extra}
-        {descriptionHtml && <div className="tooltip-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />}
-      </div>
+      {(title || extra || descriptionHtml) && (
+        <div className="tooltip-bubble" role="tooltip">
+          {title && <div className="tooltip-title">{title}</div>}
+          {extra}
+          {descriptionHtml && <div className="tooltip-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />}
+        </div>
+      )}
       {note && (
         <div className="tooltip-bubble tooltip-note-bubble" role="tooltip">
           <div className="tooltip-title">Note</div>
