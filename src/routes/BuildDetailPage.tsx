@@ -9,6 +9,7 @@ import { RunePagesViewer } from '../components/runes/RunePagesViewer'
 import { SummonerSpellSets } from '../components/skills/SummonerSpellSets'
 import { SkillOrderGrid } from '../components/skills/SkillOrderGrid'
 import { ItemsEditor } from '../components/items/ItemsEditor'
+import { SimulatorTab } from '../components/simulator/SimulatorTab'
 import { exportBuild } from '../lib/exportImport'
 import { championImageUrl } from '../lib/ddragon'
 import {
@@ -28,6 +29,8 @@ import {
   copyCategoryToLoadout,
   deleteCategory,
   duplicateCategory,
+  mergedCategoryExampleBuilds,
+  mergedCategoryItems,
   mergedCategoryRunePages,
   renameCategory,
   skillsAndSpellsOf,
@@ -583,6 +586,33 @@ export function BuildDetailPage() {
                 )}
               </>
             ),
+          },
+          {
+            key: 'simulator',
+            label: 'Simulator',
+            content: champion ? (
+              <SimulatorTab
+                key={`${activeLoadout.id}:${effectiveCategoryId}`}
+                champion={champion}
+                slots={visibleItemSlots(activeLoadout.itemSlots, activeLoadout.roles)}
+                buildItems={
+                  activeCategory
+                    ? activeCategory.items
+                    : isAllCategoryView
+                      ? mergedCategoryItems(activeLoadout.categories, activeLoadout.itemSlots)
+                      : activeLoadout.items
+                }
+                exampleBuilds={
+                  activeCategory
+                    ? activeCategory.exampleBuilds
+                    : isAllCategoryView
+                      ? mergedCategoryExampleBuilds(activeLoadout.categories)
+                      : activeLoadout.exampleBuilds
+                }
+                runePages={currentRunePages}
+                skillOrder={currentSkills.skillOrder}
+              />
+            ) : null,
           },
         ]}
       />
