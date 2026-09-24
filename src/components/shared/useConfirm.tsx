@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 // A small, app-styled stand-in for window.confirm — used before any destructive action big
 // enough to matter (deleting a build, a role-variant, a category, a rune page, an item slot, an
@@ -35,7 +36,10 @@ export function useConfirm() {
     return () => document.removeEventListener('keydown', onKey)
   }, [message])
 
-  const dialog = message && (
+  // Portaled into document.body: a caller like BuildCard sits inside a `.card` whose :hover
+  // transform would otherwise become the containing block for this position:fixed overlay,
+  // shrinking it to the card and making it flicker as the hover state toggles.
+  const dialog = message && createPortal(
     <div
       onClick={() => settle(false)}
       style={{ position: 'fixed', inset: 0, background: 'rgba(5, 7, 11, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}
@@ -51,7 +55,8 @@ export function useConfirm() {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 
   return { confirm, dialog }
