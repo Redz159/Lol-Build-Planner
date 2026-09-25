@@ -77,6 +77,8 @@ export function BuildDetailPage() {
   // "(x) games" overlay for an API-imported loadout — off by default, and only ever offered when
   // there's actually import data to show.
   const [showImportCounts, setShowImportCounts] = useState(false)
+  // Controlled so the page can drop its width cap while the Simulator tab is open.
+  const [activeTab, setActiveTab] = useState('runes')
 
   useEffect(() => {
     if (build && !build.loadouts.some((l) => l.id === activeLoadoutId)) {
@@ -292,7 +294,7 @@ export function BuildDetailPage() {
   }
 
   return (
-    <div style={{ padding: '32px 28px 200px', maxWidth: 1160, margin: '0 auto' }}>
+    <div style={{ padding: '32px 28px 200px', maxWidth: activeTab === 'simulator' ? 'none' : 1160, margin: '0 auto' }}>
       <Link to="/">&larr; Back to collection</Link>
       <div
         style={{
@@ -498,6 +500,8 @@ export function BuildDetailPage() {
       )}
 
       <Tabs
+        activeKey={activeTab}
+        onActiveKeyChange={setActiveTab}
         tabs={[
           {
             key: 'runes',
