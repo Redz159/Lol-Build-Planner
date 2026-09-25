@@ -16,7 +16,7 @@ import { ItemLoadoutPicker, type ItemSource } from './ItemLoadoutPicker'
 import { RuneLoadoutPicker } from './RuneLoadoutPicker'
 import { StatSheet } from './StatSheet'
 import { AbilityList } from './AbilityList'
-import { LoadoutSummary } from './LoadoutSummary'
+import { ItemsDropdown, RunesDropdown } from './LoadoutDropdowns'
 import { TargetPanel, type DummyStats, type TargetMode } from './TargetPanel'
 import './simulator.css'
 
@@ -116,44 +116,49 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, fontWeight: 600 }}>
-        Level {level}
-        <input
-          type="range"
-          min={1}
-          max={18}
-          value={level}
-          onChange={(e) => {
-            setLevel(Number(e.target.value))
-            setRankOverrides({})
-          }}
-          style={{ flex: 1, maxWidth: 480 }}
-        />
-      </label>
-
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ flex: '3 1 560px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="sim-panel" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <img
-              src={championLoadingUrl(champion.id)}
-              alt={champion.name}
-              width={120}
-              style={{ borderRadius: 8, border: '1px solid var(--border-strong)', flexShrink: 0 }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="sim-heading">
-                {champion.name} · level {level} · adaptive {block.adaptive.toUpperCase()}
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <LoadoutSummary
-                  items={pickItems(itemIds)}
-                  resolved={resolved}
-                  trees={runeTrees}
-                  itemEditor={<ItemLoadoutPicker allItems={allItems} selected={itemIds} onChange={setItemIds} source={{ slots, items: buildItems, exampleBuilds }} />}
-                  runeEditor={<RuneLoadoutPicker pages={runePages} trees={runeTrees} picks={runePicks} resolved={resolved} onChange={setRunePicks} />}
-                />
+            <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <img
+                src={championLoadingUrl(champion.id)}
+                alt={champion.name}
+                width={150}
+                style={{ borderRadius: 8, border: '1px solid var(--border-strong)', display: 'block' }}
+              />
+              <RunesDropdown
+                layout="page"
+                resolved={resolved}
+                trees={runeTrees}
+                editor={<RuneLoadoutPicker pages={runePages} trees={runeTrees} picks={runePicks} resolved={resolved} onChange={setRunePicks} />}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className="sim-heading" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                {champion.name} · adaptive {block.adaptive.toUpperCase()} ·
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Level
+                  <select
+                    className="sim-level-select"
+                    value={level}
+                    onChange={(e) => {
+                      setLevel(Number(e.target.value))
+                      setRankOverrides({})
+                    }}
+                  >
+                    {Array.from({ length: 18 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <StatSheet block={block} resourceType={own.data.stats.resourceType} />
+              <ItemsDropdown
+                items={pickItems(itemIds)}
+                editor={<ItemLoadoutPicker allItems={allItems} selected={itemIds} onChange={setItemIds} source={{ slots, items: buildItems, exampleBuilds }} />}
+              />
             </div>
           </div>
         </div>

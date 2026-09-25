@@ -5,7 +5,7 @@ import { championImageUrl } from '../../lib/ddragon'
 import type { ResolvedRunes, RunePicks } from '../../lib/simulatorLoadout'
 import { ChampionSelect } from '../collection/ChampionSelect'
 import { ItemLoadoutPicker, type ItemSource } from './ItemLoadoutPicker'
-import { LoadoutSummary } from './LoadoutSummary'
+import { ItemsDropdown, RunesDropdown } from './LoadoutDropdowns'
 import { RuneLoadoutPicker } from './RuneLoadoutPicker'
 import { StatSheet } from './StatSheet'
 
@@ -86,22 +86,33 @@ export function TargetPanel(props: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {champion && <img src={championImageUrl(champion.image.full)} alt="" width={36} height={36} style={{ borderRadius: 6 }} />}
             <ChampionSelect champions={props.champions} value={props.championId} onChange={props.onChampionChange} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Level
+              <select className="sim-level-select" value={props.level} onChange={(e) => props.onLevelChange(Number(e.target.value))}>
+                {Array.from({ length: 18 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            Level {props.level}
-            <input type="range" min={1} max={18} value={props.level} onChange={(e) => props.onLevelChange(Number(e.target.value))} style={{ flex: 1 }} />
-          </label>
           {props.loadError && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{props.loadError}</div>}
-          <LoadoutSummary
-            align="right"
-            items={props.items}
-            resolved={props.resolvedRunes}
-            trees={props.trees}
-            itemEditor={<ItemLoadoutPicker allItems={props.allItems} selected={props.itemIds} onChange={props.onItemsChange} source={props.itemSource} />}
-            runeEditor={
-              <RuneLoadoutPicker pages={props.runePages} trees={props.trees} picks={props.runePicks} resolved={props.resolvedRunes} onChange={props.onRunePicksChange} />
-            }
-          />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <ItemsDropdown
+              align="right"
+              items={props.items}
+              editor={<ItemLoadoutPicker allItems={props.allItems} selected={props.itemIds} onChange={props.onItemsChange} source={props.itemSource} />}
+            />
+            <RunesDropdown
+              align="right"
+              resolved={props.resolvedRunes}
+              trees={props.trees}
+              editor={
+                <RuneLoadoutPicker pages={props.runePages} trees={props.trees} picks={props.runePicks} resolved={props.resolvedRunes} onChange={props.onRunePicksChange} />
+              }
+            />
+          </div>
           {props.block && <StatSheet block={props.block} resourceType={props.resourceType ?? 0} />}
         </div>
       )}
