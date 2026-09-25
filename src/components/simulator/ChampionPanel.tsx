@@ -40,8 +40,8 @@ export function ChampionPanel(props: Props) {
   const edge = mirrored ? 'flex-end' : 'flex-start'
   const items = props.itemIds.map((id) => props.allItems.find((i) => i.id === id)).filter((i): i is DDragonItem => !!i)
   return (
-    <div className="sim-panel" style={{ display: 'flex', flexDirection: mirrored ? 'row-reverse' : 'row', gap: 16, alignItems: 'flex-start' }}>
-      <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="sim-panel" style={{ display: 'flex', flexDirection: mirrored ? 'row-reverse' : 'row', gap: 16, alignItems: 'stretch' }}>
+      <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 10 }}>
         <img src={championLoadingUrl(props.championId)} alt="" width={150} style={{ borderRadius: 8, border: '1px solid var(--border-strong)', display: 'block' }} />
         <RunesDropdown
           layout="page"
@@ -69,7 +69,8 @@ export function ChampionPanel(props: Props) {
         </div>
         {props.error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{props.error}</div>}
         {block ? <StatSheet block={block} resourceType={props.resourceType} mirrored={mirrored} /> : !props.error && <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>Loading champion data...</div>}
-        <div style={{ alignSelf: edge }}>
+        {/* Pushed to the bottom so the item bar lines up with the bottom of the rune page. */}
+        <div style={{ alignSelf: edge, marginTop: 'auto' }}>
           <ItemsDropdown
             align={align}
             items={items}

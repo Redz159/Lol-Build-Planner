@@ -255,16 +255,18 @@
   cursor: pointer;
 }
 
-/* You and the target side by side as equal columns, with a wide gutter between them. */
+/* You and the target pushed to the outer edges, each kept narrow (two stat columns) so the
+   middle stays open. */
 .sim-sides {
   display: flex;
   flex-wrap: wrap;
+  justify-content: space-between;
   gap: 24px 72px;
   align-items: flex-start;
 }
 
 .sim-side {
-  flex: 1 1 560px;
+  flex: 0 1 640px;
   min-width: 0;
   display: flex;
   flex-direction: column;
