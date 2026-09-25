@@ -5,6 +5,7 @@ import { championImageUrl } from '../../lib/ddragon'
 import type { ResolvedRunes, RunePicks } from '../../lib/simulatorLoadout'
 import { ChampionSelect } from '../collection/ChampionSelect'
 import { ItemLoadoutPicker, type ItemSource } from './ItemLoadoutPicker'
+import { LoadoutSummary } from './LoadoutSummary'
 import { RuneLoadoutPicker } from './RuneLoadoutPicker'
 import { StatSheet } from './StatSheet'
 
@@ -27,6 +28,7 @@ interface Props {
   level: number
   onLevelChange: (level: number) => void
   allItems: DDragonItem[]
+  items: DDragonItem[]
   itemIds: string[]
   onItemsChange: (ids: string[]) => void
   itemSource?: ItemSource
@@ -90,8 +92,16 @@ export function TargetPanel(props: Props) {
             <input type="range" min={1} max={18} value={props.level} onChange={(e) => props.onLevelChange(Number(e.target.value))} style={{ flex: 1 }} />
           </label>
           {props.loadError && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{props.loadError}</div>}
-          <ItemLoadoutPicker allItems={props.allItems} selected={props.itemIds} onChange={props.onItemsChange} source={props.itemSource} />
-          <RuneLoadoutPicker pages={props.runePages} trees={props.trees} picks={props.runePicks} resolved={props.resolvedRunes} onChange={props.onRunePicksChange} />
+          <LoadoutSummary
+            align="right"
+            items={props.items}
+            resolved={props.resolvedRunes}
+            trees={props.trees}
+            itemEditor={<ItemLoadoutPicker allItems={props.allItems} selected={props.itemIds} onChange={props.onItemsChange} source={props.itemSource} />}
+            runeEditor={
+              <RuneLoadoutPicker pages={props.runePages} trees={props.trees} picks={props.runePicks} resolved={props.resolvedRunes} onChange={props.onRunePicksChange} />
+            }
+          />
           {props.block && <StatSheet block={props.block} resourceType={props.resourceType ?? 0} />}
         </div>
       )}

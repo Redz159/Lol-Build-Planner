@@ -12,32 +12,35 @@ export const SHARD_ROWS: { key: keyof ShardSelection; options: StatShardOption[]
   { key: 'defense', options: DEFENSE_SHARDS },
 ]
 
-// What the user has explicitly clicked in the simulator's rune picker. Anything left unset
-// falls back to the rune page's own preferred (or first) pick for that row.
+// A complete, freely chosen rune setup. Premade pages from the build only act as presets that
+// fill this in (see presetPicks) — every tree, rune and shard stays selectable afterwards.
 export interface RunePicks {
-  pageId?: string
-  variantId?: string
+  // The premade page/variant last loaded, if any — only used to mark the runes it lists.
+  presetPageId?: string
+  presetVariantId?: string
+  primaryTreeId?: number
+  keystoneId?: number
   // Primary tree row index (1-3) -> rune id.
   primary: Record<number, number>
-  // Exactly the secondary runes picked, once the user has touched them.
-  secondary?: number[]
+  secondaryTreeId?: number
+  secondary: number[]
   shards: Partial<Record<keyof ShardSelection, number>>
   inputs: Record<number, number>
 }
 
-export const EMPTY_RUNE_PICKS: RunePicks = { primary: {}, shards: {}, inputs: {} }
+export const EMPTY_RUNE_PICKS: RunePicks = { primary: {}, secondary: [], shards: {}, inputs: {} }
 
 export interface ResolvedRunes {
-  page?: RunePage
-  variantId?: string
   keystoneId?: number
   primaryTreeId?: number
   secondaryTreeId?: number
-  // Row index -> the rune ids the page allows there, and the one in use.
+  keystones: number[]
   primaryRows: { row: number; candidates: number[]; picked?: number }[]
   secondaryRows: { row: number; candidates: number[] }[]
   secondary: number[]
   shardRows: { key: keyof ShardSelection; candidates: StatShardOption[]; picked?: number }[]
+  // Runes and shards the loaded premade page lists as viable.
+  suggested: Set<number>
   selection: RuneSelection
 }
 
@@ -48,72 +51,92 @@ export function findRune(trees: DDragonRuneTree[], id: number): DDragonRune | un
 
 const firstPreferred = (candidates: number[], preferred: number[]) => candidates.find((id) => preferred.includes(id)) ?? candidates[0]
 
-// Turns a rune page (which lists every viable rune per row) plus the user's clicks into one
-// concrete in-game rune setup.
-export function resolveRunes(pages: RunePage[], picks: RunePicks, trees: DDragonRuneTree[]): ResolvedRunes {
-  const page = pages.find((p) => p.id === picks.pageId) ?? pages[0]
-  const variant = page?.variants.find((v) => v.id === picks.variantId) ?? page?.variants[0]
-  const primaryTree = trees.find((t) => t.id === page?.primaryTreeId)
+const rowRunes = (tree: DDragonRuneTree | undefined, row: number) => tree?.slots[row]?.runes.map((r) => r.id) ?? []
+
+// Loads a premade page (which lists every viable rune per row) as one concrete setup: the
+// preferred (or first viable) pick of each row, up to two secondary runes in different rows.
+export function presetPicks(page: RunePage, variantId: string | undefined, trees: DDragonRuneTree[], inputs: Record<number, number>): RunePicks {
+  const variant = page.variants.find((v) => v.id === variantId) ?? page.variants[0]
+  const primaryTree = trees.find((t) => t.id === page.primaryTreeId)
   const secondaryTree = trees.find((t) => t.id === variant?.secondaryTreeId)
+  const primary: Record<number, number> = {}
+  for (const row of [1, 2, 3]) {
+    const pick = firstPreferred(
+      rowRunes(primaryTree, row).filter((id) => page.primaryRuneIds.includes(id)),
+      page.preferredPrimaryRuneIds,
+    )
+    if (pick) primary[row] = pick
+  }
+  const secondary: number[] = []
+  const rowOf = (id: number) => [1, 2, 3].find((row) => rowRunes(secondaryTree, row).includes(id))
+  const ordered = [
+    ...(variant?.preferredSecondaryRuneIds ?? []),
+    ...(variant?.secondaryRuneIds ?? []).filter((id) => !variant?.preferredSecondaryRuneIds.includes(id)),
+  ]
+  for (const id of ordered) {
+    const row = rowOf(id)
+    if (secondary.length < 2 && row !== undefined && !secondary.some((x) => rowOf(x) === row)) secondary.push(id)
+  }
+  const shards: RunePicks['shards'] = {}
+  for (const { key, options } of SHARD_ROWS) {
+    const pick = firstPreferred(
+      options.map((o) => o.id).filter((id) => variant?.shards[key].includes(id)),
+      variant?.preferredShards[key] ?? [],
+    )
+    if (pick) shards[key] = pick
+  }
+  return {
+    presetPageId: page.id,
+    presetVariantId: variant?.id,
+    primaryTreeId: page.primaryTreeId || undefined,
+    keystoneId: page.keystoneId || undefined,
+    primary,
+    secondaryTreeId: variant?.secondaryTreeId || undefined,
+    secondary,
+    shards,
+    inputs,
+  }
+}
 
-  const primaryRows = (primaryTree?.slots.slice(1) ?? []).map((slot, i) => {
-    const row = i + 1
-    const inRow = slot.runes.map((r) => r.id)
-    const allowed = inRow.filter((id) => page?.primaryRuneIds.includes(id))
-    const candidates = allowed.length > 0 ? allowed : inRow
-    const picked = picks.primary[row] !== undefined && candidates.includes(picks.primary[row]) ? picks.primary[row] : firstPreferred(allowed, page?.preferredPrimaryRuneIds ?? [])
-    return { row, candidates, picked }
-  })
+// The picks a side starts with: the build's first premade page, if it has one.
+export function initialRunePicks(pages: RunePage[], trees: DDragonRuneTree[]): RunePicks {
+  return pages[0] ? presetPicks(pages[0], undefined, trees, {}) : EMPTY_RUNE_PICKS
+}
 
-  const secondaryRows = (secondaryTree?.slots.slice(1) ?? []).map((slot, i) => {
-    const inRow = slot.runes.map((r) => r.id)
-    const allowed = inRow.filter((id) => variant?.secondaryRuneIds.includes(id))
-    return { row: i + 1, candidates: allowed.length > 0 ? allowed : inRow }
+export function resolveRunes(pages: RunePage[], picks: RunePicks, trees: DDragonRuneTree[]): ResolvedRunes {
+  const primaryTree = trees.find((t) => t.id === picks.primaryTreeId)
+  const secondaryTree = picks.secondaryTreeId !== picks.primaryTreeId ? trees.find((t) => t.id === picks.secondaryTreeId) : undefined
+  const keystones = rowRunes(primaryTree, 0)
+  const keystoneId = picks.keystoneId && keystones.includes(picks.keystoneId) ? picks.keystoneId : undefined
+  const primaryRows = [1, 2, 3].map((row) => {
+    const candidates = rowRunes(primaryTree, row)
+    return { row, candidates, picked: candidates.includes(picks.primary[row]) ? picks.primary[row] : undefined }
   })
-  const rowOf = (id: number) => secondaryRows.find((r) => r.candidates.includes(id))?.row
-  let secondary: number[]
-  if (picks.secondary) {
-    secondary = picks.secondary.filter((id) => rowOf(id) !== undefined)
-  } else {
-    // Default: preferred picks first, then the rest, at most one per row and two in total.
-    const ordered = [
-      ...(variant?.preferredSecondaryRuneIds ?? []),
-      ...(variant?.secondaryRuneIds ?? []).filter((id) => !variant?.preferredSecondaryRuneIds.includes(id)),
-    ]
-    secondary = []
-    for (const id of ordered) {
-      if (secondary.length >= 2) break
-      const row = rowOf(id)
-      if (row !== undefined && !secondary.some((s) => rowOf(s) === row)) secondary.push(id)
-    }
+  const secondaryRows = [1, 2, 3].map((row) => ({ row, candidates: rowRunes(secondaryTree, row) }))
+  const secondary = picks.secondary.filter((id) => secondaryRows.some((r) => r.candidates.includes(id)))
+  const shardRows = SHARD_ROWS.map(({ key, options }) => ({ key, candidates: options, picked: picks.shards[key] }))
+
+  const suggested = new Set<number>()
+  const page = pages.find((p) => p.id === picks.presetPageId)
+  const variant = page?.variants.find((v) => v.id === picks.presetVariantId)
+  if (page) {
+    if (page.primaryTreeId === picks.primaryTreeId) [page.keystoneId, ...page.primaryRuneIds].forEach((id) => suggested.add(id))
+    if (variant?.secondaryTreeId === picks.secondaryTreeId) variant?.secondaryRuneIds.forEach((id) => suggested.add(id))
+    for (const { key } of SHARD_ROWS) variant?.shards[key].forEach((id) => suggested.add(id))
   }
 
-  const shardRows = SHARD_ROWS.map(({ key, options }) => {
-    const allowed = variant ? options.filter((o) => variant.shards[key].includes(o.id)) : []
-    const candidates = allowed.length > 0 ? allowed : options
-    const clicked = picks.shards[key]
-    const picked =
-      clicked !== undefined && candidates.some((o) => o.id === clicked)
-        ? clicked
-        : firstPreferred(
-            allowed.map((o) => o.id),
-            variant?.preferredShards[key] ?? [],
-          )
-    return { key, candidates, picked }
-  })
-
-  const runeIds = [page?.keystoneId, ...primaryRows.map((r) => r.picked), ...secondary].filter((id): id is number => !!id)
+  const runeIds = [keystoneId, ...primaryRows.map((r) => r.picked), ...secondary].filter((id): id is number => !!id)
   const shardIds = shardRows.map((r) => r.picked).filter((id): id is number => !!id)
   return {
-    page,
-    variantId: variant?.id,
-    keystoneId: page?.keystoneId || undefined,
-    primaryTreeId: page?.primaryTreeId,
-    secondaryTreeId: variant?.secondaryTreeId,
+    keystoneId,
+    primaryTreeId: primaryTree?.id,
+    secondaryTreeId: secondaryTree?.id,
+    keystones,
     primaryRows,
     secondaryRows,
     secondary,
     shardRows,
+    suggested,
     selection: { runeIds, shardIds, inputs: picks.inputs },
   }
 }

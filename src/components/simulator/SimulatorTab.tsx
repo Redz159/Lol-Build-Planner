@@ -8,7 +8,7 @@ import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { championLoadingUrl, getChampionSimData } from '../../lib/ddragon'
 import { computeStats, toTargetStats } from '../../lib/statEngine'
-import { EMPTY_RUNE_PICKS, exampleBuildFinalItems, findRune, ranksAtLevel, resolveRunes, type RunePicks } from '../../lib/simulatorLoadout'
+import { exampleBuildFinalItems, findRune, initialRunePicks, ranksAtLevel, resolveRunes, type RunePicks } from '../../lib/simulatorLoadout'
 import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { DEFENSE_SHARDS, FLEX_SHARDS, OFFENSE_SHARDS } from '../../data/statShards'
@@ -16,6 +16,7 @@ import { ItemLoadoutPicker, type ItemSource } from './ItemLoadoutPicker'
 import { RuneLoadoutPicker } from './RuneLoadoutPicker'
 import { StatSheet } from './StatSheet'
 import { AbilityList } from './AbilityList'
+import { LoadoutSummary } from './LoadoutSummary'
 import { TargetPanel, type DummyStats, type TargetMode } from './TargetPanel'
 import './simulator.css'
 
@@ -79,7 +80,7 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
 
   const [level, setLevel] = useState(18)
   const [itemIds, setItemIds] = useState<string[]>(() => (exampleBuilds[0] ? exampleBuildFinalItems(exampleBuilds[0], slots, allItems) : []))
-  const [runePicks, setRunePicks] = useState<RunePicks>(EMPTY_RUNE_PICKS)
+  const [runePicks, setRunePicks] = useState<RunePicks>(() => initialRunePicks(runePages, runeTrees))
   const [rankOverrides, setRankOverrides] = useState<Partial<Record<SkillKey, number>>>({})
   const [stacks, setStacks] = useState<Record<string, number>>({})
   const [enabledAmps, setEnabledAmps] = useState<number[]>([])
@@ -89,7 +90,7 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
   const [targetChampionId, setTargetChampionId] = useState(champion.id)
   const [targetLevel, setTargetLevel] = useState(18)
   const [targetItemIds, setTargetItemIds] = useState<string[]>([])
-  const [targetRunePicks, setTargetRunePicks] = useState<RunePicks>(EMPTY_RUNE_PICKS)
+  const [targetRunePicks, setTargetRunePicks] = useState<RunePicks>(() => initialRunePicks(targetSource(builds, champion.id).runePages, runeTrees))
   const target = useSimData(targetMode === 'champion' ? targetChampionId : undefined)
   const targetSaved = useMemo(() => targetSource(builds, targetChampionId), [builds, targetChampionId])
 
@@ -143,16 +144,17 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
               <div className="sim-heading">
                 {champion.name} · level {level} · adaptive {block.adaptive.toUpperCase()}
               </div>
+              <div style={{ marginBottom: 12 }}>
+                <LoadoutSummary
+                  items={pickItems(itemIds)}
+                  resolved={resolved}
+                  trees={runeTrees}
+                  itemEditor={<ItemLoadoutPicker allItems={allItems} selected={itemIds} onChange={setItemIds} source={{ slots, items: buildItems, exampleBuilds }} />}
+                  runeEditor={<RuneLoadoutPicker pages={runePages} trees={runeTrees} picks={runePicks} resolved={resolved} onChange={setRunePicks} />}
+                />
+              </div>
               <StatSheet block={block} resourceType={own.data.stats.resourceType} />
             </div>
-          </div>
-          <div className="sim-panel">
-            <div className="sim-heading">Items</div>
-            <ItemLoadoutPicker allItems={allItems} selected={itemIds} onChange={setItemIds} source={{ slots, items: buildItems, exampleBuilds }} />
-          </div>
-          <div className="sim-panel">
-            <div className="sim-heading">Runes</div>
-            <RuneLoadoutPicker pages={runePages} trees={runeTrees} picks={runePicks} resolved={resolved} onChange={setRunePicks} />
           </div>
         </div>
 
@@ -168,11 +170,12 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
             onChampionChange={(id) => {
               setTargetChampionId(id)
               setTargetItemIds([])
-              setTargetRunePicks(EMPTY_RUNE_PICKS)
+              setTargetRunePicks(initialRunePicks(targetSource(builds, id).runePages, runeTrees))
             }}
             level={targetLevel}
             onLevelChange={setTargetLevel}
             allItems={allItems}
+            items={pickItems(targetItemIds)}
             itemIds={targetItemIds}
             onItemsChange={setTargetItemIds}
             itemSource={targetSaved.items}
