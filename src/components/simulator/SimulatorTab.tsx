@@ -6,18 +6,17 @@ import type { RunePage } from '../../types/runes'
 import type { ChampionSimData, StatBlock, TargetStats } from '../../types/simulator'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
-import { championLoadingUrl, getChampionSimData } from '../../lib/ddragon'
+import { getChampionSimData } from '../../lib/ddragon'
 import { computeStats, toTargetStats } from '../../lib/statEngine'
 import { exampleBuildFinalItems, findRune, initialRunePicks, ranksAtLevel, resolveRunes, type RunePicks } from '../../lib/simulatorLoadout'
 import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { DEFENSE_SHARDS, FLEX_SHARDS, OFFENSE_SHARDS } from '../../data/statShards'
-import { ItemLoadoutPicker, type ItemSource } from './ItemLoadoutPicker'
-import { RuneLoadoutPicker } from './RuneLoadoutPicker'
-import { StatSheet } from './StatSheet'
+import { ChampionSelect } from '../collection/ChampionSelect'
+import type { ItemSource } from './ItemLoadoutPicker'
 import { AbilityList } from './AbilityList'
-import { ItemsDropdown, RunesDropdown } from './LoadoutDropdowns'
-import { TargetPanel, type DummyStats, type TargetMode } from './TargetPanel'
+import { ChampionPanel } from './ChampionPanel'
+import { DummyPanel, TargetModeToggle, type DummyStats, type TargetMode } from './TargetPanel'
 import './simulator.css'
 
 interface Props {
@@ -116,86 +115,78 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div style={{ flex: '3 1 560px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="sim-panel" style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-            <div style={{ width: 150, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <img
-                src={championLoadingUrl(champion.id)}
-                alt={champion.name}
-                width={150}
-                style={{ borderRadius: 8, border: '1px solid var(--border-strong)', display: 'block' }}
-              />
-              <RunesDropdown
-                layout="page"
-                resolved={resolved}
-                trees={runeTrees}
-                editor={<RuneLoadoutPicker pages={runePages} trees={runeTrees} picks={runePicks} resolved={resolved} onChange={setRunePicks} />}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div className="sim-heading" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                {champion.name} · adaptive {block.adaptive.toUpperCase()} ·
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Level
-                  <select
-                    className="sim-level-select"
-                    value={level}
-                    onChange={(e) => {
-                      setLevel(Number(e.target.value))
-                      setRankOverrides({})
-                    }}
-                  >
-                    {Array.from({ length: 18 }, (_, i) => (
-                      <option key={i + 1} value={i + 1}>
-                        {i + 1}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <StatSheet block={block} resourceType={own.data.stats.resourceType} />
-              <ItemsDropdown
-                items={pickItems(itemIds)}
-                editor={<ItemLoadoutPicker allItems={allItems} selected={itemIds} onChange={setItemIds} source={{ slots, items: buildItems, exampleBuilds }} />}
-              />
-            </div>
+      <div className="sim-sides">
+        <div className="sim-side">
+          <div className="sim-side-header">
+            <span className="sim-heading" style={{ margin: 0 }}>
+              You
+            </span>
           </div>
+          <ChampionPanel
+            championId={champion.id}
+            title={<span className="sim-champion-name">{champion.name}</span>}
+            level={level}
+            onLevelChange={(l) => {
+              setLevel(l)
+              setRankOverrides({})
+            }}
+            block={block}
+            resourceType={own.data.stats.resourceType}
+            allItems={allItems}
+            itemIds={itemIds}
+            onItemsChange={setItemIds}
+            itemSource={{ slots, items: buildItems, exampleBuilds }}
+            trees={runeTrees}
+            runePages={runePages}
+            runePicks={runePicks}
+            resolvedRunes={resolved}
+            onRunePicksChange={setRunePicks}
+          />
         </div>
 
-        <div className="sim-panel" style={{ flex: '2 1 340px', minWidth: 0 }}>
-          <div className="sim-heading">Target</div>
-          <TargetPanel
-            mode={targetMode}
-            onModeChange={setTargetMode}
-            dummy={dummy}
-            onDummyChange={setDummy}
-            champions={champions}
-            championId={targetChampionId}
-            onChampionChange={(id) => {
-              setTargetChampionId(id)
-              setTargetItemIds([])
-              setTargetRunePicks(initialRunePicks(targetSource(builds, id).runePages, runeTrees))
-            }}
-            level={targetLevel}
-            onLevelChange={setTargetLevel}
-            allItems={allItems}
-            items={pickItems(targetItemIds)}
-            itemIds={targetItemIds}
-            onItemsChange={setTargetItemIds}
-            itemSource={targetSaved.items}
-            runePages={targetSaved.runePages}
-            trees={runeTrees}
-            runePicks={targetRunePicks}
-            resolvedRunes={targetResolved}
-            onRunePicksChange={setTargetRunePicks}
-            block={targetBlock}
-            resourceType={target.data?.stats.resourceType}
-            loadError={target.error}
-          />
-          <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--text-dim)' }}>
-            Target: {Math.round(targetStats.hp)} HP · {Math.round(targetStats.armor)} Armor · {Math.round(targetStats.mr)} MR
+        <div className="sim-side">
+          <div className="sim-side-header">
+            <span className="sim-heading" style={{ margin: 0 }}>
+              Target
+            </span>
+            <TargetModeToggle mode={targetMode} onChange={setTargetMode} />
+            <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--text-dim)' }}>
+              {Math.round(targetStats.hp)} HP · {Math.round(targetStats.armor)} Armor · {Math.round(targetStats.mr)} MR
+            </span>
           </div>
+          {targetMode === 'dummy' ? (
+            <DummyPanel dummy={dummy} onChange={setDummy} />
+          ) : (
+            <ChampionPanel
+              align="right"
+              championId={targetChampionId}
+              title={
+                <ChampionSelect
+                  champions={champions}
+                  value={targetChampionId}
+                  onChange={(id) => {
+                    setTargetChampionId(id)
+                    setTargetItemIds([])
+                    setTargetRunePicks(initialRunePicks(targetSource(builds, id).runePages, runeTrees))
+                  }}
+                />
+              }
+              level={targetLevel}
+              onLevelChange={setTargetLevel}
+              block={targetBlock}
+              resourceType={target.data?.stats.resourceType ?? 0}
+              error={target.error}
+              allItems={allItems}
+              itemIds={targetItemIds}
+              onItemsChange={setTargetItemIds}
+              itemSource={targetSaved.items}
+              trees={runeTrees}
+              runePages={targetSaved.runePages}
+              runePicks={targetRunePicks}
+              resolvedRunes={targetResolved}
+              onRunePicksChange={setTargetRunePicks}
+            />
+          )}
         </div>
       </div>
 
