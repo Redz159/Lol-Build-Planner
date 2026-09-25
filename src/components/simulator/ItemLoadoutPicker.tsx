@@ -23,8 +23,10 @@ export function ItemLoadoutPicker({ allItems, selected, onChange, source }: Prop
   const [search, setSearch] = useState('')
   const byId = (id: string) => allItems.find((i) => i.id === id)
   const full = selected.length >= MAX_SIM_ITEMS
-  const add = (id: string) => {
-    if (!full && !selected.includes(id)) onChange([...selected, id])
+  // Clicking an item that's already picked takes it back out.
+  const toggle = (id: string) => {
+    if (selected.includes(id)) onChange(selected.filter((x) => x !== id))
+    else if (!full) onChange([...selected, id])
   }
   const query = search.trim().toLowerCase()
   const results = query.length >= 2 ? allItems.filter((i) => i.name.toLowerCase().includes(query)).slice(0, 24) : []
@@ -68,7 +70,7 @@ export function ItemLoadoutPicker({ allItems, selected, onChange, source }: Prop
                 {source!.items[slot.id].map((p) => {
                   const item = byId(p.itemId)
                   if (!item) return null
-                  return <ItemIcon key={p.id} item={item} size={26} selected={selected.includes(item.id)} excluded={full && !selected.includes(item.id)} onClick={() => add(item.id)} />
+                  return <ItemIcon key={p.id} item={item} size={26} selected={selected.includes(item.id)} excluded={full && !selected.includes(item.id)} onClick={() => toggle(item.id)} />
                 })}
               </div>
             </div>
@@ -81,7 +83,7 @@ export function ItemLoadoutPicker({ allItems, selected, onChange, source }: Prop
         {results.length > 0 && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
             {results.map((item) => (
-              <ItemIcon key={item.id} item={item} size={26} selected={selected.includes(item.id)} excluded={full && !selected.includes(item.id)} onClick={() => add(item.id)} />
+              <ItemIcon key={item.id} item={item} size={26} selected={selected.includes(item.id)} excluded={full && !selected.includes(item.id)} onClick={() => toggle(item.id)} />
             ))}
           </div>
         )}

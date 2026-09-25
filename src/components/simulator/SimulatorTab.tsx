@@ -145,12 +145,12 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
         </div>
 
         <div className="sim-side">
-          <div className="sim-side-header">
+          <div className="sim-side-header" style={{ flexDirection: 'row-reverse' }}>
             <span className="sim-heading" style={{ margin: 0 }}>
               Target
             </span>
             <TargetModeToggle mode={targetMode} onChange={setTargetMode} />
-            <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--text-dim)' }}>
+            <span style={{ marginRight: 'auto', fontSize: 12.5, color: 'var(--text-dim)' }}>
               {Math.round(targetStats.hp)} HP · {Math.round(targetStats.armor)} Armor · {Math.round(targetStats.mr)} MR
             </span>
           </div>
@@ -158,7 +158,7 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
             <DummyPanel dummy={dummy} onChange={setDummy} />
           ) : (
             <ChampionPanel
-              align="right"
+              mirrored
               championId={targetChampionId}
               title={
                 <ChampionSelect

@@ -78,9 +78,11 @@ interface RunesProps {
   // 'page': a small in-game style rune page (keystone and primary runes in one column,
   // secondary runes and shards in the other). 'row': everything in one line.
   layout?: 'page' | 'row'
+  // Page layout only: keystone column on the right, for the mirrored right-hand side.
+  mirrored?: boolean
 }
 
-export function RunesDropdown({ resolved, trees, editor, align, layout = 'row' }: RunesProps) {
+export function RunesDropdown({ resolved, trees, editor, align, layout = 'row', mirrored }: RunesProps) {
   const icon = (id: number | undefined, size: number) => {
     const rune = id ? findRune(trees, id) : undefined
     return rune ? (
@@ -102,7 +104,7 @@ export function RunesDropdown({ resolved, trees, editor, align, layout = 'row' }
         editor={editor}
         buttonStyle={{ width: '100%', justifyContent: 'center', padding: '10px 8px' }}
         summary={
-          <span className="sim-rune-page">
+          <span className="sim-rune-page" style={mirrored ? { flexDirection: 'row-reverse' } : undefined}>
             <span className="sim-rune-column">
               {icon(resolved.keystoneId, 44)}
               {resolved.primaryRows.map((r) => (

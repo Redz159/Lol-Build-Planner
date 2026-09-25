@@ -284,3 +284,17 @@
   font-weight: 600;
   color: var(--text-heading);
 }
+
+.sim-stat-grid.mirrored {
+  direction: rtl;
+}
+
+.sim-stat-grid.mirrored .sim-stat {
+  direction: ltr;
+  flex-direction: row-reverse;
+}
+
+.sim-stat-grid.mirrored .sim-stat-value {
+  margin-left: 0;
+  margin-right: auto;
+}

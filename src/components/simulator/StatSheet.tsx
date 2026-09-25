@@ -91,10 +91,11 @@ function Breakdown({ def, line, block }: { def: StatDef; line: StatLine; block: 
 }
 
 // resourceType as stored in ChampionBaseStats: 0 = mana, 1 = energy, anything else = none.
-export function StatSheet({ block, resourceType }: { block: StatBlock; resourceType: number }) {
+// `mirrored` lays the grid out right-to-left with each stat reading value, label, icon.
+export function StatSheet({ block, resourceType, mirrored }: { block: StatBlock; resourceType: number; mirrored?: boolean }) {
   const resourceName = resourceType === 1 ? 'Energy' : resourceType === 0 ? 'Mana' : 'Resource'
   return (
-    <div className="sim-stat-grid">
+    <div className={`sim-stat-grid${mirrored ? ' mirrored' : ''}`}>
       {STAT_DEFS.map((def) => {
         const line = block.stats[def.key]
         const label = def.key === 'resource' ? resourceName : def.key === 'resourceRegen' ? `${resourceName} Regen /5s` : def.label
