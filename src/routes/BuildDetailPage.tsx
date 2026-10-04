@@ -10,17 +10,10 @@ import { SummonerSpellSets } from '../components/skills/SummonerSpellSets'
 import { SkillOrderGrid } from '../components/skills/SkillOrderGrid'
 import { ItemsEditor } from '../components/items/ItemsEditor'
 import { SimulatorTab } from '../components/simulator/SimulatorTab'
-import { exportBuild } from '../lib/exportImport'
-import { championImageUrl } from '../lib/ddragon'
 import {
-  FILL_ICON_URL,
-  ROLES,
-  ROLE_LABELS,
   applySupportStarterDefault,
   assignRole,
-  loadoutLabel,
   removeLoadout,
-  roleOwnerLoadoutId,
   splitLoadout,
   visibleItemSlots,
 } from '../lib/loadouts'
@@ -39,7 +32,7 @@ import {
 } from '../lib/categories'
 import { cloneRunePages } from '../lib/runeRules'
 import { hasTripleTonic } from '../lib/skillOrder'
-import { RoleIcon } from '../components/shared/RoleIcon'
+import { BuildHeader } from '../components/build/BuildHeader'
 import { CopyToPicker } from '../components/shared/CopyToPicker'
 import { useConfirm } from '../components/shared/useConfirm'
 import type { RunePage } from '../types/runes'
@@ -293,175 +286,39 @@ export function BuildDetailPage() {
     setMode('view')
   }
 
+  const deleteThisBuild = async () => {
+    if (await confirm(`Delete "${build.title}"? This can't be undone.`)) {
+      deleteBuild(build.id)
+      navigate('/')
+    }
+  }
+
   return (
     <div style={{ padding: '32px 28px 200px', maxWidth: activeTab === 'simulator' ? 'none' : 1160, margin: '0 auto' }}>
       <Link to="/">&larr; Back to collection</Link>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          margin: '16px 0 22px',
-          paddingBottom: 20,
-          borderBottom: '1px solid var(--border)',
-          flexWrap: 'wrap',
+      <BuildHeader
+        build={build}
+        champion={champion}
+        activeLoadout={activeLoadout}
+        mode={mode}
+        editingTitle={editingTitle}
+        titleDraft={titleDraft}
+        onTitleDraftChange={setTitleDraft}
+        onSaveTitle={() => {
+          save({ title: titleDraft.trim() || build.title })
+          setEditingTitle(false)
         }}
-      >
-        {editingTitle ? (
-          <>
-            <input type="text" value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} />
-            <button
-              type="button"
-              onClick={() => {
-                save({ title: titleDraft.trim() || build.title })
-                setEditingTitle(false)
-              }}
-            >
-              Save
-            </button>
-          </>
-        ) : (
-          <>
-            {champion && (
-              <img
-                src={championImageUrl(champion.image.full)}
-                alt={champion.name}
-                width={40}
-                height={40}
-                style={{ borderRadius: 8, border: '1px solid var(--border-strong)', boxShadow: 'var(--shadow-sm)' }}
-              />
-            )}
-            <h1 style={{ margin: 0, fontSize: 28 }}>
-              {build.title} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>({build.champion.name})</span>
-            </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {build.loadouts.map((l, i) => (
-                <span key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  {i > 0 && <span style={{ color: 'var(--gold)' }}>/</span>}
-                  {l.roles.length === 0 ? (
-                    <img src={FILL_ICON_URL} alt="Fill" title="Fill" width={18} height={18} />
-                  ) : (
-                    l.roles.map((role) => <RoleIcon key={role} role={role} size={18} />)
-                  )}
-                </span>
-              ))}
-            </div>
-            {mode === 'edit' && (
-              <button type="button" onClick={() => setEditingTitle(true)}>
-                Rename
-              </button>
-            )}
-          </>
-        )}
-        <div style={{ flex: 1 }} />
-        {mode === 'edit' && (
-          <button type="button" onClick={cancelEditing} style={{ color: 'var(--danger)' }}>
-            ✕ Cancel
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={mode === 'view' ? enterEdit : doneEditing}
-          style={
-            mode === 'edit'
-              ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' }
-              : undefined
-          }
-        >
-          {mode === 'view' ? '✏️ Edit build' : '✓ Done editing'}
-        </button>
-        <button type="button" onClick={() => duplicateBuild(build.id)}>
-          Duplicate
-        </button>
-        <button type="button" onClick={() => exportBuild(build)}>
-          Export
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            if (await confirm(`Delete "${build.title}"? This can't be undone.`)) {
-              deleteBuild(build.id)
-              navigate('/')
-            }
-          }}
-          style={{ color: 'var(--danger)' }}
-        >
-          Delete
-        </button>
-      </div>
-
-      {build.loadouts.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-          {build.loadouts.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => setActiveLoadoutId(l.id)}
-              title={loadoutLabel(l)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                ...(l.id === activeLoadout.id ? { borderColor: 'var(--gold)', color: 'var(--gold-bright)' } : {}),
-              }}
-            >
-              {l.roles.length === 0 ? (
-                <img src={FILL_ICON_URL} alt="Fill" width={16} height={16} />
-              ) : (
-                l.roles.map((role) => <RoleIcon key={role} role={role} size={16} />)
-              )}
-            </button>
-          ))}
-          {mode === 'edit' && (
-            <button type="button" onClick={deleteVariant} style={{ color: 'var(--danger)' }}>
-              Delete variant
-            </button>
-          )}
-        </div>
-      )}
-
-      {mode === 'edit' && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            marginBottom: 20,
-            fontSize: 13,
-            color: 'var(--text-dim)',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span>Applies to:</span>
-          {ROLES.map((role) => {
-            const ownerId = roleOwnerLoadoutId(build, role)
-            const takenElsewhere = ownerId !== undefined && ownerId !== activeLoadout.id
-            return (
-              <label
-                key={role}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  cursor: takenElsewhere ? 'not-allowed' : undefined,
-                }}
-                title={takenElsewhere ? `${ROLE_LABELS[role]} is already assigned to another variant` : undefined}
-              >
-                <input
-                  type="checkbox"
-                  checked={activeLoadout.roles.includes(role)}
-                  disabled={takenElsewhere}
-                  onChange={(e) => toggleRole(role, e.target.checked)}
-                />
-                <RoleIcon role={role} size={18} dim={takenElsewhere} />
-              </label>
-            )
-          })}
-          <button type="button" onClick={addVariant} style={{ marginLeft: 'auto' }}>
-            + New variant
-          </button>
-        </div>
-      )}
+        onStartRename={() => setEditingTitle(true)}
+        onEnterEdit={enterEdit}
+        onDoneEditing={doneEditing}
+        onCancelEditing={cancelEditing}
+        onDuplicate={() => duplicateBuild(build.id)}
+        onDelete={deleteThisBuild}
+        onSelectLoadout={setActiveLoadoutId}
+        onDeleteVariant={deleteVariant}
+        onToggleRole={toggleRole}
+        onAddVariant={addVariant}
+      />
 
       <CategoryTabs
         categories={activeLoadout.categories}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ExampleBuild, Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemPlacement, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
@@ -9,7 +9,8 @@ import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../.
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
 import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
-import { addSlotToExampleBuilds, removeSlotFromExampleBuilds } from '../../lib/exampleBuilds'
+import { addSlotToExampleBuilds } from '../../lib/exampleBuilds'
+import { addItemSlot, deleteItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from '../../lib/itemSlots'
 import { ITEM_SET_LAYOUTS, newSlotsForLayout, type LayoutTemplate } from '../../lib/itemSetLayouts'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
@@ -20,6 +21,7 @@ import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ExampleBuildsSection } from './ExampleBuildsSection'
 import { LayoutPicker } from './LayoutPicker'
 import { ExportItemSetPopup } from './ExportItemSetPopup'
+import { useItemDragDrop } from './useItemDragDrop'
 import { ImportItemSetPopup } from './ImportItemSetPopup'
 import type { ItemRelationOutline } from './ItemIcon'
 
@@ -336,85 +338,14 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     })
   }
 
-  // Drag-and-drop: a ref (not state) so a drag gesture doesn't trigger re-renders of its own.
-  // `from: null` means the drag started in the item browser rather than an existing placement.
-  const dragRef = useRef<{ itemId: string; from: { slotId: string; placementId: string } | null } | null>(null)
-
-  const startDragFromSlot = (slotId: string, placementId: string, itemId: string) => {
-    dragRef.current = { itemId, from: { slotId, placementId } }
-  }
-
-  const startDragFromBrowser = (itemId: string) => {
-    dragRef.current = { itemId, from: null }
-  }
-
-  const addItemToSlot = (itemId: string, slotId: string) => {
-    const item = items.find((i) => i.id === itemId)
-    if (!item) return
-    if (findSlot(slotId)?.kind === 'boots' && !isBoots(item)) return
-    const current = currentItems[slotId] ?? []
-    if (current.some((p) => p.itemId === itemId)) return
-    setCurrentItems({ ...currentItems, [slotId]: [...current, { id: newId(), itemId }] })
-  }
-
-  const moveItemToSlot = (itemId: string, from: { slotId: string; placementId: string }, toSlotId: string) => {
-    const item = items.find((i) => i.id === itemId)
-    if (!item) return
-    if (findSlot(toSlotId)?.kind === 'boots' && !isBoots(item)) return
-    const alreadyInTarget = (currentItems[toSlotId] ?? []).some((p) => p.itemId === itemId)
-    const nextItems: BuildItems = {
-      ...currentItems,
-      [from.slotId]: (currentItems[from.slotId] ?? []).filter((p) => p.id !== from.placementId),
-    }
-    if (!alreadyInTarget) nextItems[toSlotId] = [...(nextItems[toSlotId] ?? []), { id: newId(), itemId }]
-    setCurrentItems(nextItems, { itemSlotNotes: withoutLocalNote(from.slotId, itemId) })
-  }
-
-  const reorderItemInSlot = (slotId: string, placementId: string, targetPlacementId: string, side: 'before' | 'after') => {
-    const current = currentItems[slotId] ?? []
-    const fromIndex = current.findIndex((p) => p.id === placementId)
-    if (fromIndex === -1 || placementId === targetPlacementId) return
-    const next = [...current]
-    const [moved] = next.splice(fromIndex, 1)
-    const targetIndex = next.findIndex((p) => p.id === targetPlacementId)
-    if (targetIndex === -1) return
-    next.splice(side === 'after' ? targetIndex + 1 : targetIndex, 0, moved)
-    setCurrentItems({ ...currentItems, [slotId]: next })
-  }
-
-  const applyDrop = (toSlotId: string, drag: { itemId: string; from: { slotId: string; placementId: string } | null }) => {
-    if (drag.from) {
-      if (drag.from.slotId === toSlotId) return
-      moveItemToSlot(drag.itemId, drag.from, toSlotId)
-    } else {
-      addItemToSlot(drag.itemId, toSlotId)
-    }
-  }
-
-  const dropOnSlot = (toSlotId: string) => {
-    const drag = dragRef.current
-    dragRef.current = null
-    if (!drag) return
-    applyDrop(toSlotId, drag)
-  }
-
-  const dropOnPlacement = (toSlotId: string, targetPlacementId: string, side: 'before' | 'after') => {
-    const drag = dragRef.current
-    dragRef.current = null
-    if (!drag) return
-    if (drag.from && drag.from.slotId === toSlotId) {
-      reorderItemInSlot(toSlotId, drag.from.placementId, targetPlacementId, side)
-      return
-    }
-    applyDrop(toSlotId, drag)
-  }
-
-  const dropOnBrowser = () => {
-    const drag = dragRef.current
-    dragRef.current = null
-    if (!drag?.from) return
-    removePlacement(drag.from.slotId, drag.from.placementId)
-  }
+  const { startDragFromSlot, startDragFromBrowser, dropOnSlot, dropOnPlacement, dropOnBrowser } = useItemDragDrop({
+    items,
+    currentItems,
+    setCurrentItems,
+    findSlot,
+    withoutLocalNote,
+    removePlacement,
+  })
 
   const togglePreview = (slotId: string, placementId: string) => {
     const isMulti = !!findSlot(slotId)?.multiSelect
@@ -497,48 +428,18 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     }
   }
 
-  // Slots are shared across every category, so adding/removing one has to keep loadout.items,
-  // every category's own item map, and every example build's item map in lockstep with
-  // loadout.itemSlots.
-  const addSlot = () => {
-    const slot: ItemSlot = { id: newId(), label: 'New Slot' }
-    onChange({
-      itemSlots: [...loadout.itemSlots, slot],
-      items: { ...loadout.items, [slot.id]: [] },
-      exampleBuilds: addSlotToExampleBuilds(loadout.exampleBuilds, slot.id),
-      categories: loadout.categories.map((c) => ({
-        ...c,
-        items: { ...c.items, [slot.id]: [] },
-        exampleBuilds: addSlotToExampleBuilds(c.exampleBuilds, slot.id),
-      })),
-    })
-  }
+  const addSlot = () => onChange(addItemSlot(loadout))
 
   const renameSlot = (slotId: string, label: string) => {
-    const trimmed = label.trim()
-    const slot = findSlot(slotId)
-    if (!slot || !trimmed || trimmed === slot.label) return
-    onChange({
-      itemSlots: loadout.itemSlots.map((s) =>
-        s.id === slotId ? { id: s.id, label: trimmed, ...(s.multiSelect ? { multiSelect: true } : {}) } : s,
-      ),
-    })
+    const patch = renameItemSlot(loadout, slotId, label)
+    if (patch) onChange(patch)
   }
 
   const toggleSlotMultiSelect = (slotId: string) => {
-    const slot = findSlot(slotId)
-    if (!slot) return
-    const turningOff = !!slot.multiSelect
-    onChange({
-      itemSlots: loadout.itemSlots.map((s) => {
-        if (s.id !== slotId) return s
-        if (turningOff) {
-          const { multiSelect: _multiSelect, ...rest } = s
-          return rest
-        }
-        return { ...s, multiSelect: true }
-      }),
-    })
+    const turningOff = !!findSlot(slotId)?.multiSelect
+    const patch = toggleItemSlotMultiSelect(loadout, slotId)
+    if (!patch) return
+    onChange(patch)
     // A slot going back to single-select can only ever show one gold ring going forward, so trim
     // any leftover multi-selection now rather than leave a second one stuck on with no way to
     // click it off.
@@ -552,24 +453,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const deleteSlot = (slotId: string) => {
-    const stripSlot = (buildItems: BuildItems): BuildItems => {
-      const next = { ...buildItems }
-      delete next[slotId]
-      return next
-    }
-    const prefix = itemSlotNoteKey(slotId, '')
-    const nextSlotNotes = Object.fromEntries(Object.entries(loadout.itemSlotNotes).filter(([key]) => !key.startsWith(prefix)))
-    onChange({
-      itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId),
-      items: stripSlot(loadout.items),
-      exampleBuilds: removeSlotFromExampleBuilds(loadout.exampleBuilds, slotId),
-      categories: loadout.categories.map((c) => ({
-        ...c,
-        items: stripSlot(c.items),
-        exampleBuilds: removeSlotFromExampleBuilds(c.exampleBuilds, slotId),
-      })),
-      itemSlotNotes: nextSlotNotes,
-    })
+    onChange(deleteItemSlot(loadout, slotId))
     if (activeSlotId === slotId) setActiveSlotId(null)
     setPreview((prev) => {
       if (!(slotId in prev)) return prev
