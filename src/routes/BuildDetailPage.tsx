@@ -450,7 +450,7 @@ export function BuildDetailPage() {
           },
           {
             key: 'simulator',
-            label: 'Simulator',
+            label: 'Simulator (work in progress)',
             content: champion ? (
               <SimulatorTab
                 key={`${activeLoadout.id}:${effectiveCategoryId}`}
