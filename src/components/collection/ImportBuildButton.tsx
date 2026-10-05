@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useCollection } from '../../state/CollectionContext'
 import { useGameData } from '../../state/GameDataContext'
@@ -10,6 +11,7 @@ import type { Build } from '../../types/build'
 import type { DDragonChampion } from '../../types/ddragon'
 import type { BuildItems, ItemSlot } from '../../types/items'
 import { ChampionSelect } from './ChampionSelect'
+import { primaryButtonStyle, toolbarPanelStyle, toolbarPanelTitleStyle } from './toolbarStyles'
 
 // What a League item set becomes before we know which champion it's for — held here while the
 // user picks one, then turned into a Build.
@@ -57,7 +59,15 @@ function parseImportedText(text: string, champions: DDragonChampion[]): ParsedFi
   throw new Error('That does not look like a build file or a League item set.')
 }
 
-export function ImportBuildButton() {
+interface Props {
+  // Whether the "which champion?" panel may show. It opens itself when an import needs a
+  // champion, and stays hidden if another toolbar panel takes over.
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  panelSlot: HTMLElement | null
+}
+
+export function ImportBuildButton({ open, onOpenChange, panelSlot }: Props) {
   const { addBuild } = useCollection()
   const { champions } = useGameData()
   const navigate = useNavigate()
@@ -72,7 +82,7 @@ export function ImportBuildButton() {
   // jump into.
   const [singleFileMode, setSingleFileMode] = useState(true)
 
-  const pending = pendingQueue[0] ?? null
+  const pending = open ? (pendingQueue[0] ?? null) : null
 
   useEffect(() => {
     if (pending) championRef.current?.focus()
@@ -109,6 +119,7 @@ export function ImportBuildButton() {
       }
     }
     setPendingQueue(nextPending)
+    if (nextPending.length > 0) onOpenChange(true)
     setErrors(nextErrors)
   }
 
@@ -135,38 +146,39 @@ export function ImportBuildButton() {
       singleFileMode && isLast,
     )
     setPendingQueue((q) => q.slice(1))
+    if (isLast) onOpenChange(false)
     setChampionId('')
   }
 
   const skipPendingChampion = () => {
     setPendingQueue((q) => q.slice(1))
+    if (pendingQueue.length === 1) onOpenChange(false)
     setChampionId('')
   }
 
-  if (pending) {
-    return (
-      <div className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', fontSize: 14 }}>
-          Which champion is {pending.title ? `"${pending.title}"` : 'this item set'} for?
-          {pendingQueue.length > 1 && (
-            <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> ({pendingQueue.length} left)</span>
-          )}
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <ChampionSelect ref={championRef} champions={champions} value={championId} onChange={setChampionId} onConfirm={submitPendingChampion} />
-          <button type="button" disabled={!championId} onClick={submitPendingChampion}>
-            Import
-          </button>
-          <button type="button" onClick={skipPendingChampion}>
-            Skip
-          </button>
-        </div>
+  const panel = pending && (
+    <div className="panel" style={toolbarPanelStyle}>
+      <div style={toolbarPanelTitleStyle}>
+        Import: which champion is {pending.title ? `"${pending.title}"` : 'this item set'} for?
+        {pendingQueue.length > 1 && (
+          <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}> ({pendingQueue.length} left)</span>
+        )}
       </div>
-    )
-  }
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <ChampionSelect ref={championRef} champions={champions} value={championId} onChange={setChampionId} onConfirm={submitPendingChampion} />
+        <button type="button" disabled={!championId} onClick={submitPendingChampion} style={primaryButtonStyle}>
+          Import
+        </button>
+        <button type="button" onClick={skipPendingChampion}>
+          Skip
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <>
+      {panel && panelSlot && createPortal(panel, panelSlot)}
       <button type="button" onClick={() => inputRef.current?.click()}>
         Import build{'…'}
       </button>

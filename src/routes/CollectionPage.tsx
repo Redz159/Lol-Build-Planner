@@ -6,6 +6,7 @@ import { SearchAndFilterBar, type RoleFilter, type SortKey } from '../components
 import { NewBuildButton } from '../components/collection/NewBuildButton'
 import { ImportBuildButton } from '../components/collection/ImportBuildButton'
 import { RiotImportButton } from '../components/collection/RiotImportButton'
+import { activeButtonStyle, primaryButtonStyle, toolbarPanelStyle, toolbarPanelTitleStyle } from '../components/collection/toolbarStyles'
 import { buildRoles } from '../lib/loadouts'
 import { exportBuild } from '../lib/exportImport'
 
@@ -18,6 +19,8 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+type ToolbarPanel = 'new' | 'import' | 'riot' | 'export'
+
 export function CollectionPage() {
   const { builds } = useCollection()
   const { loading, error } = useGameData()
@@ -25,9 +28,13 @@ export function CollectionPage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('fill')
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt')
-  // Bulk-export selection — off by default, and cleared whenever it's turned off so re-entering
-  // starts fresh rather than remembering a stale pick.
-  const [exportMode, setExportMode] = useState(false)
+  // Only one toolbar panel is open at a time; opening one closes the others. Panels render into
+  // panelSlot, the row below the toolbar, so they never sit among the toolbar buttons.
+  const [openPanel, setOpenPanel] = useState<ToolbarPanel | null>(null)
+  const [panelSlot, setPanelSlot] = useState<HTMLDivElement | null>(null)
+  // Bulk-export selection — cleared whenever export mode is left so re-entering starts fresh
+  // rather than remembering a stale pick.
+  const exportMode = openPanel === 'export'
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const visibleBuilds = useMemo(() => {
@@ -52,11 +59,16 @@ export function CollectionPage() {
       <div style={{ padding: 32, color: 'var(--danger)' }}>Failed to load game data: {error}</div>
     )
 
-  const toggleExportMode = () => {
-    setExportMode((prev) => {
-      if (prev) setSelectedIds(new Set())
-      return !prev
-    })
+  const showPanel = (panel: ToolbarPanel | null) => {
+    if (exportMode && panel !== 'export') setSelectedIds(new Set())
+    setOpenPanel(panel)
+  }
+
+  // Closing a panel only closes it if it's the one showing, so a panel that closes itself late
+  // (import finishing its queue) can't close whatever replaced it.
+  const panelOpenChange = (panel: ToolbarPanel) => (open: boolean) => {
+    if (open) showPanel(panel)
+    else if (openPanel === panel) showPanel(null)
   }
 
   const toggleSelect = (id: string) => {
@@ -98,23 +110,39 @@ export function CollectionPage() {
         onSortKeyChange={setSortKey}
       />
       <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-        <NewBuildButton />
-        <ImportBuildButton />
-        {import.meta.env.DEV && <RiotImportButton />}
-        <button type="button" onClick={toggleExportMode}>
+        <NewBuildButton open={openPanel === 'new'} onOpenChange={panelOpenChange('new')} panelSlot={panelSlot} />
+        <ImportBuildButton open={openPanel === 'import'} onOpenChange={panelOpenChange('import')} panelSlot={panelSlot} />
+        {import.meta.env.DEV && (
+          <RiotImportButton open={openPanel === 'riot'} onOpenChange={panelOpenChange('riot')} panelSlot={panelSlot} />
+        )}
+        <button
+          type="button"
+          aria-expanded={exportMode}
+          onClick={() => showPanel(exportMode ? null : 'export')}
+          style={exportMode ? activeButtonStyle : undefined}
+        >
           {exportMode ? 'Cancel export' : 'Export builds…'}
         </button>
       </div>
-      {exportMode && (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-          <button type="button" onClick={toggleSelectAll} disabled={visibleBuilds.length === 0}>
-            {allSelected ? 'Deselect all' : 'Select all'}
-          </button>
-          <button type="button" disabled={selectedIds.size === 0} onClick={() => void downloadSelected()}>
-            Download ({selectedIds.size})
-          </button>
-        </div>
-      )}
+      <div style={{ marginTop: openPanel ? 12 : 0 }}>
+        <div ref={setPanelSlot} />
+        {exportMode && (
+          <div className="panel" style={{ ...toolbarPanelStyle, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={toolbarPanelTitleStyle}>Export builds</div>
+            <button type="button" onClick={toggleSelectAll} disabled={visibleBuilds.length === 0}>
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </button>
+            <button
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={() => void downloadSelected()}
+              style={primaryButtonStyle}
+            >
+              Download ({selectedIds.size})
+            </button>
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 26 }}>
         {visibleBuilds.map((build) => (
           <BuildCard

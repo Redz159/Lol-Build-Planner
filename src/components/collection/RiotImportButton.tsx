@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
 import { RIOT_REGIONS, type RiotRegionId } from '../../lib/riot/regions'
 import { importBuildFromRiot, type ImportProgress } from '../../lib/riot/import'
 import { ChampionSelect } from './ChampionSelect'
+import { activeButtonStyle, primaryButtonStyle, toolbarPanelStyle, toolbarPanelTitleStyle } from './toolbarStyles'
 
 const STAGE_LABEL: Record<ImportProgress['stage'], string> = {
   account: 'Looking up account...',
@@ -16,11 +18,16 @@ const STAGE_LABEL: Record<ImportProgress['stage'], string> = {
 // `import.meta.env.DEV` is statically replaced at build time, so `vite build` dead-code-strips
 // this entire feature out of the production bundle shipped to GitHub Pages — regular visitors
 // never see it, regardless of any local .env.local key.
-export function RiotImportButton() {
+interface Props {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  panelSlot: HTMLElement | null
+}
+
+export function RiotImportButton({ open, onOpenChange, panelSlot }: Props) {
   const { champions, runeTrees, items } = useGameData()
   const { addBuild } = useCollection()
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
   const [championId, setChampionId] = useState('')
   const [gameName, setGameName] = useState('')
   const [tagLine, setTagLine] = useState('')
@@ -28,14 +35,6 @@ export function RiotImportButton() {
   const [sampleSize, setSampleSize] = useState(30)
   const [progress, setProgress] = useState<ImportProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)}>
-        ⚡ Import from Riot (dev)
-      </button>
-    )
-  }
 
   const champion = champions.find((c) => c.id === championId)
   const canSubmit = !!champion && gameName.trim() !== '' && tagLine.trim() !== '' && !progress
@@ -65,11 +64,9 @@ export function RiotImportButton() {
     }
   }
 
-  return (
-    <div className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 520 }}>
-      <div style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', fontSize: 14 }}>
-        Import from Riot (local dev only)
-      </div>
+  const panel = (
+    <div className="panel" style={{ ...toolbarPanelStyle, maxWidth: 520 }}>
+      <div style={toolbarPanelTitleStyle}>Import from Riot (local dev only)</div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <ChampionSelect champions={champions} value={championId} onChange={setChampionId} />
         <input
@@ -107,10 +104,10 @@ export function RiotImportButton() {
         </label>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <button type="button" disabled={!canSubmit} onClick={submit}>
+        <button type="button" disabled={!canSubmit} onClick={submit} style={primaryButtonStyle}>
           {progress ? 'Importing...' : 'Import'}
         </button>
-        <button type="button" onClick={() => setOpen(false)} disabled={!!progress}>
+        <button type="button" onClick={() => onOpenChange(false)} disabled={!!progress}>
           Cancel
         </button>
         {progress && (
@@ -126,5 +123,19 @@ export function RiotImportButton() {
         exclusions once there's enough sample. ARAM and remade games are skipped. Trinkets/wards aren't tracked yet.
       </div>
     </div>
+  )
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+        style={open ? activeButtonStyle : undefined}
+      >
+        ⚡ Import from Riot (dev)
+      </button>
+      {open && panelSlot && createPortal(panel, panelSlot)}
+    </>
   )
 }
