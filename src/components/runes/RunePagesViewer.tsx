@@ -89,6 +89,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId,
                   readOnly
                   accentColor={treeAccentColor(primaryTree.key)}
                   gameCounts={runeGameCounts}
+                  note={activeGroup.primaryNote}
                 />
               </div>
             )
@@ -143,6 +144,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId,
                   readOnly
                   accentColor={treeAccentColor(primaryTree.key)}
                   gameCounts={runeGameCounts}
+                  note={activeGroup.primaryNote}
                 />
                 <RuneTreeColumn
                   tree={lead.tree!}
@@ -153,6 +155,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId,
                   accentColor={leadAccent}
                   extra={shardBlock(lead.shards, lead.preferredShards)}
                   gameCounts={runeGameCounts}
+                  note={lead.note}
                 />
               </div>
               {rest.length > 0 && (
@@ -172,6 +175,7 @@ export function RunePagesViewer({ pages, selectedKeystoneId, onSelectKeystoneId,
                         accentColor={accentColor}
                         extra={shardsDiffer ? shardBlock(entry.shards, entry.preferredShards) : undefined}
                         gameCounts={runeGameCounts}
+                        note={entry.note}
                       />
                     )
                   })}

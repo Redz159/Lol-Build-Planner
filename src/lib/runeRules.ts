@@ -130,6 +130,19 @@ function updateVariant(page: RunePage, variantId: string, fn: (v: RuneVariant) =
   return { ...page, variants: page.variants.map((v) => (v.id === variantId ? fn(v) : v)) }
 }
 
+// A blank note is stored as absent, same as the other notes.
+export function setPrimaryNote(page: RunePage, note: string): RunePage {
+  const { primaryNote: _, ...rest } = page
+  return note.trim() ? { ...rest, primaryNote: note } : rest
+}
+
+export function setSecondaryNote(page: RunePage, variantId: string, note: string): RunePage {
+  return updateVariant(page, variantId, (v) => {
+    const { secondaryNote: _, ...rest } = v
+    return note.trim() ? { ...rest, secondaryNote: note } : rest
+  })
+}
+
 export function selectSecondaryTree(page: RunePage, variantId: string, treeId: number): RunePage {
   if (treeId === page.primaryTreeId) return page
   return updateVariant(page, variantId, (v) => ({
@@ -232,18 +245,27 @@ export interface RuneGroup {
   preferredKeystone: boolean
   primaryRuneIds: number[]
   preferredPrimaryRuneIds: number[]
+  primaryNote?: string
   secondaryTrees: {
     treeId: number
     runeIds: number[]
     preferredRuneIds: number[]
     shards: ShardSelection
     preferredShards: ShardSelection
+    note?: string
   }[]
+}
+
+// The group's pages can each carry their own note for the same tree; show all the distinct ones.
+function mergeNotes(notes: (string | undefined)[]): string | undefined {
+  const distinct = [...new Set(notes.filter((n): n is string => !!n && n.trim() !== ''))]
+  return distinct.length > 0 ? distinct.join('\n\n') : undefined
 }
 
 // Groups all rune pages that share a keystone into one overlay: the union of every
 // primary/secondary rune (and shard) picked by any page in the group, per row/tree,
-// plus the union of whichever picks any of those pages marked as "preferred".
+// plus the union of whichever picks any of those pages marked as "preferred". Notes are merged
+// the same way, per tree.
 export function groupRunePages(pages: RunePage[]): RuneGroup[] {
   const byKeystone = new Map<number, RunePage[]>()
   for (const page of pages) {
@@ -270,6 +292,7 @@ export function groupRunePages(pages: RunePage[]): RuneGroup[] {
         preferredOffense: Set<number>
         preferredFlex: Set<number>
         preferredDefense: Set<number>
+        notes: (string | undefined)[]
       }
     >()
     for (const page of groupPages) {
@@ -284,7 +307,9 @@ export function groupRunePages(pages: RunePage[]): RuneGroup[] {
           preferredOffense: new Set(),
           preferredFlex: new Set(),
           preferredDefense: new Set(),
+          notes: [],
         }
+        entry.notes.push(variant.secondaryNote)
         variant.secondaryRuneIds.forEach((id) => entry.runeIds.add(id))
         variant.preferredSecondaryRuneIds.forEach((id) => entry.preferredRuneIds.add(id))
         variant.shards.offense.forEach((id) => entry.offense.add(id))
@@ -307,8 +332,10 @@ export function groupRunePages(pages: RunePage[]): RuneGroup[] {
         flex: [...e.preferredFlex],
         defense: [...e.preferredDefense],
       },
+      note: mergeNotes(e.notes),
     }))
 
-    return { keystoneId, primaryTreeId, preferredKeystone, primaryRuneIds, preferredPrimaryRuneIds, secondaryTrees }
+    const primaryNote = mergeNotes(groupPages.map((p) => p.primaryNote))
+    return { keystoneId, primaryTreeId, preferredKeystone, primaryRuneIds, preferredPrimaryRuneIds, primaryNote, secondaryTrees }
   })
 }

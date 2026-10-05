@@ -11,6 +11,8 @@ import {
   selectSecondaryTree,
   selectShard,
   setPreferredKeystone,
+  setPrimaryNote,
+  setSecondaryNote,
 } from './runeRules'
 
 function page(keystoneId: number, extra: Partial<RunePage> = {}): RunePage {
@@ -106,5 +108,38 @@ describe('groupRunePages', () => {
     const groups = groupRunePages([page(1, { primaryRuneIds: [10] }), page(1, { primaryRuneIds: [10, 11] }), page(2), page(0)])
     expect(groups.map((g) => g.keystoneId)).toEqual([1, 2])
     expect(groups[0].primaryRuneIds).toEqual([10, 11])
+  })
+})
+
+describe('rune tree notes', () => {
+  it('stores a primary note and drops it again when blank', () => {
+    const withNote = setPrimaryNote(page(1), 'Take this into tanks')
+    expect(withNote.primaryNote).toBe('Take this into tanks')
+    expect('primaryNote' in setPrimaryNote(withNote, '  ')).toBe(false)
+  })
+
+  it('stores a secondary note on just that variant', () => {
+    const p = addVariant(page(1))
+    const next = setSecondaryNote(p, p.variants[1].id, 'Only vs poke')
+    expect(next.variants.map((v) => v.secondaryNote)).toEqual([undefined, 'Only vs poke'])
+    expect('secondaryNote' in setSecondaryNote(next, p.variants[1].id, '').variants[1]).toBe(false)
+  })
+
+  it('does not copy a secondary note into a new variant', () => {
+    const p = page(1)
+    const noted = setSecondaryNote(p, p.variants[0].id, 'Only vs poke')
+    expect(addVariant(noted).variants[1].secondaryNote).toBeUndefined()
+  })
+
+  it('merges the distinct notes of pages that share a keystone, per tree', () => {
+    const a = page(1, { primaryNote: 'A' })
+    a.variants[0] = { ...a.variants[0], secondaryTreeId: 8300, secondaryNote: 'S1' }
+    const b = page(1, { primaryNote: 'B' })
+    b.variants[0] = { ...b.variants[0], secondaryTreeId: 8300, secondaryNote: 'S1' }
+    const c = page(1, { primaryNote: 'A' })
+    c.variants[0] = { ...c.variants[0], secondaryTreeId: 8400 }
+    const [group] = groupRunePages([a, b, c])
+    expect(group.primaryNote).toBe('A\n\nB')
+    expect(group.secondaryTrees.map((t) => t.note)).toEqual(['S1', undefined])
   })
 })

@@ -10,6 +10,8 @@ import {
   selectSecondaryTree,
   selectSecondaryRune,
   selectShard,
+  setPrimaryNote,
+  setSecondaryNote,
   addVariant,
   removeVariant,
 } from '../../lib/runeRules'
@@ -100,6 +102,8 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                 }}
                 onSelectRune={(_rowIndex, id, preferred) => onChange(selectPrimaryRune(page, id, preferred))}
                 gameCounts={runeGameCounts}
+                note={page.primaryNote}
+                onNoteChange={(text) => onChange(setPrimaryNote(page, text))}
               />
             </div>
           )}
@@ -127,6 +131,8 @@ export function RunePageEditor({ page, onChange, onDuplicate, onRemove, onSetPre
                       onChange(selectSecondaryRune(page, variant.id, id, preferred))
                     }
                     gameCounts={runeGameCounts}
+                    note={variant.secondaryNote}
+                    onNoteChange={(text) => onChange(setSecondaryNote(page, variant.id, text))}
                   />
                 </div>
               )}

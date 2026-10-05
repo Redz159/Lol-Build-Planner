@@ -13,6 +13,8 @@ export interface RuneVariant {
   preferredSecondaryRuneIds: number[]
   shards: ShardSelection
   preferredShards: ShardSelection
+  // Shown on this secondary tree's box. Absent means no note.
+  secondaryNote?: string
 }
 
 export interface RunePage {
@@ -23,4 +25,6 @@ export interface RunePage {
   primaryRuneIds: number[]
   preferredPrimaryRuneIds: number[]
   variants: RuneVariant[]
+  // Shown on the primary tree's box. Absent means no note.
+  primaryNote?: string
 }

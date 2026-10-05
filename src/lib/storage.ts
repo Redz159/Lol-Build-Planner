@@ -35,6 +35,10 @@ function toPreferredArray(value: unknown): number[] {
   return []
 }
 
+function nonEmptyNote(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
 // `v` is untrusted data straight from JSON.parse, potentially in an older shape.
 function normalizeVariant(v: any): RuneVariant {
   return {
@@ -48,6 +52,7 @@ function normalizeVariant(v: any): RuneVariant {
       flex: toPreferredArray(v.preferredShards?.flex),
       defense: toPreferredArray(v.preferredShards?.defense),
     },
+    ...(nonEmptyNote(v.secondaryNote) ? { secondaryNote: v.secondaryNote } : {}),
   }
 }
 
@@ -60,6 +65,7 @@ function normalizeRunePage(p: Partial<RunePage>): RunePage {
     primaryRuneIds: p.primaryRuneIds ?? [],
     preferredPrimaryRuneIds: toPreferredArray(p.preferredPrimaryRuneIds),
     variants: (p.variants ?? []).map(normalizeVariant),
+    ...(nonEmptyNote(p.primaryNote) ? { primaryNote: p.primaryNote } : {}),
   }
 }
 
