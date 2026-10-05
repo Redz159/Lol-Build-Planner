@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Loadout } from '../types/build'
 import { itemSlotNoteKey, type ItemSlot } from '../types/items'
 import { addCategory } from './categories'
-import { addItemSlot, deleteItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from './itemSlots'
+import { addItemSlot, deleteItemSlot, moveItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from './itemSlots'
 import { emptyLoadout } from './loadouts'
 
 const slots: ItemSlot[] = [
@@ -64,5 +64,27 @@ describe('deleteItemSlot', () => {
     expect(Object.keys(patch.categories![0].items)).toEqual(['item1'])
     expect(Object.keys(patch.exampleBuilds![0].items)).toEqual(['item1'])
     expect(patch.itemSlotNotes).toEqual({ [itemSlotNoteKey('item1', '3089')]: 'keep' })
+  })
+})
+
+describe('moveItemSlot', () => {
+  const threeSlots = (): Loadout => ({
+    ...makeLoadout(),
+    itemSlots: [...slots, { id: 'boots', label: 'Boots', kind: 'boots' }],
+  })
+  const ids = (patch: Partial<Loadout> | undefined) => patch!.itemSlots!.map((s) => s.id)
+
+  it('moves a slot before another one or to the end', () => {
+    expect(ids(moveItemSlot(threeSlots(), 'boots', 'starter'))).toEqual(['boots', 'starter', 'item1'])
+    expect(ids(moveItemSlot(threeSlots(), 'starter', 'boots'))).toEqual(['item1', 'starter', 'boots'])
+    expect(ids(moveItemSlot(threeSlots(), 'starter', null))).toEqual(['item1', 'boots', 'starter'])
+  })
+
+  it('does nothing when the order would not change or a slot is unknown', () => {
+    expect(moveItemSlot(threeSlots(), 'starter', 'item1')).toBeUndefined()
+    expect(moveItemSlot(threeSlots(), 'boots', null)).toBeUndefined()
+    expect(moveItemSlot(threeSlots(), 'starter', 'starter')).toBeUndefined()
+    expect(moveItemSlot(threeSlots(), 'nope', null)).toBeUndefined()
+    expect(moveItemSlot(threeSlots(), 'starter', 'nope')).toBeUndefined()
   })
 })

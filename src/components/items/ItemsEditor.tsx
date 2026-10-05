@@ -10,7 +10,7 @@ import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../li
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
 import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
 import { addSlotToExampleBuilds } from '../../lib/exampleBuilds'
-import { addItemSlot, deleteItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from '../../lib/itemSlots'
+import { addItemSlot, deleteItemSlot, moveItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from '../../lib/itemSlots'
 import { ITEM_SET_LAYOUTS, newSlotsForLayout, type LayoutTemplate } from '../../lib/itemSetLayouts'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
@@ -435,6 +435,11 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     if (patch) onChange(patch)
   }
 
+  const moveSlot = (slotId: string, beforeSlotId: string | null) => {
+    const patch = moveItemSlot(loadout, slotId, beforeSlotId)
+    if (patch) onChange(patch)
+  }
+
   const toggleSlotMultiSelect = (slotId: string) => {
     const turningOff = !!findSlot(slotId)?.multiSelect
     const patch = toggleItemSlotMultiSelect(loadout, slotId)
@@ -675,6 +680,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
                 onRenameSlot={renameSlot}
                 onDeleteSlot={deleteSlot}
                 onToggleMultiSelect={toggleSlotMultiSelect}
+                onMoveSlot={moveSlot}
                 excludedPlacementIds={excludedPlacementIds}
                 hoverOutlines={hoverOutlines}
                 onHoverPlacement={setHoveredPlacementId}

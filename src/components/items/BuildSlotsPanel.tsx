@@ -1,4 +1,4 @@
-import { Fragment, useState, type DragEvent, type MouseEvent } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import {
   effectiveItemNote,
@@ -35,6 +35,8 @@ interface Props {
   onRenameSlot: (slotId: string, label: string) => void
   onDeleteSlot: (slotId: string) => void
   onToggleMultiSelect: (slotId: string) => void
+  // Edit mode only: reorders slots by dragging their ⠿ handle. `beforeSlotId` null means last.
+  onMoveSlot?: (slotId: string, beforeSlotId: string | null) => void
   excludedPlacementIds: Set<string>
   hoverOutlines: Map<string, ItemRelationOutline>
   onHoverPlacement: (placementId: string | null) => void
@@ -72,6 +74,7 @@ export function BuildSlotsPanel({
   onRenameSlot,
   onDeleteSlot,
   onToggleMultiSelect,
+  onMoveSlot,
   excludedPlacementIds,
   hoverOutlines,
   onHoverPlacement,
@@ -84,6 +87,86 @@ export function BuildSlotsPanel({
   const [dragOverPlacement, setDragOverPlacement] = useState<{ id: string; side: 'before' | 'after' } | null>(null)
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
   const [labelDraft, setLabelDraft] = useState('')
+
+  // Slot reordering. While a slot is dragged, the panels render in `slotDrag.order` so the others
+  // slide out of the way live; the order is only committed on drop. The ref is set synchronously
+  // on dragstart (the state follows a tick later, see below) so the item drop handlers can tell
+  // a slot drag apart from an item drag right away.
+  const [slotDrag, setSlotDrag] = useState<{ id: string; order: string[] } | null>(null)
+  const slotDragRef = useRef<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const slotEls = useRef(new Map<string, HTMLDivElement>())
+  // On-screen tops (relative to the container) captured just before an order change, which the
+  // layout effect below animates each panel from (FLIP). Taken from the visual position, so a
+  // panel still mid-animation continues from where it is instead of jumping.
+  const slotTopsBefore = useRef<Map<string, number> | null>(null)
+
+  const displayedSlots = slotDrag
+    ? slotDrag.order.map((id) => slots.find((s) => s.id === id)).filter((s): s is ItemSlot => !!s)
+    : slots
+
+  const snapshotSlotTops = () => {
+    const containerTop = containerRef.current?.getBoundingClientRect().top ?? 0
+    slotTopsBefore.current = new Map(
+      [...slotEls.current].map(([id, el]) => [id, el.getBoundingClientRect().top - containerTop]),
+    )
+  }
+
+  useLayoutEffect(() => {
+    const before = slotTopsBefore.current
+    if (!before) return
+    slotTopsBefore.current = null
+    const containerTop = containerRef.current?.getBoundingClientRect().top ?? 0
+    slotEls.current.forEach((el, id) => {
+      const from = before.get(id)
+      if (from === undefined) return
+      el.getAnimations().forEach((a) => a.cancel())
+      const delta = from - (el.getBoundingClientRect().top - containerTop)
+      if (Math.abs(delta) < 1) return
+      el.animate([{ transform: `translateY(${delta}px)` }, { transform: 'translateY(0)' }], {
+        duration: 180,
+        easing: 'ease-out',
+      })
+    })
+  })
+
+  const handleSlotDragOver = (e: DragEvent) => {
+    if (!slotDragRef.current || !slotDrag || !containerRef.current) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    // Insert before the first other slot whose layout midpoint is below the pointer. Layout
+    // positions (offsetTop) ignore the running animations, so a panel sliding past the pointer
+    // doesn't make the order flicker.
+    const y = e.clientY - containerRef.current.getBoundingClientRect().top
+    const others = slotDrag.order.filter((id) => id !== slotDrag.id)
+    const beforeIndex = others.findIndex((id) => {
+      const el = slotEls.current.get(id)
+      return !!el && el.offsetTop + el.offsetHeight / 2 > y
+    })
+    const order = [...others]
+    order.splice(beforeIndex === -1 ? others.length : beforeIndex, 0, slotDrag.id)
+    if (order.join('|') === slotDrag.order.join('|')) return
+    snapshotSlotTops()
+    setSlotDrag({ id: slotDrag.id, order })
+  }
+
+  const handleSlotDrop = (e: DragEvent) => {
+    if (!slotDragRef.current || !slotDrag) return
+    e.preventDefault()
+    const index = slotDrag.order.indexOf(slotDrag.id)
+    onMoveSlot?.(slotDrag.id, slotDrag.order[index + 1] ?? null)
+    slotDragRef.current = null
+    setSlotDrag(null)
+  }
+
+  // Fires after a drop too, by which point there's nothing left to reset; otherwise the drag was
+  // cancelled and the panels slide back to their saved order.
+  const handleSlotDragEnd = () => {
+    slotDragRef.current = null
+    if (!slotDrag) return
+    snapshotSlotTops()
+    setSlotDrag(null)
+  }
 
   const isEmpty = slots.every((slot) => (buildItems[slot.id] ?? []).length === 0)
   if (mode === 'view' && isEmpty) {
@@ -103,7 +186,12 @@ export function BuildSlotsPanel({
   }
 
   return (
-    <div>
+    <div
+      ref={containerRef}
+      style={{ position: 'relative' }}
+      onDragOver={mode === 'edit' ? handleSlotDragOver : undefined}
+      onDrop={mode === 'edit' ? handleSlotDrop : undefined}
+    >
       {mode === 'edit' && activeSlot && (
         <div
           className="panel"
@@ -117,7 +205,7 @@ export function BuildSlotsPanel({
           </button>
         </div>
       )}
-      {slots.map((slot) => {
+      {displayedSlots.map((slot) => {
         const slotId = slot.id
         const placements = buildItems[slotId] ?? []
         if (mode === 'view' && placements.length === 0) return null
@@ -136,13 +224,19 @@ export function BuildSlotsPanel({
         const active = activeSlotId === slotId
         const dragOver = mode === 'edit' && dragOverSlotId === slotId
         const editing = editingSlotId === slotId
+        const draggingThis = slotDrag?.id === slotId
         return (
           <div
             key={slotId}
+            ref={(el) => {
+              if (el) slotEls.current.set(slotId, el)
+              else slotEls.current.delete(slotId)
+            }}
             className="panel"
             onDragOver={
               mode === 'edit'
                 ? (e: DragEvent) => {
+                    if (slotDragRef.current) return
                     e.preventDefault()
                     if (dragOverSlotId !== slotId) setDragOverSlotId(slotId)
                   }
@@ -152,6 +246,7 @@ export function BuildSlotsPanel({
             onDrop={
               mode === 'edit'
                 ? (e: DragEvent) => {
+                    if (slotDragRef.current) return
                     e.preventDefault()
                     setDragOverSlotId(null)
                     onDropOnSlot(slotId)
@@ -161,11 +256,42 @@ export function BuildSlotsPanel({
             style={{
               padding: 14,
               marginBottom: 12,
-              borderColor: active || dragOver ? 'var(--gold)' : undefined,
+              borderColor: active || dragOver || draggingThis ? 'var(--gold)' : undefined,
+              borderStyle: draggingThis ? 'dashed' : undefined,
               boxShadow: dragOver ? '0 0 0 3px rgba(200, 170, 110, 0.18)' : undefined,
+              opacity: draggingThis ? 0.45 : undefined,
             }}
           >
             <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              {mode === 'edit' && !editing && onMoveSlot && (
+                <span
+                  draggable
+                  role="button"
+                  aria-label={`Drag to reorder ${slot.label}`}
+                  title="Drag to reorder slots"
+                  onDragStart={(e) => {
+                    e.stopPropagation()
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData('text/plain', slot.label)
+                    const panel = slotEls.current.get(slotId)
+                    if (panel) {
+                      const rect = panel.getBoundingClientRect()
+                      e.dataTransfer.setDragImage(panel, e.clientX - rect.left, e.clientY - rect.top)
+                    }
+                    slotDragRef.current = slotId
+                    // Re-rendering synchronously inside dragstart can make Chrome cancel the drag
+                    // (the drag image is taken after the handler), so the placeholder look waits a tick.
+                    const order = slots.map((s) => s.id)
+                    setTimeout(() => {
+                      if (slotDragRef.current === slotId) setSlotDrag({ id: slotId, order })
+                    }, 0)
+                  }}
+                  onDragEnd={handleSlotDragEnd}
+                  style={{ cursor: 'grab', color: 'var(--text-dim)', fontSize: 14, lineHeight: 1, padding: '2px 2px', userSelect: 'none' }}
+                >
+                  ⠿
+                </span>
+              )}
               {mode === 'edit' && editing ? (
                 <input
                   type="text"
@@ -345,6 +471,7 @@ export function BuildSlotsPanel({
                         onDragOver={
                           mode === 'edit'
                             ? (e: DragEvent) => {
+                                if (slotDragRef.current) return
                                 e.preventDefault()
                                 e.stopPropagation()
                                 const side = sideFromEvent(e)
@@ -362,6 +489,7 @@ export function BuildSlotsPanel({
                         onDrop={
                           mode === 'edit'
                             ? (e: DragEvent) => {
+                                if (slotDragRef.current) return
                                 e.preventDefault()
                                 e.stopPropagation()
                                 const side = sideFromEvent(e)

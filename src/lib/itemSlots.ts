@@ -69,3 +69,17 @@ export function deleteItemSlot(loadout: Loadout, slotId: string): Partial<Loadou
     itemSlotNotes: nextSlotNotes,
   }
 }
+
+// Moves a slot to just before `beforeSlotId` (or to the end when null). Id-based rather than
+// index-based because the editor only shows the visible slots, so hidden ones keep their place.
+// Returns undefined when nothing would change.
+export function moveItemSlot(loadout: Loadout, slotId: string, beforeSlotId: string | null): Partial<Loadout> | undefined {
+  const slot = loadout.itemSlots.find((s) => s.id === slotId)
+  if (!slot || slotId === beforeSlotId) return undefined
+  const rest = loadout.itemSlots.filter((s) => s.id !== slotId)
+  const index = beforeSlotId === null ? rest.length : rest.findIndex((s) => s.id === beforeSlotId)
+  if (index === -1) return undefined
+  const itemSlots = [...rest.slice(0, index), slot, ...rest.slice(index)]
+  if (itemSlots.every((s, i) => s === loadout.itemSlots[i])) return undefined
+  return { itemSlots }
+}
