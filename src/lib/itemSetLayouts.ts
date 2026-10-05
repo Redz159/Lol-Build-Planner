@@ -45,8 +45,7 @@ export const ITEM_SET_LAYOUTS: LayoutTemplate[] = [
       { label: 'Early Components', multiSelect: true },
       { label: 'Core Items', multiSelect: true },
       { label: 'Boots', kind: 'boots', multiSelect: true },
-      { label: 'Situational Items', multiSelect: true },
-      { label: 'Niche Items', multiSelect: true },
+      { label: 'Follow-up Items', multiSelect: true },
     ],
   },
   {
