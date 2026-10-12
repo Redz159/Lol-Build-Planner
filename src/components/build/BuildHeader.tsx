@@ -153,7 +153,7 @@ export function BuildHeader({
           ))}
           {mode === 'edit' && (
             <button type="button" onClick={onDeleteVariant} style={{ color: 'var(--danger)' }}>
-              Delete variant
+              Delete Role-variant
             </button>
           )}
         </div>
@@ -197,7 +197,7 @@ export function BuildHeader({
             )
           })}
           <button type="button" onClick={onAddVariant} style={{ marginLeft: 'auto' }}>
-            + New variant
+            + New Role-variant
           </button>
         </div>
       )}

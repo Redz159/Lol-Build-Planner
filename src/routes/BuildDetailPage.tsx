@@ -216,7 +216,7 @@ export function BuildDetailPage() {
   }
 
   const deleteVariant = async () => {
-    if (await confirm("Delete this variant? This can't be undone.")) save(removeLoadout(build, activeLoadout.id))
+    if (await confirm("Delete this role-variant? This can't be undone.")) save(removeLoadout(build, activeLoadout.id))
   }
 
   // Only the active category (or plain set) is ever editable — the "All" view passes readOnly.

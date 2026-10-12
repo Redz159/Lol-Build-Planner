@@ -123,7 +123,7 @@ export function applySupportStarterDefault(build: Build, loadoutId: string, allI
   }
 }
 
-// "+ New variant": clones a loadout's rune/item content into a new roles-less loadout, ready
+// "+ New Role-variant": clones a loadout's rune/item content into a new roles-less loadout, ready
 // for the user to pull roles into it via assignRole.
 export function splitLoadout(build: Build, loadoutId: string): { build: Build; newLoadoutId: string } {
   const source = build.loadouts.find((l) => l.id === loadoutId)
