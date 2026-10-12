@@ -41,7 +41,7 @@ export const ITEM_SET_LAYOUTS: LayoutTemplate[] = [
       { label: 'Starter Items', kind: 'starter', multiSelect: true },
       { label: 'Early Components', multiSelect: true },
       { label: 'Core Items', multiSelect: true },
-      { label: 'Boots', kind: 'boots', multiSelect: true },
+      { label: 'Boots', kind: 'boots' },
       { label: 'Follow-up Items', multiSelect: true },
     ],
   },

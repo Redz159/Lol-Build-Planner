@@ -76,3 +76,25 @@ describe('migrateBuild example build slots', () => {
     expect(example.items.item1.map((p) => p.itemId)).toEqual(['3089'])
   })
 })
+
+describe('migrateBuild boots slot', () => {
+  it('drops a saved multiSelect flag from boots', () => {
+    const build = migrateBuild({
+      id: 'b',
+      champion: { id: 'Ahri', name: 'Ahri' },
+      title: 'Test',
+      loadouts: [
+        {
+          itemSlots: [
+            { id: 'b', label: 'Boots', kind: 'boots', multiSelect: true },
+            { id: 'c', label: 'Core Items', multiSelect: true },
+          ],
+        },
+      ],
+    })
+    expect(build.loadouts[0].itemSlots).toEqual([
+      { id: 'b', label: 'Boots', kind: 'boots' },
+      { id: 'c', label: 'Core Items', multiSelect: true },
+    ])
+  })
+})

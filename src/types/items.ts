@@ -53,7 +53,8 @@ export function normalizeItemSlots(value: unknown): ItemSlot[] {
       id,
       label,
       ...(typeof kind === 'string' && VALID_SLOT_KINDS.has(kind as ItemSlotKind) ? { kind: kind as ItemSlotKind } : {}),
-      ...(multiSelect === true ? { multiSelect: true } : {}),
+      // Boots never pick multiple, so a flag saved before that rule is dropped.
+      ...(multiSelect === true && kind !== 'boots' ? { multiSelect: true } : {}),
     })
   }
   return result

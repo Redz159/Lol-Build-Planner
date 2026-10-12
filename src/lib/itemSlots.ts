@@ -28,9 +28,10 @@ export function renameItemSlot(set: ItemSet, slotId: string, label: string): Par
   }
 }
 
+// Boots never pick multiple (only one pair fits in a build), so that toggle is a no-op.
 export function toggleItemSlotMultiSelect(set: ItemSet, slotId: string): Partial<ItemSet> | undefined {
   const slot = set.itemSlots.find((s) => s.id === slotId)
-  if (!slot) return undefined
+  if (!slot || slot.kind === 'boots') return undefined
   const turningOff = !!slot.multiSelect
   return {
     itemSlots: set.itemSlots.map((s) => {

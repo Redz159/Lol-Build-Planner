@@ -349,38 +349,41 @@ export function BuildSlotsPanel({
               )}
               {mode === 'edit' && !editing && (
                 <>
-                  <button
-                    type="button"
-                    aria-label={`${slot.multiSelect ? 'Disable' : 'Enable'} picking multiple items at once in ${slot.label}`}
-                    title={
-                      slot.multiSelect
-                        ? 'Multiple items can be picked in this slot at once — click to go back to picking just one'
-                        : 'Click to allow picking multiple items in this slot at once'
-                    }
-                    aria-pressed={!!slot.multiSelect}
-                    onClick={() => onToggleMultiSelect(slotId)}
-                    style={{
-                      marginLeft: 'auto',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '2px 8px',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      borderRadius: 10,
-                      color: slot.multiSelect ? 'var(--gold-bright)' : 'var(--text-dim)',
-                      background: slot.multiSelect ? 'rgba(200, 170, 110, 0.18)' : undefined,
-                      borderColor: slot.multiSelect ? 'var(--gold)' : undefined,
-                    }}
-                  >
-                    {slot.multiSelect ? '☑' : '☐'} Pick multiple
-                  </button>
+                  {/* Boots never pick multiple — only one pair fits in a build. */}
+                  {slot.kind !== 'boots' && (
+                    <button
+                      type="button"
+                      aria-label={`${slot.multiSelect ? 'Disable' : 'Enable'} picking multiple items at once in ${slot.label}`}
+                      title={
+                        slot.multiSelect
+                          ? 'Multiple items can be picked in this slot at once — click to go back to picking just one'
+                          : 'Click to allow picking multiple items in this slot at once'
+                      }
+                      aria-pressed={!!slot.multiSelect}
+                      onClick={() => onToggleMultiSelect(slotId)}
+                      style={{
+                        marginLeft: 'auto',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        borderRadius: 10,
+                        color: slot.multiSelect ? 'var(--gold-bright)' : 'var(--text-dim)',
+                        background: slot.multiSelect ? 'rgba(200, 170, 110, 0.18)' : undefined,
+                        borderColor: slot.multiSelect ? 'var(--gold)' : undefined,
+                      }}
+                    >
+                      {slot.multiSelect ? '☑' : '☐'} Pick multiple
+                    </button>
+                  )}
                   <button
                     type="button"
                     aria-label={`Rename ${slot.label}`}
                     title="Rename slot"
                     onClick={() => startRename(slot)}
-                    style={{ padding: '2px 7px', fontSize: 12 }}
+                    style={{ padding: '2px 7px', fontSize: 12, marginLeft: slot.kind === 'boots' ? 'auto' : undefined }}
                   >
                     ✎
                   </button>

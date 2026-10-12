@@ -59,6 +59,11 @@ describe('toggleItemSlotMultiSelect', () => {
     expect(toggleItemSlotMultiSelect(set, 'starter')!.itemSlots![0].multiSelect).toBe(true)
     expect(toggleItemSlotMultiSelect(set, 'item1')!.itemSlots![1]).toEqual({ id: 'item1', label: '1st Item' })
   })
+
+  it('never turns it on for boots', () => {
+    const set = { ...makeSet(), itemSlots: [...slots, { id: 'boots', label: 'Boots', kind: 'boots' as const }] }
+    expect(toggleItemSlotMultiSelect(set, 'boots')).toBeUndefined()
+  })
 })
 
 describe('deleteItemSlot', () => {
