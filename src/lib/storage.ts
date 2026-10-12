@@ -119,8 +119,10 @@ function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild
 }
 
 // `fallbackSummonerSpellSets` is the owning loadout's own spells — categories saved before spells
-// moved per-category inherit them, so existing builds keep their spells in every category.
-function normalizeCategories(value: unknown, slots: ItemSlot[], fallbackSummonerSpellSets: SummonerSpellSet[]): Category[] {
+// moved per-category inherit them, so existing builds keep their spells in every category. Same
+// for `fallbackSlots`: categories saved while slots were still shared loadout-wide get a copy of
+// the loadout's slots (same ids, so their items and local notes still line up).
+function normalizeCategories(value: unknown, fallbackSlots: ItemSlot[], fallbackSummonerSpellSets: SummonerSpellSet[]): Category[] {
   if (!Array.isArray(value)) return []
   const result: Category[] = []
   for (const raw of value) {
@@ -128,10 +130,12 @@ function normalizeCategories(value: unknown, slots: ItemSlot[], fallbackSummoner
     const id = (raw as Record<string, unknown>).id
     const label = (raw as Record<string, unknown>).label
     if (typeof id !== 'string' || typeof label !== 'string') continue
+    const slots = 'itemSlots' in raw ? normalizeItemSlots((raw as Record<string, unknown>).itemSlots) : fallbackSlots.map((s) => ({ ...s }))
     result.push({
       id,
       label,
       runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
+      itemSlots: slots,
       items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),
       exampleBuilds: normalizeExampleBuilds((raw as Record<string, unknown>).exampleBuilds, slots),
       summonerSpellSets:

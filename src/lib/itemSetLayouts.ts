@@ -1,5 +1,4 @@
-import type { ItemSlot, ItemSlotKind } from '../types/items'
-import { newId } from './id'
+import type { ItemSlotKind } from '../types/items'
 
 export interface LayoutSlotTemplate {
   label: string
@@ -15,10 +14,8 @@ export interface LayoutTemplate {
 }
 
 // The starting choices offered by the item-set layout picker (ItemsEditor, shown whenever the
-// current item-set has no items and hasn't gone through this picker yet). Applying one is purely
-// additive — see newSlotsForLayout below — so picking a second layout later, or picking one for
-// a different category that shares the same loadout-wide slot list, never removes or duplicates
-// what's already there.
+// current item-set has no items and hasn't gone through this picker yet, e.g. after "Clear
+// items"). Applying one replaces that item-set's slots — see applyItemSetLayout in itemSlots.ts.
 export const ITEM_SET_LAYOUTS: LayoutTemplate[] = [
   {
     id: 'standard',
@@ -55,19 +52,3 @@ export const ITEM_SET_LAYOUTS: LayoutTemplate[] = [
     slots: [{ label: 'Slot 1' }],
   },
 ]
-
-// Only the slots this layout calls for that don't already exist, matched by label the same
-// case-insensitive way ItemsEditor's item-set import does — never modifies or duplicates an
-// existing slot, so applying a layout on top of a loadout's already-customized slot list is
-// always safe.
-export function newSlotsForLayout(existingSlots: ItemSlot[], template: LayoutTemplate): ItemSlot[] {
-  const existingLabels = new Set(existingSlots.map((s) => s.label.toLowerCase()))
-  return template.slots
-    .filter((s) => !existingLabels.has(s.label.toLowerCase()))
-    .map((s) => ({
-      id: newId(),
-      label: s.label,
-      ...(s.kind ? { kind: s.kind } : {}),
-      ...(s.multiSelect ? { multiSelect: true } : {}),
-    }))
-}

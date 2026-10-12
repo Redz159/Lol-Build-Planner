@@ -2,12 +2,13 @@ import { useState, type CSSProperties } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Category } from '../../types/build'
 import type { ItemNoteGlobalFlags, ItemNotes, ItemSituationalFlags, ItemSlot, ItemSlotNotes } from '../../types/items'
-import { categoryHasPlacement, mergedCategoryItems } from '../../lib/categories'
+import { categoryHasPlacement, mergedCategoryItemSet } from '../../lib/categories'
 import { BuildSlotsPanel } from '../items/BuildSlotsPanel'
 import { useConfirm } from './useConfirm'
 
 interface Props {
   categories: Category[]
+  // The merged "All" slots (visible ones only) — what the quick-add popup lays items out by.
   slots: ItemSlot[]
   items: DDragonItem[]
   itemNotes: ItemNotes
@@ -22,7 +23,7 @@ interface Props {
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
   onCopyOut?: (id: string) => void
-  onToggleCategoryItem: (categoryId: string, slotId: string, itemId: string) => void
+  onToggleCategoryItem: (categoryId: string, slotLabel: string, itemId: string) => void
 }
 
 const QUICK_ADD_BUTTON_WIDTH = 18
@@ -220,7 +221,7 @@ export function CategoryTabs({
           itemSlotNotes={itemSlotNotes}
           itemNoteGlobal={itemNoteGlobal}
           itemSituational={itemSituational}
-          onToggle={(slotId, itemId) => onToggleCategoryItem(quickAddCategory.id, slotId, itemId)}
+          onToggle={(slotLabel, itemId) => onToggleCategoryItem(quickAddCategory.id, slotLabel, itemId)}
           onClose={() => setQuickAddCategoryId(null)}
         />
       )}
@@ -253,13 +254,14 @@ function CategoryQuickAddPopup({
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
   itemSituational: ItemSituationalFlags
-  onToggle: (slotId: string, itemId: string) => void
+  onToggle: (slotLabel: string, itemId: string) => void
   onClose: () => void
 }) {
-  const mergedItems = mergedCategoryItems(categories, slots)
+  const mergedItems = mergedCategoryItemSet(categories).items
+  // Categories can have different slots, so membership is matched by slot label.
   const selectedPlacementIds = new Set(
-    Object.entries(mergedItems).flatMap(([slotId, placements]) =>
-      placements.filter((p) => categoryHasPlacement(category, slotId, p.itemId)).map((p) => p.id),
+    slots.flatMap((slot) =>
+      (mergedItems[slot.id] ?? []).filter((p) => categoryHasPlacement(category, slot.label, p.itemId)).map((p) => p.id),
     ),
   )
 
@@ -310,7 +312,8 @@ function CategoryQuickAddPopup({
           selectedPlacementIds={selectedPlacementIds}
           onToggleSelection={(slotId, placementId) => {
             const placement = mergedItems[slotId]?.find((p) => p.id === placementId)
-            if (placement) onToggle(slotId, placement.itemId)
+            const slot = slots.find((s) => s.id === slotId)
+            if (placement && slot) onToggle(slot.label, placement.itemId)
           }}
         />
       </div>

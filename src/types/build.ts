@@ -36,13 +36,14 @@ export interface ExampleBuild {
   items: BuildItems
 }
 
-// A category is its own independent rune-page set and item set over the same slots — like a
-// parallel mini-loadout a loadout can switch between, rather than a tag on its single rune/item
+// A category is its own independent rune-page set and item set, with its own item slots — like
+// a parallel mini-loadout a loadout can switch between, rather than a tag on its single rune/item
 // selection. Runes and items live *under* a category now, not the other way around.
 export interface Category {
   id: string
   label: string
   runePages: RunePage[]
+  itemSlots: ItemSlot[]
   items: BuildItems
   exampleBuilds: ExampleBuild[]
   summonerSpellSets: SummonerSpellSet[]
@@ -58,6 +59,9 @@ export interface Category {
   // instead of the picker again. Absent means false, same as the other per-item-set flags.
   layoutChosen?: boolean
 }
+
+// The part of a category (or a loadout's own plain values) the Items tab edits as one unit.
+export type ItemSet = Pick<Category, 'itemSlots' | 'items' | 'exampleBuilds' | 'layoutChosen'>
 
 // How many of an API import's sampled games picked a given item (per slot) or rune/shard —
 // purely informational, shown as an optional "(x)" overlay on top of the normal view. Only ever

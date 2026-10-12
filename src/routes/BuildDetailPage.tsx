@@ -21,9 +21,9 @@ import {
   addCategory,
   copyCategoryToLoadout,
   deleteCategory,
+  currentItemSet,
   duplicateCategory,
-  mergedCategoryExampleBuilds,
-  mergedCategoryItems,
+  mergedCategoryItemSet,
   mergedCategoryRunePages,
   renameCategory,
   skillsAndSpellsOf,
@@ -107,6 +107,8 @@ export function BuildDetailPage() {
   // Summoner spells + skill order follow the same scoping as rune pages; the "All" view has no
   // single value, so the Skills & Spells tab renders every category's instead.
   const currentSkills: SkillsAndSpells = activeCategory ?? activeLoadout
+  // Item slots, items and example builds, same scoping again (each category has its own slots).
+  const currentItems = currentItemSet(activeLoadout, effectiveCategoryId)
 
   const save = (patch: Partial<typeof build>) => {
     updateBuild({ ...build, ...patch, updatedAt: new Date().toISOString() })
@@ -150,12 +152,7 @@ export function BuildDetailPage() {
   }
 
   const addCategoryHandler = (label: string) => {
-    const categories = addCategory(
-      activeLoadout.categories,
-      activeLoadout.itemSlots,
-      label,
-      activeLoadout.categories.length === 0 ? activeLoadout : undefined,
-    )
+    const categories = addCategory(activeLoadout.categories, label, activeLoadout.categories.length === 0 ? activeLoadout : undefined)
     saveLoadout({ categories })
     setSelectedCategoryId(categories[categories.length - 1].id)
   }
@@ -169,7 +166,7 @@ export function BuildDetailPage() {
   }
 
   const duplicateCategoryHandler = (id: string) => {
-    const { categories, newId: clonedId } = duplicateCategory(activeLoadout.categories, activeLoadout.itemSlots, id)
+    const { categories, newId: clonedId } = duplicateCategory(activeLoadout.categories, id)
     saveLoadout({ categories })
     setSelectedCategoryId(clonedId)
   }
@@ -178,7 +175,7 @@ export function BuildDetailPage() {
     const source = activeLoadout.categories.find((c) => c.id === categoryCopySourceId)
     const target = build.loadouts.find((l) => l.id === targetLoadoutId)
     if (!source || !target) return
-    const { categories } = copyCategoryToLoadout(target.categories, target.itemSlots, source, target)
+    const { categories } = copyCategoryToLoadout(target.categories, source, target)
     save({ loadouts: build.loadouts.map((l) => (l.id === targetLoadoutId ? { ...l, categories } : l)) })
   }
 
@@ -198,9 +195,9 @@ export function BuildDetailPage() {
 
   // The category tab row's own quick-add popup only ever copies existing item placements between
   // categories — see CategoryTabs for why runes aren't part of that shortcut.
-  const toggleCategoryItemHandler = (categoryId: string, slotId: string, itemId: string) => {
+  const toggleCategoryItemHandler = (categoryId: string, slotLabel: string, itemId: string) => {
     saveLoadout({
-      categories: activeLoadout.categories.map((c) => (c.id === categoryId ? { ...c, items: toggleCategoryPlacement(c.items, slotId, itemId) } : c)),
+      categories: activeLoadout.categories.map((c) => (c.id === categoryId ? toggleCategoryPlacement(c, slotLabel, itemId) : c)),
     })
   }
 
@@ -322,7 +319,7 @@ export function BuildDetailPage() {
 
       <CategoryTabs
         categories={activeLoadout.categories}
-        slots={visibleItemSlots(activeLoadout.itemSlots, activeLoadout.roles)}
+        slots={visibleItemSlots(mergedCategoryItemSet(activeLoadout.categories).itemSlots, activeLoadout.roles)}
         items={items}
         itemNotes={activeLoadout.itemNotes}
         itemSlotNotes={activeLoadout.itemSlotNotes}
@@ -455,21 +452,9 @@ export function BuildDetailPage() {
               <SimulatorTab
                 key={`${activeLoadout.id}:${effectiveCategoryId}`}
                 champion={champion}
-                slots={visibleItemSlots(activeLoadout.itemSlots, activeLoadout.roles)}
-                buildItems={
-                  activeCategory
-                    ? activeCategory.items
-                    : isAllCategoryView
-                      ? mergedCategoryItems(activeLoadout.categories, activeLoadout.itemSlots)
-                      : activeLoadout.items
-                }
-                exampleBuilds={
-                  activeCategory
-                    ? activeCategory.exampleBuilds
-                    : isAllCategoryView
-                      ? mergedCategoryExampleBuilds(activeLoadout.categories)
-                      : activeLoadout.exampleBuilds
-                }
+                slots={visibleItemSlots(currentItems.itemSlots, activeLoadout.roles)}
+                buildItems={currentItems.items}
+                exampleBuilds={currentItems.exampleBuilds}
                 runePages={currentRunePages}
                 skillOrder={currentSkills.skillOrder}
               />

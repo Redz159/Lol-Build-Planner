@@ -389,7 +389,7 @@ export function BuildSlotsPanel({
                     aria-label={`Delete ${slot.label}`}
                     title="Delete slot"
                     onClick={async () => {
-                      if (await confirm(`Delete slot "${slot.label}"? This removes it from every category and example build.`)) {
+                      if (await confirm(`Delete slot "${slot.label}"? This also removes it from the example builds.`)) {
                         onDeleteSlot(slotId)
                       }
                     }}

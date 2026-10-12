@@ -6,9 +6,7 @@ interface Props {
 
 // Shown in place of the normal slot editor (edit mode only) whenever the current item-set has no
 // items placed and hasn't been through this picker yet — see ItemsEditor's `showLayoutPicker`.
-// Picking a layout only ever adds the slots it's missing (ItemsEditor's `chooseLayout`), so it's
-// safe to show again for a different, still-empty category even after another category has
-// already picked one.
+// Picking a layout replaces that item-set's slots (every category has its own).
 export function LayoutPicker({ onChoose }: Props) {
   return (
     <div className="panel" style={{ padding: 20 }}>

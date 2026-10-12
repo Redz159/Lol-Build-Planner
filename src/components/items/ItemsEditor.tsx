@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ExampleBuild, Loadout } from '../../types/build'
+import type { ExampleBuild, ItemSet, Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemPlacement, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
@@ -8,13 +8,23 @@ import { joatStatNames } from '../../lib/joat'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
-import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
+import { currentItemSet, mergedCategoryRunePages } from '../../lib/categories'
 import { addSlotToExampleBuilds } from '../../lib/exampleBuilds'
-import { addItemSlot, deleteItemSlot, moveItemSlot, renameItemSlot, toggleItemSlotMultiSelect } from '../../lib/itemSlots'
-import { ITEM_SET_LAYOUTS, newSlotsForLayout, type LayoutTemplate } from '../../lib/itemSetLayouts'
+import {
+  addItemSlot,
+  applyItemSetLayout,
+  clearItemSet,
+  deleteItemSlot,
+  moveItemSlot,
+  pruneItemSlotNotes,
+  renameItemSlot,
+  toggleItemSlotMultiSelect,
+} from '../../lib/itemSlots'
+import { ITEM_SET_LAYOUTS, type LayoutTemplate } from '../../lib/itemSetLayouts'
 import { buildLeagueItemSet, type ParsedItemSet } from '../../lib/leagueItemSet'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { useGameData } from '../../state/GameDataContext'
+import { useConfirm } from '../shared/useConfirm'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
@@ -40,6 +50,7 @@ interface Props {
 
 export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, activeCategoryId, itemGameCounts }: Props) {
   const { items } = useGameData()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
   // Which slot's placement opened the note popup, if any — lets the popup edit that slot's own
@@ -64,80 +75,55 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     setPopupSlotId(null)
   }
 
-  const visibleSlots = useMemo(
-    () => visibleItemSlots(loadout.itemSlots, loadout.roles),
-    [loadout.itemSlots, loadout.roles],
-  )
-
-  const findSlot = (slotId: string): ItemSlot | undefined => loadout.itemSlots.find((s) => s.id === slotId)
-
   // Which item-set is currently being shown/edited: a real category, the merged read-only "All"
   // view, or (no categories at all) the loadout's own plain item list — the pre-categories
   // behavior, left untouched so existing builds keep working unchanged. `activeCategoryId` is
-  // resolved once by the parent and shared with the Runes tab, so it's trusted as-is here.
+  // resolved once by the parent and shared with the Runes tab, so it's trusted as-is here. Every
+  // item-set has its own slots.
   const activeCategory =
     activeCategoryId && activeCategoryId !== 'all' ? loadout.categories.find((c) => c.id === activeCategoryId) : undefined
   const isAllCategoryView = activeCategoryId === 'all'
-  const currentItems: BuildItems = activeCategory
-    ? activeCategory.items
-    : isAllCategoryView
-      ? mergedCategoryItems(loadout.categories, loadout.itemSlots)
-      : loadout.items
+  const currentSet: ItemSet = useMemo(() => currentItemSet(loadout, activeCategoryId), [loadout, activeCategoryId])
+  const currentSlots = currentSet.itemSlots
+  const currentItems: BuildItems = currentSet.items
 
-  // The item-set layout picker (Standard / Core-based / Blank) replaces the normal editor
-  // whenever the current item-set has nothing placed yet and hasn't been through it before —
-  // never on the read-only "All" merge, which has no single item-set to bootstrap.
-  const currentLayoutChosen = activeCategory ? !!activeCategory.layoutChosen : !!loadout.layoutChosen
-  const currentIsEmpty = visibleSlots.every((slot) => (currentItems[slot.id] ?? []).length === 0)
-  const showLayoutPicker = !isAllCategoryView && !currentLayoutChosen && currentIsEmpty
+  const visibleSlots = useMemo(() => visibleItemSlots(currentSlots, loadout.roles), [currentSlots, loadout.roles])
 
-  // Applying a layout only ever adds the slots it calls for that don't already exist (matched by
-  // label — see newSlotsForLayout) and syncs an empty placement array for each into every
-  // item-set, the same way addSlot/importItemSet do.
-  const chooseLayout = (layoutId: LayoutTemplate['id']) => {
-    if (isAllCategoryView) return
-    const template = ITEM_SET_LAYOUTS.find((t) => t.id === layoutId)
-    const newSlots = template ? newSlotsForLayout(loadout.itemSlots, template) : []
-    const nextSlots = newSlots.length > 0 ? [...loadout.itemSlots, ...newSlots] : loadout.itemSlots
-
-    const withNewSlotKeys = (buildItems: BuildItems): BuildItems => {
-      if (newSlots.length === 0) return buildItems
-      const next = { ...buildItems }
-      for (const slot of newSlots) next[slot.id] = []
-      return next
-    }
-    const withNewSlotKeysInExampleBuilds = (list: ExampleBuild[]): ExampleBuild[] =>
-      newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), list)
-
-    onChange({
-      itemSlots: nextSlots,
-      items: withNewSlotKeys(loadout.items),
-      exampleBuilds: withNewSlotKeysInExampleBuilds(loadout.exampleBuilds),
-      categories: loadout.categories.map((c) => ({
-        ...c,
-        items: withNewSlotKeys(c.items),
-        exampleBuilds: withNewSlotKeysInExampleBuilds(c.exampleBuilds),
-        layoutChosen: c.id === activeCategory?.id ? true : c.layoutChosen,
-      })),
-      ...(activeCategory ? {} : { layoutChosen: true }),
-    })
-  }
+  const findSlot = (slotId: string): ItemSlot | undefined => currentSlots.find((s) => s.id === slotId)
 
   // Writes go to whichever item-set is active; a no-op while viewing the merged "All" tab, since
-  // it has no single category to write into.
-  const setCurrentItems = (nextItems: BuildItems, extra: Partial<Loadout> = {}) => {
-    if (activeCategory) {
-      onChange({
-        categories: loadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, items: nextItems } : c)),
-        ...extra,
-      })
-    } else if (!isAllCategoryView) {
-      onChange({ items: nextItems, ...extra })
-    }
+  // it has no single category to write into. Local notes of slots no item-set uses anymore are
+  // dropped along the way.
+  const patchCurrentSet = (patch: Partial<ItemSet>, extra: Partial<Loadout> = {}) => {
+    if (isAllCategoryView) return
+    const scoped: Partial<Loadout> = activeCategory
+      ? { categories: loadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, ...patch } : c)) }
+      : patch
+    const itemSlotNotes = pruneItemSlotNotes({ ...loadout, ...extra, ...scoped })
+    onChange({ ...extra, ...scoped, ...(itemSlotNotes !== (extra.itemSlotNotes ?? loadout.itemSlotNotes) ? { itemSlotNotes } : {}) })
   }
 
-  // Same scoping as currentItems/setCurrentItems above, for the example-builds section below the
-  // main item pool.
+  // The item-set layout picker (Standard / Core-based / Blank) replaces the normal editor
+  // whenever the current item-set has nothing placed yet and hasn't been through it before, or
+  // has no (visible) slots left at all — never on the read-only "All" merge, which has no single
+  // item-set to bootstrap.
+  const currentIsEmpty = currentSlots.every((slot) => (currentItems[slot.id] ?? []).length === 0)
+  const showLayoutPicker = !isAllCategoryView && (visibleSlots.length === 0 || (!currentSet.layoutChosen && currentIsEmpty))
+
+  const chooseLayout = (layoutId: LayoutTemplate['id']) => {
+    const template = ITEM_SET_LAYOUTS.find((t) => t.id === layoutId)
+    if (template) patchCurrentSet(applyItemSetLayout(currentSet, template))
+  }
+
+  const clearItems = async () => {
+    if (!(await confirm("Clear every item, slot and example build here? This can't be undone."))) return
+    patchCurrentSet(clearItemSet())
+    setActiveSlotId(null)
+    setPreview({})
+  }
+
+  const setCurrentItems = (nextItems: BuildItems, extra: Partial<Loadout> = {}) => patchCurrentSet({ items: nextItems }, extra)
+
   // Same scoping as currentItems above, just for rune pages — needed to tell whether Jack Of
   // All Trades is among the runes selected for whatever's currently on screen.
   const currentRunePages = activeCategory
@@ -147,19 +133,9 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       : loadout.runePages
   const hasJackOfAllTrades = pagesIncludeRune(currentRunePages, JACK_OF_ALL_TRADES_RUNE_ID)
 
-  const currentExampleBuilds: ExampleBuild[] = activeCategory
-    ? activeCategory.exampleBuilds
-    : isAllCategoryView
-      ? mergedCategoryExampleBuilds(loadout.categories)
-      : loadout.exampleBuilds
-
-  const setCurrentExampleBuilds = (next: ExampleBuild[]) => {
-    if (activeCategory) {
-      onChange({ categories: loadout.categories.map((c) => (c.id === activeCategory.id ? { ...c, exampleBuilds: next } : c)) })
-    } else if (!isAllCategoryView) {
-      onChange({ exampleBuilds: next })
-    }
-  }
+  // Same scoping as currentItems, for the example-builds section below the main item pool.
+  const currentExampleBuilds: ExampleBuild[] = currentSet.exampleBuilds
+  const setCurrentExampleBuilds = (next: ExampleBuild[]) => patchCurrentSet({ exampleBuilds: next })
 
   // Each imported block replaces the matching slot's items in whichever item-set is active (a
   // category, or the plain item list when there are no categories) — slots it doesn't mention
@@ -167,7 +143,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   // as an empty array into every other item-set the same way addSlot does.
   const importItemSet = (parsed: ParsedItemSet) => {
     if (isAllCategoryView) return
-    const slotByLabel = new Map(loadout.itemSlots.map((s) => [s.label.toLowerCase(), s]))
+    const slotByLabel = new Map(currentSlots.map((s) => [s.label.toLowerCase(), s]))
     const newSlots: ItemSlot[] = []
     for (const block of parsed.blocks) {
       const key = block.label.toLowerCase()
@@ -177,50 +153,18 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
         newSlots.push(slot)
       }
     }
-    const nextSlots = [...loadout.itemSlots, ...newSlots]
-
-    const withNewSlotKeys = (buildItems: BuildItems): BuildItems => {
-      if (newSlots.length === 0) return buildItems
-      const next = { ...buildItems }
-      for (const slot of newSlots) next[slot.id] = []
-      return next
+    const nextItems = { ...currentItems }
+    for (const slot of newSlots) nextItems[slot.id] = []
+    for (const block of parsed.blocks) {
+      const slot = slotByLabel.get(block.label.toLowerCase())!
+      nextItems[slot.id] = block.itemIds.map((itemId) => ({ id: newId(), itemId }))
     }
-
-    const withNewSlotKeysInExampleBuilds = (list: ExampleBuild[]): ExampleBuild[] =>
-      newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), list)
-
-    const applyBlocks = (buildItems: BuildItems): BuildItems => {
-      const next = { ...buildItems }
-      for (const block of parsed.blocks) {
-        const slot = slotByLabel.get(block.label.toLowerCase())!
-        next[slot.id] = block.itemIds.map((itemId) => ({ id: newId(), itemId }))
-      }
-      return next
-    }
-
-    const nextLoadoutItems = withNewSlotKeys(loadout.items)
-    const nextLoadoutExampleBuilds = withNewSlotKeysInExampleBuilds(loadout.exampleBuilds)
-    const nextCategories = loadout.categories.map((c) => ({
-      ...c,
-      items: withNewSlotKeys(c.items),
-      exampleBuilds: withNewSlotKeysInExampleBuilds(c.exampleBuilds),
-    }))
-
-    if (activeCategory) {
-      onChange({
-        itemSlots: nextSlots,
-        items: nextLoadoutItems,
-        exampleBuilds: nextLoadoutExampleBuilds,
-        categories: nextCategories.map((c) => (c.id === activeCategory.id ? { ...c, items: applyBlocks(c.items) } : c)),
-      })
-    } else {
-      onChange({
-        itemSlots: nextSlots,
-        items: applyBlocks(nextLoadoutItems),
-        exampleBuilds: nextLoadoutExampleBuilds,
-        categories: nextCategories,
-      })
-    }
+    patchCurrentSet({
+      itemSlots: [...currentSlots, ...newSlots],
+      items: nextItems,
+      exampleBuilds: newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), currentExampleBuilds),
+      layoutChosen: true,
+    })
   }
 
   useEffect(() => {
@@ -238,7 +182,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   const excludedPlacementIds = useMemo(() => {
     const previewedPlacementIds = new Set(Object.values(preview).flatMap((ids) => ids ?? []))
     const previewedItemIds = new Set<string>()
-    for (const slot of loadout.itemSlots) {
+    for (const slot of currentSlots) {
       for (const placementId of preview[slot.id] ?? []) {
         const placement = currentItems[slot.id]?.find((p) => p.id === placementId)
         if (placement) previewedItemIds.add(placement.itemId)
@@ -249,7 +193,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     // A "requires" pair only counts while the required item is actually a candidate in this
     // item-set — a category that never includes it shouldn't be able to satisfy or block on it.
     const itemIdsInView = new Set(Object.values(currentItems).flatMap((placements) => placements.map((p) => p.itemId)))
-    for (const slot of loadout.itemSlots) {
+    for (const slot of currentSlots) {
       for (const placement of currentItems[slot.id] ?? []) {
         if (previewedPlacementIds.has(placement.id)) continue
         const sameItemElsewhere = previewedItemIds.has(placement.itemId)
@@ -262,7 +206,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       }
     }
     return result
-  }, [preview, loadout.itemSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
+  }, [preview, currentSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
 
   // Hovering any placed item lightly rings every OTHER placement related to it: gold for the
   // same item elsewhere, red for a mutual exclusion, green for an item the hovered one requires,
@@ -277,7 +221,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       .flat()
       .find((p) => p.id === hoveredPlacementId)?.itemId
     if (!hoveredItemId) return result
-    for (const slot of loadout.itemSlots) {
+    for (const slot of currentSlots) {
       for (const placement of currentItems[slot.id] ?? []) {
         if (placement.id === hoveredPlacementId) continue
         if (placement.itemId === hoveredItemId) {
@@ -295,7 +239,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       }
     }
     return result
-  }, [hoveredPlacementId, loadout.itemSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
+  }, [hoveredPlacementId, currentSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
 
   // A slot's local note only makes sense while the item is actually placed there, so every
   // path that removes a placement (toggling off, the × button, or dragging it elsewhere)
@@ -418,7 +362,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
       // Seed every slot that currently holds this item (in the item-set being viewed) with the
       // same text it was just showing, so becoming local doesn't blank it out here.
       const nextLocal = { ...loadout.itemSlotNotes }
-      for (const slot of loadout.itemSlots) {
+      for (const slot of currentSlots) {
         if (!(currentItems[slot.id] ?? []).some((p) => p.itemId === itemId)) continue
         const key = itemSlotNoteKey(slot.id, itemId)
         if (currentText.trim() === '') delete nextLocal[key]
@@ -428,23 +372,23 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     }
   }
 
-  const addSlot = () => onChange(addItemSlot(loadout))
+  const addSlot = () => patchCurrentSet(addItemSlot(currentSet))
 
   const renameSlot = (slotId: string, label: string) => {
-    const patch = renameItemSlot(loadout, slotId, label)
-    if (patch) onChange(patch)
+    const patch = renameItemSlot(currentSet, slotId, label)
+    if (patch) patchCurrentSet(patch)
   }
 
   const moveSlot = (slotId: string, beforeSlotId: string | null) => {
-    const patch = moveItemSlot(loadout, slotId, beforeSlotId)
-    if (patch) onChange(patch)
+    const patch = moveItemSlot(currentSet, slotId, beforeSlotId)
+    if (patch) patchCurrentSet(patch)
   }
 
   const toggleSlotMultiSelect = (slotId: string) => {
     const turningOff = !!findSlot(slotId)?.multiSelect
-    const patch = toggleItemSlotMultiSelect(loadout, slotId)
+    const patch = toggleItemSlotMultiSelect(currentSet, slotId)
     if (!patch) return
-    onChange(patch)
+    patchCurrentSet(patch)
     // A slot going back to single-select can only ever show one gold ring going forward, so trim
     // any leftover multi-selection now rather than leave a second one stuck on with no way to
     // click it off.
@@ -458,7 +402,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const deleteSlot = (slotId: string) => {
-    onChange(deleteItemSlot(loadout, slotId))
+    patchCurrentSet(deleteItemSlot(currentSet, slotId))
     if (activeSlotId === slotId) setActiveSlotId(null)
     setPreview((prev) => {
       if (!(slotId in prev)) return prev
@@ -511,11 +455,23 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     </button>
   )
 
+  // Sends the item-set back to the layout picker, so it's hidden while the picker is showing.
+  const clearItemsButton = mode === 'edit' && !isAllCategoryView && !showLayoutPicker && (
+    <button
+      type="button"
+      onClick={clearItems}
+      style={{ ...leagueInteropButtonStyle, marginLeft: 'auto', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+    >
+      Clear items
+    </button>
+  )
+
   const leagueInteropRow = (
     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
       {importButton}
       {exportButton}
       {clearSelectionButton}
+      {clearItemsButton}
     </div>
   )
 
@@ -758,6 +714,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           onClose={() => setShowImportPopup(false)}
         />
       )}
+      {confirmDialog}
     </div>
   )
 }

@@ -30,3 +30,27 @@ describe('migrateBuild rune tree notes', () => {
     expect('secondaryNote' in page.variants[1]).toBe(false)
   })
 })
+
+describe('migrateBuild category item slots', () => {
+  it('gives older categories a copy of the loadout slots and keeps their own when saved', () => {
+    const slots = [{ id: 'core', label: 'Core Items' }]
+    const build = migrateBuild({
+      id: 'b',
+      champion: { id: 'Ahri', name: 'Ahri' },
+      title: 'Test',
+      loadouts: [
+        {
+          itemSlots: slots,
+          categories: [
+            { id: 'old', label: 'Old', items: { core: [{ id: 'p', itemId: '3089' }] } },
+            { id: 'new', label: 'New', itemSlots: [] },
+          ],
+        },
+      ],
+    })
+    const [oldCategory, newCategory] = build.loadouts[0].categories
+    expect(oldCategory.itemSlots).toEqual(slots)
+    expect(oldCategory.items.core.map((p) => p.itemId)).toEqual(['3089'])
+    expect(newCategory.itemSlots).toEqual([])
+  })
+})

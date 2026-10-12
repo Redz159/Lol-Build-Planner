@@ -9,7 +9,7 @@ import { useCollection } from '../../state/CollectionContext'
 import { getChampionSimData } from '../../lib/ddragon'
 import { computeStats, toTargetStats } from '../../lib/statEngine'
 import { exampleBuildFinalItems, findRune, initialRunePicks, ranksAtLevel, resolveRunes, type RunePicks } from '../../lib/simulatorLoadout'
-import { mergedCategoryExampleBuilds, mergedCategoryItems, mergedCategoryRunePages } from '../../lib/categories'
+import { mergedCategoryItemSet, mergedCategoryRunePages } from '../../lib/categories'
 import { visibleItemSlots } from '../../lib/loadouts'
 import { DEFENSE_SHARDS, FLEX_SHARDS, OFFENSE_SHARDS } from '../../data/statShards'
 import { ChampionSelect } from '../collection/ChampionSelect'
@@ -60,13 +60,13 @@ function targetSource(builds: Build[], championId: string): { items?: ItemSource
   const build = builds.find((b) => b.champion.id === championId)
   const loadout = build?.loadouts[0]
   if (!loadout) return { runePages: [] }
-  const slots = visibleItemSlots(loadout.itemSlots, loadout.roles)
   const hasCategories = loadout.categories.length > 0
+  const itemSet = hasCategories ? mergedCategoryItemSet(loadout.categories) : loadout
   return {
     items: {
-      slots,
-      items: hasCategories ? mergedCategoryItems(loadout.categories, slots) : loadout.items,
-      exampleBuilds: hasCategories ? mergedCategoryExampleBuilds(loadout.categories) : loadout.exampleBuilds,
+      slots: visibleItemSlots(itemSet.itemSlots, loadout.roles),
+      items: itemSet.items,
+      exampleBuilds: itemSet.exampleBuilds,
     },
     runePages: hasCategories ? mergedCategoryRunePages(loadout.categories) : loadout.runePages,
   }

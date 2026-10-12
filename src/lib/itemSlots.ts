@@ -1,44 +1,40 @@
-import type { Loadout } from '../types/build'
-import { itemSlotNoteKey, type BuildItems, type ItemSlot } from '../types/items'
-import { addSlotToExampleBuilds, removeSlotFromExampleBuilds } from './exampleBuilds'
+import type { ItemSet, Loadout } from '../types/build'
+import type { BuildItems, ItemSlot, ItemSlotNotes } from '../types/items'
+import { addSlotToExampleBuilds, cloneExampleBuilds, removeSlotFromExampleBuilds } from './exampleBuilds'
 import { newId } from './id'
+import type { LayoutTemplate } from './itemSetLayouts'
 
-// Slots are shared across every category, so adding/removing one has to keep loadout.items,
-// every category's own item map, and every example build's item map in lockstep with
-// loadout.itemSlots. Each helper returns the loadout patch to apply.
-export function addItemSlot(loadout: Loadout): Partial<Loadout> {
+// Every item-set (each category, or the loadout's own plain one) keeps its own slot list, so
+// adding/removing a slot only has to keep that set's items and example builds in lockstep with
+// its itemSlots. Each helper returns the item-set patch to apply.
+export function addItemSlot(set: ItemSet): Partial<ItemSet> {
   const slot: ItemSlot = { id: newId(), label: 'New Slot' }
   return {
-    itemSlots: [...loadout.itemSlots, slot],
-    items: { ...loadout.items, [slot.id]: [] },
-    exampleBuilds: addSlotToExampleBuilds(loadout.exampleBuilds, slot.id),
-    categories: loadout.categories.map((c) => ({
-      ...c,
-      items: { ...c.items, [slot.id]: [] },
-      exampleBuilds: addSlotToExampleBuilds(c.exampleBuilds, slot.id),
-    })),
+    itemSlots: [...set.itemSlots, slot],
+    items: { ...set.items, [slot.id]: [] },
+    exampleBuilds: addSlotToExampleBuilds(set.exampleBuilds, slot.id),
   }
 }
 
 // Renaming clears the slot's kind (it becomes a plain slot), but keeps multiSelect. Returns
 // undefined when nothing would change.
-export function renameItemSlot(loadout: Loadout, slotId: string, label: string): Partial<Loadout> | undefined {
+export function renameItemSlot(set: ItemSet, slotId: string, label: string): Partial<ItemSet> | undefined {
   const trimmed = label.trim()
-  const slot = loadout.itemSlots.find((s) => s.id === slotId)
+  const slot = set.itemSlots.find((s) => s.id === slotId)
   if (!slot || !trimmed || trimmed === slot.label) return undefined
   return {
-    itemSlots: loadout.itemSlots.map((s) =>
+    itemSlots: set.itemSlots.map((s) =>
       s.id === slotId ? { id: s.id, label: trimmed, ...(s.multiSelect ? { multiSelect: true } : {}) } : s,
     ),
   }
 }
 
-export function toggleItemSlotMultiSelect(loadout: Loadout, slotId: string): Partial<Loadout> | undefined {
-  const slot = loadout.itemSlots.find((s) => s.id === slotId)
+export function toggleItemSlotMultiSelect(set: ItemSet, slotId: string): Partial<ItemSet> | undefined {
+  const slot = set.itemSlots.find((s) => s.id === slotId)
   if (!slot) return undefined
   const turningOff = !!slot.multiSelect
   return {
-    itemSlots: loadout.itemSlots.map((s) => {
+    itemSlots: set.itemSlots.map((s) => {
       if (s.id !== slotId) return s
       if (turningOff) {
         const { multiSelect: _multiSelect, ...rest } = s
@@ -49,37 +45,59 @@ export function toggleItemSlotMultiSelect(loadout: Loadout, slotId: string): Par
   }
 }
 
-export function deleteItemSlot(loadout: Loadout, slotId: string): Partial<Loadout> {
-  const stripSlot = (buildItems: BuildItems): BuildItems => {
-    const next = { ...buildItems }
-    delete next[slotId]
-    return next
-  }
-  const prefix = itemSlotNoteKey(slotId, '')
-  const nextSlotNotes = Object.fromEntries(Object.entries(loadout.itemSlotNotes).filter(([key]) => !key.startsWith(prefix)))
+export function deleteItemSlot(set: ItemSet, slotId: string): Partial<ItemSet> {
+  const items: BuildItems = { ...set.items }
+  delete items[slotId]
   return {
-    itemSlots: loadout.itemSlots.filter((s) => s.id !== slotId),
-    items: stripSlot(loadout.items),
-    exampleBuilds: removeSlotFromExampleBuilds(loadout.exampleBuilds, slotId),
-    categories: loadout.categories.map((c) => ({
-      ...c,
-      items: stripSlot(c.items),
-      exampleBuilds: removeSlotFromExampleBuilds(c.exampleBuilds, slotId),
-    })),
-    itemSlotNotes: nextSlotNotes,
+    itemSlots: set.itemSlots.filter((s) => s.id !== slotId),
+    items,
+    exampleBuilds: removeSlotFromExampleBuilds(set.exampleBuilds, slotId),
   }
 }
 
 // Moves a slot to just before `beforeSlotId` (or to the end when null). Id-based rather than
 // index-based because the editor only shows the visible slots, so hidden ones keep their place.
 // Returns undefined when nothing would change.
-export function moveItemSlot(loadout: Loadout, slotId: string, beforeSlotId: string | null): Partial<Loadout> | undefined {
-  const slot = loadout.itemSlots.find((s) => s.id === slotId)
+export function moveItemSlot(set: ItemSet, slotId: string, beforeSlotId: string | null): Partial<ItemSet> | undefined {
+  const slot = set.itemSlots.find((s) => s.id === slotId)
   if (!slot || slotId === beforeSlotId) return undefined
-  const rest = loadout.itemSlots.filter((s) => s.id !== slotId)
+  const rest = set.itemSlots.filter((s) => s.id !== slotId)
   const index = beforeSlotId === null ? rest.length : rest.findIndex((s) => s.id === beforeSlotId)
   if (index === -1) return undefined
   const itemSlots = [...rest.slice(0, index), slot, ...rest.slice(index)]
-  if (itemSlots.every((s, i) => s === loadout.itemSlots[i])) return undefined
+  if (itemSlots.every((s, i) => s === set.itemSlots[i])) return undefined
   return { itemSlots }
+}
+
+// Replaces the item-set's slots with the layout's, all empty. Only offered while the set has
+// nothing placed (see ItemsEditor's layout picker), so there's no item to carry over.
+export function applyItemSetLayout(set: ItemSet, template: LayoutTemplate): Partial<ItemSet> {
+  const itemSlots: ItemSlot[] = template.slots.map((s) => ({
+    id: newId(),
+    label: s.label,
+    ...(s.kind ? { kind: s.kind } : {}),
+    ...(s.multiSelect ? { multiSelect: true } : {}),
+  }))
+  return {
+    itemSlots,
+    items: Object.fromEntries(itemSlots.map((s) => [s.id, []])),
+    exampleBuilds: cloneExampleBuilds(set.exampleBuilds, itemSlots),
+    layoutChosen: true,
+  }
+}
+
+// "Clear items": drops every slot, item and example build, which sends the set back to the
+// layout picker.
+export function clearItemSet(): Partial<ItemSet> {
+  return { itemSlots: [], items: {}, exampleBuilds: [], layoutChosen: false }
+}
+
+// Local notes are keyed by slot id, so once no item-set in the loadout has a slot anymore its
+// notes would just linger. Slot ids can be shared between item-sets (a duplicated category keeps
+// its source's ids), so a note only goes once no set uses its slot.
+export function pruneItemSlotNotes(loadout: Loadout): ItemSlotNotes {
+  const inUse = new Set([loadout, ...loadout.categories].flatMap((set) => set.itemSlots.map((s) => s.id)))
+  const entries = Object.entries(loadout.itemSlotNotes)
+  const kept = entries.filter(([key]) => inUse.has(key.slice(0, key.indexOf('::'))))
+  return kept.length === entries.length ? loadout.itemSlotNotes : Object.fromEntries(kept)
 }
