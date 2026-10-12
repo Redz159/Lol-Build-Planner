@@ -36,7 +36,7 @@ function cloneItemSet(source: ItemSet): ItemSet {
   return {
     itemSlots: source.itemSlots.map((s) => ({ ...s })),
     items: cloneItems(source.items, source.itemSlots),
-    exampleBuilds: cloneExampleBuilds(source.exampleBuilds, source.itemSlots),
+    exampleBuilds: cloneExampleBuilds(source.exampleBuilds),
     ...(source.layoutChosen ? { layoutChosen: true } : {}),
   }
 }
@@ -110,8 +110,8 @@ export function mergedCategoryRunePages(categories: Category[]): RunePage[] {
 
 // The "All" tab's read-only view. Categories can have different slots, so slots are lined up by
 // label (case-insensitive): each label shows once, in the order first seen. Per slot, every item
-// from any category is listed once (first category wins the display order), and every
-// category's example builds are re-keyed onto those merged slots.
+// from any category is listed once (first category wins the display order). Example builds all
+// share the same fixed slots, so they're just listed one category after another.
 export function mergedCategoryItemSet(categories: Category[]): ItemSet {
   const itemSlots: ItemSlot[] = []
   const slotIdByLabel = new Map<string, string>()
@@ -123,9 +123,8 @@ export function mergedCategoryItemSet(categories: Category[]): ItemSet {
       itemSlots.push(slot)
     }
   }
-  const emptyItems = (): BuildItems => Object.fromEntries(itemSlots.map((s) => [s.id, [] as ItemPlacement[]]))
   const mergedId = (slot: ItemSlot) => slotIdByLabel.get(slot.label.toLowerCase())!
-  const items = emptyItems()
+  const items: BuildItems = Object.fromEntries(itemSlots.map((s) => [s.id, [] as ItemPlacement[]]))
   const exampleBuilds: ExampleBuild[] = []
   for (const category of categories) {
     for (const slot of category.itemSlots) {
@@ -134,11 +133,7 @@ export function mergedCategoryItemSet(categories: Category[]): ItemSet {
         if (!merged.some((p) => p.itemId === placement.itemId)) merged.push(placement)
       }
     }
-    for (const build of category.exampleBuilds) {
-      const rekeyed = emptyItems()
-      for (const slot of category.itemSlots) rekeyed[mergedId(slot)].push(...(build.items[slot.id] ?? []))
-      exampleBuilds.push({ ...build, items: rekeyed })
-    }
+    exampleBuilds.push(...category.exampleBuilds)
   }
   return { itemSlots, items, exampleBuilds }
 }

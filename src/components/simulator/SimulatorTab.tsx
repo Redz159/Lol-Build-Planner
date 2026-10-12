@@ -78,7 +78,7 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
   const own = useSimData(champion.id)
 
   const [level, setLevel] = useState(18)
-  const [itemIds, setItemIds] = useState<string[]>(() => (exampleBuilds[0] ? exampleBuildFinalItems(exampleBuilds[0], slots, allItems) : []))
+  const [itemIds, setItemIds] = useState<string[]>(() => (exampleBuilds[0] ? exampleBuildFinalItems(exampleBuilds[0], allItems) : []))
   const [runePicks, setRunePicks] = useState<RunePicks>(() => initialRunePicks(runePages, runeTrees))
   const [rankOverrides, setRankOverrides] = useState<Partial<Record<SkillKey, number>>>({})
   const [stacks, setStacks] = useState<Record<string, number>>({})

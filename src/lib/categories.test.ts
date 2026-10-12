@@ -107,11 +107,11 @@ describe('mergedCategoryItemSet', () => {
       { id: 'core', label: 'Core Items' },
     ]
     const b = withItems('B', ['3'], other)
-    b.exampleBuilds = [{ id: 'e', label: 'Ex', items: { x: [{ id: 'q', itemId: '9' }], core: [] } }]
+    b.exampleBuilds = [{ id: 'e', label: 'Ex', items: { starter: [{ id: 'q', itemId: '9' }] } }]
     const merged = mergedCategoryItemSet([withItems('A', ['1']), b])
     expect(merged.itemSlots.map((s) => s.id)).toEqual(['starter', 'item1', 'core'])
     expect(merged.items.starter.map((p) => p.itemId)).toEqual(['1', '3'])
-    expect(merged.exampleBuilds[0].items.starter.map((p) => p.itemId)).toEqual(['9'])
+    expect(merged.exampleBuilds).toEqual(b.exampleBuilds)
   })
 })
 

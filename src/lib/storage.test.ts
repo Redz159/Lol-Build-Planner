@@ -54,3 +54,25 @@ describe('migrateBuild category item slots', () => {
     expect(newCategory.itemSlots).toEqual([])
   })
 })
+
+describe('migrateBuild example build slots', () => {
+  it('moves example builds keyed by a Core-based layout onto the fixed example slots', () => {
+    const build = migrateBuild({
+      id: 'b',
+      champion: { id: 'Ahri', name: 'Ahri' },
+      title: 'Test',
+      loadouts: [
+        {
+          itemSlots: [
+            { id: 's', label: 'Starter Items', kind: 'starter' },
+            { id: 'c', label: 'Core Items' },
+          ],
+          exampleBuilds: [{ id: 'e', label: 'Ex', items: { s: [{ id: 'p1', itemId: '1056' }], c: [{ id: 'p2', itemId: '3089' }] } }],
+        },
+      ],
+    })
+    const [example] = build.loadouts[0].exampleBuilds
+    expect(example.items.starter.map((p) => p.itemId)).toEqual(['1056'])
+    expect(example.items.item1.map((p) => p.itemId)).toEqual(['3089'])
+  })
+})

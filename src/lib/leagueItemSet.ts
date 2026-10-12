@@ -53,6 +53,7 @@ export function buildLeagueItemSet(
   slots: ItemSlot[],
   buildItems: BuildItems,
   exampleBuilds: ExampleBuild[] = [],
+  exampleSlots: ItemSlot[] = [],
 ): LeagueItemSet {
   const championId = championKey ? Number(championKey) : NaN
   const blocks = slots
@@ -71,7 +72,7 @@ export function buildLeagueItemSet(
     sortrank: 0,
     associatedChampions: Number.isFinite(championId) ? [championId] : [],
     associatedMaps: [],
-    blocks: [...blocks, ...exampleBuildBlocks(exampleBuilds, slots)],
+    blocks: [...blocks, ...exampleBuildBlocks(exampleBuilds, exampleSlots)],
   }
 }
 

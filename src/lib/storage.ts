@@ -15,6 +15,7 @@ import {
 import { ROLES } from './loadouts'
 import { SKILL_KEYS, SKILL_POINTS } from './skillOrder'
 import { newId } from './id'
+import { EXAMPLE_BUILD_SLOTS, migrateExampleBuildItems } from './exampleBuilds'
 
 const STORAGE_KEY = 'lolbp:collection'
 
@@ -105,6 +106,7 @@ function normalizeSkillNotes(raw: Record<string, unknown>): Pick<Category, 'summ
   }
 }
 
+// `slots` is the owning item-set's slots, which older example builds were keyed by.
 function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild[] {
   if (!Array.isArray(value)) return []
   const result: ExampleBuild[] = []
@@ -113,7 +115,12 @@ function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild
     const id = (raw as Record<string, unknown>).id
     const label = (raw as Record<string, unknown>).label
     if (typeof id !== 'string' || typeof label !== 'string') continue
-    result.push({ id, label, items: normalizeBuildItems((raw as Record<string, unknown>).items, slots) })
+    const rawItems = (raw as Record<string, unknown>).items
+    const keys = rawItems && typeof rawItems === 'object' ? Object.keys(rawItems) : []
+    const items = keys.every((key) => EXAMPLE_BUILD_SLOTS.some((s) => s.id === key))
+      ? normalizeBuildItems(rawItems, EXAMPLE_BUILD_SLOTS)
+      : migrateExampleBuildItems(normalizeBuildItems(rawItems, slots), slots)
+    result.push({ id, label, items })
   }
   return result
 }

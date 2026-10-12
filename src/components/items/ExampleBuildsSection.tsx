@@ -1,16 +1,16 @@
 import { Fragment, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { ExampleBuild } from '../../types/build'
-import {
-  effectiveItemNote,
-  type BuildItems,
-  type ItemExclusionPair,
-  type ItemNoteGlobalFlags,
-  type ItemNotes,
-  type ItemRequirementPair,
-  type ItemSituationalFlags,
-  type ItemSlot,
-  type ItemSlotNotes,
+import type {
+  BuildItems,
+  ItemExclusionPair,
+  ItemNoteGlobalFlags,
+  ItemNotes,
+  ItemPlacement,
+  ItemRequirementPair,
+  ItemSituationalFlags,
+  ItemSlot,
+  ItemSlotNotes,
 } from '../../types/items'
 import { newId } from '../../lib/id'
 import {
@@ -18,7 +18,10 @@ import {
   addExampleBuildItem,
   deleteExampleBuild,
   duplicateExampleBuild,
+  emptyExampleBuildItems,
   exampleBuildPreviewExcludedPlacementIds,
+  exampleSlotCandidates,
+  exampleSlotNote,
   moveExampleBuildItem,
   removeExampleBuildItem,
 } from '../../lib/exampleBuilds'
@@ -31,12 +34,14 @@ interface Props {
   mode: 'view' | 'edit'
   exampleBuilds: ExampleBuild[]
   onChange: (next: ExampleBuild[]) => void
+  // The example builds' own fixed slots (EXAMPLE_BUILD_SLOTS, minus any hidden for the role).
   slots: ItemSlot[]
   items: DDragonItem[]
-  // The flexible per-slot item pool for the active category/loadout — every example-build
-  // candidate list is drawn from here (whatever's already placed in that slot), never from the
-  // full item database, since an example build is meant to pick a concrete path through what's
-  // already been theorycrafted, not introduce anything new.
+  // The flexible item pool for the active category/loadout and its slots — every example-build
+  // candidate list is drawn from here (see exampleSlotCandidates), never from the full item
+  // database, since an example build is meant to pick a concrete path through what's already
+  // been theorycrafted, not introduce anything new.
+  poolSlots: ItemSlot[]
   poolItems: BuildItems
   itemExclusions: ItemExclusionPair[]
   builtinExclusions: ItemExclusionPair[]
@@ -54,10 +59,6 @@ type WizardTarget = { buildId: string | null; label: string; items: BuildItems; 
 
 const iconBtnStyle = { padding: '2px 6px', fontSize: 11 }
 
-function emptySlotItems(slots: ItemSlot[]): BuildItems {
-  return Object.fromEntries(slots.map((s) => [s.id, []]))
-}
-
 // Below the flexible per-slot item pool: a handful of concrete, illustrative "here's what to
 // buy" builds, each capped at a few alternatives per slot and stacked vertically by preference —
 // distinct from the pool's unlimited, horizontally-laid-out candidates.
@@ -67,6 +68,7 @@ export function ExampleBuildsSection({
   onChange,
   slots,
   items,
+  poolSlots,
   poolItems,
   itemExclusions,
   builtinExclusions,
@@ -77,6 +79,8 @@ export function ExampleBuildsSection({
   itemSituational,
 }: Props) {
   const { confirm, dialog: confirmDialog } = useConfirm()
+  const candidatesFor = (slot: ItemSlot): ItemPlacement[] => exampleSlotCandidates(slot, poolSlots, poolItems)
+  const noteFor = (slot: ItemSlot, itemId: string) => exampleSlotNote(slot, poolSlots, { itemNotes, itemSlotNotes, itemNoteGlobal }, itemId)
   const [wizardTarget, setWizardTarget] = useState<WizardTarget | null>(null)
   const [picker, setPicker] = useState<{ buildId: string; slotId: string } | null>(null)
   // Per-build "what if I go this way" preview, view mode only — keyed by build id, then slot id
@@ -134,7 +138,7 @@ export function ExampleBuildsSection({
                               item={item}
                               size={44}
                               selected={preview[slot.id] === p.id}
-                              note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                              note={noteFor(slot, item.id)}
                               onClick={() => togglePreview(build.id, slot.id, p.id)}
                             />
                           )
@@ -172,7 +176,7 @@ export function ExampleBuildsSection({
             <button
               type="button"
               title="Duplicate"
-              onClick={() => onChange(duplicateExampleBuild(exampleBuilds, slots, build.id).list)}
+              onClick={() => onChange(duplicateExampleBuild(exampleBuilds, build.id).list)}
               style={iconBtnStyle}
             >
               ⧉
@@ -215,7 +219,7 @@ export function ExampleBuildsSection({
                             item={item}
                             size={40}
                             title={`${item.name} — open in the wizard`}
-                            note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                            note={noteFor(slot, item.id)}
                             onClick={() =>
                               setWizardTarget({ buildId: build.id, label: build.label, items: build.items, initialStepIndex: slotIndex })
                             }
@@ -277,7 +281,7 @@ export function ExampleBuildsSection({
       ))}
       <button
         type="button"
-        onClick={() => setWizardTarget({ buildId: null, label: 'New Example', items: emptySlotItems(slots) })}
+        onClick={() => setWizardTarget({ buildId: null, label: 'New Example', items: emptyExampleBuildItems() })}
         style={{ padding: '6px 12px', fontSize: 12 }}
       >
         + Add example build
@@ -286,11 +290,9 @@ export function ExampleBuildsSection({
         <ExampleBuildItemPicker
           build={pickerBuild}
           slot={pickerSlot}
-          poolItems={poolItems}
+          candidates={candidatesFor(pickerSlot)}
+          noteFor={noteFor}
           items={items}
-          itemNotes={itemNotes}
-          itemSlotNotes={itemSlotNotes}
-          itemNoteGlobal={itemNoteGlobal}
           itemSituational={itemSituational}
           onAdd={(itemId) =>
             onChange(exampleBuilds.map((b) => (b.id === pickerBuild.id ? addExampleBuildItem(b, pickerSlot.id, itemId) : b)))
@@ -305,11 +307,9 @@ export function ExampleBuildsSection({
           initialItems={wizardTarget.items}
           initialStepIndex={wizardTarget.initialStepIndex ?? 0}
           slots={slots}
-          poolItems={poolItems}
+          candidatesFor={candidatesFor}
+          noteFor={noteFor}
           items={items}
-          itemNotes={itemNotes}
-          itemSlotNotes={itemSlotNotes}
-          itemNoteGlobal={itemNoteGlobal}
           itemSituational={itemSituational}
           onComplete={(label, builtItems) => {
             if (wizardTarget.buildId) {
@@ -327,36 +327,32 @@ export function ExampleBuildsSection({
   )
 }
 
-// A single slot's candidate list, drawn only from what's already in the flexible pool for that
-// slot — no exclusion/requirement filtering here at all (that's a viewing-mode concept, see
+// A single slot's candidate list, drawn only from what's already in the flexible pool (see
+// exampleSlotCandidates) — no exclusion/requirement filtering here at all (that's a viewing-mode concept, see
 // exampleBuildPreviewExcludedPlacementIds above; picking concrete items for an example build is
 // never gated on it).
 function ExampleBuildItemPicker({
   build,
   slot,
-  poolItems,
+  candidates: pool,
+  noteFor,
   items,
-  itemNotes,
-  itemSlotNotes,
-  itemNoteGlobal,
   itemSituational,
   onAdd,
   onClose,
 }: {
   build: ExampleBuild
   slot: ItemSlot
-  poolItems: BuildItems
+  candidates: ItemPlacement[]
+  noteFor: (slot: ItemSlot, itemId: string) => string | undefined
   items: DDragonItem[]
-  itemNotes: ItemNotes
-  itemSlotNotes: ItemSlotNotes
-  itemNoteGlobal: ItemNoteGlobalFlags
   itemSituational: ItemSituationalFlags
   onAdd: (itemId: string) => void
   onClose: () => void
 }) {
   const placedHere = new Set((build.items[slot.id] ?? []).map((p) => p.itemId))
   const { sorted: candidates, dividerIndex } = situationalSplit(
-    (poolItems[slot.id] ?? []).filter((p) => !placedHere.has(p.itemId)),
+    pool.filter((p) => !placedHere.has(p.itemId)),
     itemSituational,
   )
 
@@ -388,7 +384,7 @@ function ExampleBuildItemPicker({
                 <ItemIcon
                   item={item}
                   size={48}
-                  note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slot.id, item.id)}
+                  note={noteFor(slot, item.id)}
                   onClick={() => onAdd(item.id)}
                 />
               </Fragment>

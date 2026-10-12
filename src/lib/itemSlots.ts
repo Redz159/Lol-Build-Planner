@@ -1,18 +1,17 @@
 import type { ItemSet, Loadout } from '../types/build'
 import type { BuildItems, ItemSlot, ItemSlotNotes } from '../types/items'
-import { addSlotToExampleBuilds, cloneExampleBuilds, removeSlotFromExampleBuilds } from './exampleBuilds'
 import { newId } from './id'
 import type { LayoutTemplate } from './itemSetLayouts'
 
 // Every item-set (each category, or the loadout's own plain one) keeps its own slot list, so
-// adding/removing a slot only has to keep that set's items and example builds in lockstep with
-// its itemSlots. Each helper returns the item-set patch to apply.
+// adding/removing a slot only has to keep that set's items in lockstep with its itemSlots.
+// Example builds have their own fixed slots (EXAMPLE_BUILD_SLOTS) and aren't touched. Each helper
+// returns the item-set patch to apply.
 export function addItemSlot(set: ItemSet): Partial<ItemSet> {
   const slot: ItemSlot = { id: newId(), label: 'New Slot' }
   return {
     itemSlots: [...set.itemSlots, slot],
     items: { ...set.items, [slot.id]: [] },
-    exampleBuilds: addSlotToExampleBuilds(set.exampleBuilds, slot.id),
   }
 }
 
@@ -51,7 +50,6 @@ export function deleteItemSlot(set: ItemSet, slotId: string): Partial<ItemSet> {
   return {
     itemSlots: set.itemSlots.filter((s) => s.id !== slotId),
     items,
-    exampleBuilds: removeSlotFromExampleBuilds(set.exampleBuilds, slotId),
   }
 }
 
@@ -71,7 +69,7 @@ export function moveItemSlot(set: ItemSet, slotId: string, beforeSlotId: string 
 
 // Replaces the item-set's slots with the layout's, all empty. Only offered while the set has
 // nothing placed (see ItemsEditor's layout picker), so there's no item to carry over.
-export function applyItemSetLayout(set: ItemSet, template: LayoutTemplate): Partial<ItemSet> {
+export function applyItemSetLayout(template: LayoutTemplate): Partial<ItemSet> {
   const itemSlots: ItemSlot[] = template.slots.map((s) => ({
     id: newId(),
     label: s.label,
@@ -81,7 +79,6 @@ export function applyItemSetLayout(set: ItemSet, template: LayoutTemplate): Part
   return {
     itemSlots,
     items: Object.fromEntries(itemSlots.map((s) => [s.id, []])),
-    exampleBuilds: cloneExampleBuilds(set.exampleBuilds, itemSlots),
     layoutChosen: true,
   }
 }

@@ -54,7 +54,7 @@ export function ItemLoadoutPicker({ allItems, selected, onChange, source }: Prop
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13 }}>
           <span style={{ color: 'var(--text-dim)' }}>Example builds:</span>
           {source.exampleBuilds.map((b) => (
-            <button key={b.id} type="button" className="sim-small-button" onClick={() => onChange(exampleBuildFinalItems(b, source.slots, allItems))}>
+            <button key={b.id} type="button" className="sim-small-button" onClick={() => onChange(exampleBuildFinalItems(b, allItems))}>
               {b.label}
             </button>
           ))}

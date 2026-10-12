@@ -9,7 +9,7 @@ import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../.
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
 import { JACK_OF_ALL_TRADES_RUNE_ID, pagesIncludeRune } from '../../lib/runeRules'
 import { currentItemSet, mergedCategoryRunePages } from '../../lib/categories'
-import { addSlotToExampleBuilds } from '../../lib/exampleBuilds'
+import { EXAMPLE_BUILD_SLOTS } from '../../lib/exampleBuilds'
 import {
   addItemSlot,
   applyItemSetLayout,
@@ -89,6 +89,9 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
 
   const visibleSlots = useMemo(() => visibleItemSlots(currentSlots, loadout.roles), [currentSlots, loadout.roles])
 
+  // Example builds always use the same fixed slots, whatever slots the pool has.
+  const exampleSlots = useMemo(() => visibleItemSlots(EXAMPLE_BUILD_SLOTS, loadout.roles), [loadout.roles])
+
   const findSlot = (slotId: string): ItemSlot | undefined => currentSlots.find((s) => s.id === slotId)
 
   // Writes go to whichever item-set is active; a no-op while viewing the merged "All" tab, since
@@ -112,7 +115,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
 
   const chooseLayout = (layoutId: LayoutTemplate['id']) => {
     const template = ITEM_SET_LAYOUTS.find((t) => t.id === layoutId)
-    if (template) patchCurrentSet(applyItemSetLayout(currentSet, template))
+    if (template) patchCurrentSet(applyItemSetLayout(template))
   }
 
   const clearItems = async () => {
@@ -162,7 +165,6 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
     patchCurrentSet({
       itemSlots: [...currentSlots, ...newSlots],
       items: nextItems,
-      exampleBuilds: newSlots.reduce((acc, slot) => addSlotToExampleBuilds(acc, slot.id), currentExampleBuilds),
       layoutChosen: true,
     })
   }
@@ -537,7 +539,8 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           mode="view"
           exampleBuilds={currentExampleBuilds}
           onChange={setCurrentExampleBuilds}
-          slots={visibleSlots}
+          slots={exampleSlots}
+          poolSlots={visibleSlots}
           items={items}
           poolItems={currentItems}
           itemExclusions={loadout.itemExclusions}
@@ -550,7 +553,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
         />
         {showExportPopup && (
           <ExportItemSetPopup
-            itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems, currentExampleBuilds)}
+            itemSet={buildLeagueItemSet(`${buildTitle}${exportTitleSuffix}`, championKey, visibleSlots, currentItems, currentExampleBuilds, exampleSlots)}
             onClose={() => setShowExportPopup(false)}
           />
         )}
@@ -596,7 +599,8 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             mode="view"
             exampleBuilds={currentExampleBuilds}
             onChange={setCurrentExampleBuilds}
-            slots={visibleSlots}
+            slots={exampleSlots}
+            poolSlots={visibleSlots}
             items={items}
             poolItems={currentItems}
             itemExclusions={loadout.itemExclusions}
@@ -663,7 +667,8 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             mode="edit"
             exampleBuilds={currentExampleBuilds}
             onChange={setCurrentExampleBuilds}
-            slots={visibleSlots}
+            slots={exampleSlots}
+            poolSlots={visibleSlots}
             items={items}
             poolItems={currentItems}
             itemExclusions={loadout.itemExclusions}

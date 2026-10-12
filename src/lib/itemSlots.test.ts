@@ -29,12 +29,12 @@ function makeSet(): ItemSet {
 }
 
 describe('addItemSlot', () => {
-  it('adds the slot to the item-set and every example build', () => {
+  it('adds the slot to the item-set', () => {
     const patch = addItemSlot(makeSet())
     const added = patch.itemSlots!.at(-1)!
     expect(added.label).toBe('New Slot')
     expect(patch.items![added.id]).toEqual([])
-    expect(patch.exampleBuilds![0].items[added.id]).toEqual([])
+    expect(patch.exampleBuilds).toBeUndefined()
   })
 })
 
@@ -62,11 +62,11 @@ describe('toggleItemSlotMultiSelect', () => {
 })
 
 describe('deleteItemSlot', () => {
-  it('removes the slot from the items and example builds', () => {
+  it('removes the slot from the items', () => {
     const patch = deleteItemSlot(makeSet(), 'starter')
     expect(patch.itemSlots!.map((s) => s.id)).toEqual(['item1'])
     expect(Object.keys(patch.items!)).toEqual(['item1'])
-    expect(Object.keys(patch.exampleBuilds![0].items)).toEqual(['item1'])
+    expect(patch.exampleBuilds).toBeUndefined()
   })
 })
 
@@ -95,10 +95,9 @@ describe('moveItemSlot', () => {
 describe('applyItemSetLayout', () => {
   it('replaces the slots with the layout, all empty', () => {
     const coreBased = ITEM_SET_LAYOUTS.find((t) => t.id === 'corebased')!
-    const patch = applyItemSetLayout(makeSet(), coreBased)
+    const patch = applyItemSetLayout(coreBased)
     expect(patch.itemSlots!.map((s) => s.label)).toEqual(coreBased.slots.map((s) => s.label))
     expect(Object.values(patch.items!).every((p) => p.length === 0)).toBe(true)
-    expect(Object.keys(patch.exampleBuilds![0].items)).toEqual(patch.itemSlots!.map((s) => s.id))
     expect(patch.layoutChosen).toBe(true)
   })
 })

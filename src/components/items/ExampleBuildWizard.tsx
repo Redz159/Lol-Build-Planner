@@ -1,15 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
-import {
-  effectiveItemNote,
-  type BuildItems,
-  type ItemNoteGlobalFlags,
-  type ItemNotes,
-  type ItemPlacement,
-  type ItemSituationalFlags,
-  type ItemSlot,
-  type ItemSlotNotes,
-} from '../../types/items'
+import type { BuildItems, ItemPlacement, ItemSituationalFlags, ItemSlot } from '../../types/items'
 import { newId } from '../../lib/id'
 import { MAX_EXAMPLE_BUILD_ITEMS_PER_SLOT } from '../../lib/exampleBuilds'
 import { ItemIcon } from './ItemIcon'
@@ -27,11 +18,9 @@ export function ExampleBuildWizard({
   initialItems,
   initialStepIndex = 0,
   slots,
-  poolItems,
+  candidatesFor,
+  noteFor,
   items,
-  itemNotes,
-  itemSlotNotes,
-  itemNoteGlobal,
   itemSituational,
   onComplete,
   onCancel,
@@ -42,11 +31,10 @@ export function ExampleBuildWizard({
   // that item belongs to, instead of always starting over at the first slot.
   initialStepIndex?: number
   slots: ItemSlot[]
-  poolItems: BuildItems
+  // A slot's picks from the item pool (see exampleSlotCandidates) and an item's note there.
+  candidatesFor: (slot: ItemSlot) => ItemPlacement[]
+  noteFor: (slot: ItemSlot, itemId: string) => string | undefined
   items: DDragonItem[]
-  itemNotes: ItemNotes
-  itemSlotNotes: ItemSlotNotes
-  itemNoteGlobal: ItemNoteGlobalFlags
   itemSituational: ItemSituationalFlags
   onComplete: (label: string, items: BuildItems) => void
   onCancel: () => void
@@ -94,7 +82,7 @@ export function ExampleBuildWizard({
 
   const currentSlot = slots[stepIndex]
   const currentSelected = selections[currentSlot.id] ?? []
-  const { sorted: candidates, dividerIndex } = situationalSplit(poolItems[currentSlot.id] ?? [], itemSituational)
+  const { sorted: candidates, dividerIndex } = situationalSplit(candidatesFor(currentSlot), itemSituational)
 
   const handleItemClick = (itemId: string) => {
     const exists = currentSelected.some((p) => p.itemId === itemId)
@@ -205,7 +193,7 @@ export function ExampleBuildWizard({
                     item={item}
                     size={56}
                     selected={selected}
-                    note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, currentSlot.id, item.id)}
+                    note={noteFor(currentSlot, item.id)}
                     onClick={() => handleItemClick(item.id)}
                   />
                 </Fragment>
@@ -244,10 +232,7 @@ export function ExampleBuildWizard({
             slotLabel={currentSlot.label}
             items={items}
             excludeItemIds={new Set(currentSelected.map((p) => p.itemId))}
-            itemNotes={itemNotes}
-            itemSlotNotes={itemSlotNotes}
-            itemNoteGlobal={itemNoteGlobal}
-            slotId={currentSlot.id}
+            noteFor={(itemId) => noteFor(currentSlot, itemId)}
             onAdd={(itemId) => {
               handleItemClick(itemId)
               setSearchOpen(false)
@@ -284,22 +269,16 @@ export function ExampleBuildWizard({
 // clear it.
 function WizardItemSearchPopup({
   slotLabel,
-  slotId,
   items,
   excludeItemIds,
-  itemNotes,
-  itemSlotNotes,
-  itemNoteGlobal,
+  noteFor,
   onAdd,
   onClose,
 }: {
   slotLabel: string
-  slotId: string
   items: DDragonItem[]
   excludeItemIds: Set<string>
-  itemNotes: ItemNotes
-  itemSlotNotes: ItemSlotNotes
-  itemNoteGlobal: ItemNoteGlobalFlags
+  noteFor: (itemId: string) => string | undefined
   onAdd: (itemId: string) => void
   onClose: () => void
 }) {
@@ -336,7 +315,7 @@ function WizardItemSearchPopup({
                 key={item.id}
                 item={item}
                 size={48}
-                note={effectiveItemNote(itemNotes, itemSlotNotes, itemNoteGlobal, slotId, item.id)}
+                note={noteFor(item.id)}
                 onClick={() => onAdd(item.id)}
               />
             ))}
