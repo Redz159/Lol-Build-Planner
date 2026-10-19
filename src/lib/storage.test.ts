@@ -55,6 +55,34 @@ describe('migrateBuild category item slots', () => {
   })
 })
 
+describe('migrateBuild category item relations', () => {
+  it('gives older categories a copy of the loadout-wide ones and keeps their own when saved', () => {
+    const build = migrateBuild({
+      id: 'b',
+      champion: { id: 'Ahri', name: 'Ahri' },
+      title: 'Test',
+      loadouts: [
+        {
+          itemExclusions: [['1', '2']],
+          itemRequirements: [['3', '4']],
+          itemSituational: { '5': true },
+          categories: [
+            { id: 'old', label: 'Old' },
+            { id: 'new', label: 'New', itemExclusions: [], itemRequirements: [], itemSituational: {} },
+          ],
+        },
+      ],
+    })
+    const [oldCategory, newCategory] = build.loadouts[0].categories
+    expect(oldCategory.itemExclusions).toEqual([['1', '2']])
+    expect(oldCategory.itemRequirements).toEqual([['3', '4']])
+    expect(oldCategory.itemSituational).toEqual({ '5': true })
+    expect(newCategory.itemExclusions).toEqual([])
+    expect(newCategory.itemRequirements).toEqual([])
+    expect(newCategory.itemSituational).toEqual({})
+  })
+})
+
 describe('migrateBuild example build slots', () => {
   it('moves example builds keyed by a Core-based layout onto the fixed example slots', () => {
     const build = migrateBuild({

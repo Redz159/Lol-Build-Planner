@@ -25,6 +25,9 @@ function makeSet(): ItemSet {
     itemSlots: slots,
     items: { starter: [{ id: 'p1', itemId: '1055' }], item1: [] },
     exampleBuilds: [{ id: 'e1', label: 'Example', items: { starter: [], item1: [] } }],
+    itemExclusions: [],
+    itemRequirements: [],
+    itemSituational: {},
   }
 }
 
@@ -109,7 +112,15 @@ describe('applyItemSetLayout', () => {
 
 describe('clearItemSet', () => {
   it('drops everything and resets the layout choice', () => {
-    expect(clearItemSet()).toEqual({ itemSlots: [], items: {}, exampleBuilds: [], layoutChosen: false })
+    expect(clearItemSet()).toEqual({
+      itemSlots: [],
+      items: {},
+      exampleBuilds: [],
+      layoutChosen: false,
+      itemExclusions: [],
+      itemRequirements: [],
+      itemSituational: {},
+    })
   })
 })
 

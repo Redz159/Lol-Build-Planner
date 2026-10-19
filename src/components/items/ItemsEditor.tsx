@@ -200,15 +200,15 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
         if (previewedPlacementIds.has(placement.id)) continue
         const sameItemElsewhere = previewedItemIds.has(placement.itemId)
         const excluded = [...previewedItemIds].some(
-          (pid) => isExcludedPair(loadout.itemExclusions, pid, placement.itemId) || isExcludedPair(builtinExclusions, pid, placement.itemId),
+          (pid) => isExcludedPair(currentSet.itemExclusions, pid, placement.itemId) || isExcludedPair(builtinExclusions, pid, placement.itemId),
         )
-        const applicableRequired = requiredItemIds(loadout.itemRequirements, placement.itemId).filter((id) => itemIdsInView.has(id))
+        const applicableRequired = requiredItemIds(currentSet.itemRequirements, placement.itemId).filter((id) => itemIdsInView.has(id))
         const requirementUnmet = applicableRequired.length > 0 && !applicableRequired.every((id) => previewedItemIds.has(id))
         if (sameItemElsewhere || excluded || requirementUnmet) result.add(placement.id)
       }
     }
     return result
-  }, [preview, currentSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
+  }, [preview, currentSlots, currentItems, currentSet.itemExclusions, currentSet.itemRequirements, builtinExclusions])
 
   // Hovering any placed item lightly rings every OTHER placement related to it: gold for the
   // same item elsewhere, red for a mutual exclusion, green for an item the hovered one requires,
@@ -229,19 +229,19 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
         if (placement.itemId === hoveredItemId) {
           result.set(placement.id, 'gold')
         } else if (
-          isExcludedPair(loadout.itemExclusions, hoveredItemId, placement.itemId) ||
+          isExcludedPair(currentSet.itemExclusions, hoveredItemId, placement.itemId) ||
           isExcludedPair(builtinExclusions, hoveredItemId, placement.itemId)
         ) {
           result.set(placement.id, 'red')
-        } else if (isRequiredPair(loadout.itemRequirements, hoveredItemId, placement.itemId)) {
+        } else if (isRequiredPair(currentSet.itemRequirements, hoveredItemId, placement.itemId)) {
           result.set(placement.id, 'green')
-        } else if (isRequiredPair(loadout.itemRequirements, placement.itemId, hoveredItemId)) {
+        } else if (isRequiredPair(currentSet.itemRequirements, placement.itemId, hoveredItemId)) {
           result.set(placement.id, 'blue')
         }
       }
     }
     return result
-  }, [hoveredPlacementId, currentSlots, currentItems, loadout.itemExclusions, loadout.itemRequirements, builtinExclusions])
+  }, [hoveredPlacementId, currentSlots, currentItems, currentSet.itemExclusions, currentSet.itemRequirements, builtinExclusions])
 
   // A slot's local note only makes sense while the item is actually placed there, so every
   // path that removes a placement (toggling off, the × button, or dragging it elsewhere)
@@ -316,11 +316,11 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const toggleExclusion = (itemId: string, otherItemId: string) => {
-    onChange({ itemExclusions: toggleExclusionPair(loadout.itemExclusions, itemId, otherItemId) })
+    patchCurrentSet({ itemExclusions: toggleExclusionPair(currentSet.itemExclusions, itemId, otherItemId) })
   }
 
   const toggleRequirement = (itemId: string, otherItemId: string) => {
-    onChange({ itemRequirements: toggleRequirementPair(loadout.itemRequirements, itemId, otherItemId) })
+    patchCurrentSet({ itemRequirements: toggleRequirementPair(currentSet.itemRequirements, itemId, otherItemId) })
   }
 
   const setGlobalNote = (itemId: string, note: string) => {
@@ -339,10 +339,10 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const toggleSituational = (itemId: string, situational: boolean) => {
-    const next = { ...loadout.itemSituational }
+    const next = { ...currentSet.itemSituational }
     if (situational) next[itemId] = true
     else delete next[itemId]
-    onChange({ itemSituational: next })
+    patchCurrentSet({ itemSituational: next })
   }
 
   // Whether an item's note is global or local is one flag per item, so flipping it anywhere
@@ -418,7 +418,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   // isGlobalNote is a per-item flag (synced across every slot), independent of which slot the
   // popup opened from; only the note *text* shown for a local item still depends on that slot.
   const popupIsGlobalNote = popupItem ? (loadout.itemNoteGlobal[popupItem.id] ?? true) : true
-  const popupSituational = popupItem ? !!loadout.itemSituational[popupItem.id] : false
+  const popupSituational = popupItem ? !!currentSet.itemSituational[popupItem.id] : false
   const popupNote = popupItem
     ? popupSlotId
       ? (effectiveItemNote(loadout.itemNotes, loadout.itemSlotNotes, loadout.itemNoteGlobal, popupSlotId, popupItem.id) ?? '')
@@ -514,7 +514,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           itemNotes={loadout.itemNotes}
           itemSlotNotes={loadout.itemSlotNotes}
           itemNoteGlobal={loadout.itemNoteGlobal}
-          itemSituational={loadout.itemSituational}
+          itemSituational={currentSet.itemSituational}
           slots={visibleSlots}
           mode="view"
           activeSlotId={null}
@@ -543,13 +543,13 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           poolSlots={visibleSlots}
           items={items}
           poolItems={currentItems}
-          itemExclusions={loadout.itemExclusions}
+          itemExclusions={currentSet.itemExclusions}
           builtinExclusions={builtinExclusions}
-          itemRequirements={loadout.itemRequirements}
+          itemRequirements={currentSet.itemRequirements}
           itemNotes={loadout.itemNotes}
           itemSlotNotes={loadout.itemSlotNotes}
           itemNoteGlobal={loadout.itemNoteGlobal}
-          itemSituational={loadout.itemSituational}
+          itemSituational={currentSet.itemSituational}
         />
         {showExportPopup && (
           <ExportItemSetPopup
@@ -575,7 +575,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
-            itemSituational={loadout.itemSituational}
+            itemSituational={currentSet.itemSituational}
             slots={visibleSlots}
             mode="view"
             activeSlotId={null}
@@ -603,13 +603,13 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             poolSlots={visibleSlots}
             items={items}
             poolItems={currentItems}
-            itemExclusions={loadout.itemExclusions}
+            itemExclusions={currentSet.itemExclusions}
             builtinExclusions={builtinExclusions}
-            itemRequirements={loadout.itemRequirements}
+            itemRequirements={currentSet.itemRequirements}
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
-            itemSituational={loadout.itemSituational}
+            itemSituational={currentSet.itemSituational}
           />
         </>
       ) : showLayoutPicker ? (
@@ -624,7 +624,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
                 itemNotes={loadout.itemNotes}
                 itemSlotNotes={loadout.itemSlotNotes}
                 itemNoteGlobal={loadout.itemNoteGlobal}
-                itemSituational={loadout.itemSituational}
+                itemSituational={currentSet.itemSituational}
                 slots={visibleSlots}
                 mode="edit"
                 activeSlotId={activeSlotId}
@@ -671,13 +671,13 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
             poolSlots={visibleSlots}
             items={items}
             poolItems={currentItems}
-            itemExclusions={loadout.itemExclusions}
+            itemExclusions={currentSet.itemExclusions}
             builtinExclusions={builtinExclusions}
-            itemRequirements={loadout.itemRequirements}
+            itemRequirements={currentSet.itemRequirements}
             itemNotes={loadout.itemNotes}
             itemSlotNotes={loadout.itemSlotNotes}
             itemNoteGlobal={loadout.itemNoteGlobal}
-            itemSituational={loadout.itemSituational}
+            itemSituational={currentSet.itemSituational}
           />
         </>
       )}
@@ -687,9 +687,9 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
           items={items}
           buildItems={currentItems}
           slots={visibleSlots}
-          itemExclusions={loadout.itemExclusions}
+          itemExclusions={currentSet.itemExclusions}
           builtinExclusions={builtinExclusions}
-          itemRequirements={loadout.itemRequirements}
+          itemRequirements={currentSet.itemRequirements}
           relationMode={popupRelationMode}
           note={popupNote}
           isGlobalNote={popupIsGlobalNote}

@@ -324,7 +324,6 @@ export function BuildDetailPage() {
         itemNotes={activeLoadout.itemNotes}
         itemSlotNotes={activeLoadout.itemSlotNotes}
         itemNoteGlobal={activeLoadout.itemNoteGlobal}
-        itemSituational={activeLoadout.itemSituational}
         mode={mode}
         activeId={effectiveCategoryId}
         onSelect={setSelectedCategoryId}

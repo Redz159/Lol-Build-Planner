@@ -58,10 +58,18 @@ export interface Category {
   // Core-based / Blank / Skip) — once true, an empty item pool shows the normal slot editor
   // instead of the picker again. Absent means false, same as the other per-item-set flags.
   layoutChosen?: boolean
+  // Excludes, "only include" requirements and situational flags belong to the item-set, so each
+  // category keeps its own and editing one never changes another.
+  itemExclusions: ItemExclusionPair[]
+  itemRequirements: ItemRequirementPair[]
+  itemSituational: ItemSituationalFlags
 }
 
 // The part of a category (or a loadout's own plain values) the Items tab edits as one unit.
-export type ItemSet = Pick<Category, 'itemSlots' | 'items' | 'exampleBuilds' | 'layoutChosen'>
+export type ItemSet = Pick<
+  Category,
+  'itemSlots' | 'items' | 'exampleBuilds' | 'layoutChosen' | 'itemExclusions' | 'itemRequirements' | 'itemSituational'
+>
 
 // How many of an API import's sampled games picked a given item (per slot) or rune/shard —
 // purely informational, shown as an optional "(x)" overlay on top of the normal view. Only ever

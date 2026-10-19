@@ -77,6 +77,29 @@ describe('duplicateCategory', () => {
   })
 })
 
+describe('per-category excludes, requirements and situational flags', () => {
+  it('starts a new category empty and gives a duplicate its own copy', () => {
+    const source: Category = {
+      ...withItems('A', []),
+      itemExclusions: [['1', '2']],
+      itemRequirements: [['3', '4']],
+      itemSituational: { '5': true },
+    }
+    const [fresh] = addCategory([], 'B')
+    expect(fresh.itemExclusions).toEqual([])
+    expect(fresh.itemRequirements).toEqual([])
+    expect(fresh.itemSituational).toEqual({})
+    const copy = duplicateCategory([source], source.id).categories[1]
+    expect(copy.itemExclusions).toEqual([['1', '2']])
+    expect(copy.itemRequirements).toEqual([['3', '4']])
+    expect(copy.itemSituational).toEqual({ '5': true })
+    copy.itemExclusions[0][1] = 'x'
+    copy.itemSituational['6'] = true
+    expect(source.itemExclusions).toEqual([['1', '2']])
+    expect(source.itemSituational).toEqual({ '5': true })
+  })
+})
+
 describe('copyCategoryToLoadout', () => {
   it('seeds a Default category first when the target has none', () => {
     const source = withItems('Poke', ['1055'])
@@ -112,6 +135,17 @@ describe('mergedCategoryItemSet', () => {
     expect(merged.itemSlots.map((s) => s.id)).toEqual(['starter', 'item1', 'core'])
     expect(merged.items.starter.map((p) => p.itemId)).toEqual(['1', '3'])
     expect(merged.exampleBuilds).toEqual(b.exampleBuilds)
+  })
+})
+
+describe('mergedCategoryItemSet relations', () => {
+  it('unions the excludes, requirements and situational flags of every category', () => {
+    const a: Category = { ...withItems('A', []), itemExclusions: [['1', '2']], itemRequirements: [['3', '4']], itemSituational: { '5': true } }
+    const b: Category = { ...withItems('B', []), itemExclusions: [['2', '1'], ['6', '7']], itemRequirements: [['3', '4']], itemSituational: { '8': true } }
+    const merged = mergedCategoryItemSet([a, b])
+    expect(merged.itemExclusions).toEqual([['1', '2'], ['6', '7']])
+    expect(merged.itemRequirements).toEqual([['3', '4']])
+    expect(merged.itemSituational).toEqual({ '5': true, '8': true })
   })
 })
 

@@ -128,8 +128,16 @@ function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild
 // `fallbackSummonerSpellSets` is the owning loadout's own spells — categories saved before spells
 // moved per-category inherit them, so existing builds keep their spells in every category. Same
 // for `fallbackSlots`: categories saved while slots were still shared loadout-wide get a copy of
-// the loadout's slots (same ids, so their items and local notes still line up).
-function normalizeCategories(value: unknown, fallbackSlots: ItemSlot[], fallbackSummonerSpellSets: SummonerSpellSet[]): Category[] {
+// the loadout's slots (same ids, so their items and local notes still line up), and categories
+// saved while excludes/requirements/situational were loadout-wide get a copy of the loadout's.
+type ItemRelations = Pick<Category, 'itemExclusions' | 'itemRequirements' | 'itemSituational'>
+
+function normalizeCategories(
+  value: unknown,
+  fallbackSlots: ItemSlot[],
+  fallbackSummonerSpellSets: SummonerSpellSet[],
+  fallbackRelations: ItemRelations,
+): Category[] {
   if (!Array.isArray(value)) return []
   const result: Category[] = []
   for (const raw of value) {
@@ -153,6 +161,18 @@ function normalizeCategories(value: unknown, fallbackSlots: ItemSlot[], fallback
       ...normalizeSkillNotes(raw as Record<string, unknown>),
       ...((raw as Record<string, unknown>).tripleTonic === true ? { tripleTonic: true } : {}),
       ...((raw as Record<string, unknown>).layoutChosen === true ? { layoutChosen: true } : {}),
+      itemExclusions:
+        'itemExclusions' in raw
+          ? normalizeItemExclusions((raw as Record<string, unknown>).itemExclusions)
+          : fallbackRelations.itemExclusions.map(([a, b]) => [a, b]),
+      itemRequirements:
+        'itemRequirements' in raw
+          ? normalizeItemRequirements((raw as Record<string, unknown>).itemRequirements)
+          : fallbackRelations.itemRequirements.map(([a, b]) => [a, b]),
+      itemSituational:
+        'itemSituational' in raw
+          ? normalizeItemSituationalFlags((raw as Record<string, unknown>).itemSituational)
+          : { ...fallbackRelations.itemSituational },
     })
   }
   return result
@@ -172,7 +192,6 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   // `raw.itemCategories` is the pre-restructure key (items-only categories, no runePages) — still
   // read so builds saved during that period migrate instead of losing their categories.
   const summonerSpellSets = normalizeSummonerSpellSets(raw.summonerSpellSets, raw.summonerSpellIds)
-  const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots, summonerSpellSets)
   const exampleBuilds = normalizeExampleBuilds(raw.exampleBuilds, itemSlots)
   const itemExclusions = normalizeItemExclusions(raw.itemExclusions)
   const itemRequirements = normalizeItemRequirements(raw.itemRequirements)
@@ -180,6 +199,11 @@ function migrateLegacyFlatBuild(raw: any): Loadout {
   const itemSlotNotes = normalizeItemSlotNotes(raw.itemSlotNotes)
   const itemNoteGlobal = normalizeItemNoteGlobalFlags(raw.itemNoteGlobal)
   const itemSituational = normalizeItemSituationalFlags(raw.itemSituational)
+  const categories = normalizeCategories(raw.categories ?? raw.itemCategories, itemSlots, summonerSpellSets, {
+    itemExclusions,
+    itemRequirements,
+    itemSituational,
+  })
 
   if (Array.isArray(raw.runePages)) {
     return {
@@ -268,6 +292,11 @@ export function migrateBuild(raw: any): Build {
     ? raw.loadouts.map((l: any) => {
         const itemSlots = normalizeItemSlots(l?.itemSlots)
         const summonerSpellSets = normalizeSummonerSpellSets(l?.summonerSpellSets, l?.summonerSpellIds)
+        const relations: ItemRelations = {
+          itemExclusions: normalizeItemExclusions(l?.itemExclusions),
+          itemRequirements: normalizeItemRequirements(l?.itemRequirements),
+          itemSituational: normalizeItemSituationalFlags(l?.itemSituational),
+        }
         return {
           id: l?.id ?? newId(),
           roles: normalizeRoles(l?.roles),
@@ -278,14 +307,12 @@ export function migrateBuild(raw: any): Build {
           ...(l?.tripleTonic === true ? { tripleTonic: true } : {}),
           itemSlots,
           items: normalizeBuildItems(l?.items, itemSlots),
-          categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots, summonerSpellSets),
+          categories: normalizeCategories(l?.categories ?? l?.itemCategories, itemSlots, summonerSpellSets, relations),
           exampleBuilds: normalizeExampleBuilds(l?.exampleBuilds, itemSlots),
-          itemExclusions: normalizeItemExclusions(l?.itemExclusions),
-          itemRequirements: normalizeItemRequirements(l?.itemRequirements),
+          ...relations,
           itemNotes: normalizeItemNotes(l?.itemNotes),
           itemSlotNotes: normalizeItemSlotNotes(l?.itemSlotNotes),
           itemNoteGlobal: normalizeItemNoteGlobalFlags(l?.itemNoteGlobal),
-          itemSituational: normalizeItemSituationalFlags(l?.itemSituational),
           ...(l?.layoutChosen === true ? { layoutChosen: true } : {}),
         }
       })

@@ -1,10 +1,12 @@
 import type { Category, ExampleBuild, ItemSet, Loadout } from '../types/build'
 import type { RunePage } from '../types/runes'
-import type { BuildItems, ItemPlacement, ItemSlot } from '../types/items'
+import type { BuildItems, ItemExclusionPair, ItemPlacement, ItemRequirementPair, ItemSituationalFlags, ItemSlot } from '../types/items'
 import { newId } from './id'
 import { cloneRunePages } from './runeRules'
 import { cloneExampleBuilds } from './exampleBuilds'
 import { emptySkillOrder } from './skillOrder'
+import { isExcludedPair } from './itemExclusions'
+import { isRequiredPair } from './itemRequirements'
 
 // What a category holds besides its label — used to seed a first category from the loadout's
 // own plain values.
@@ -38,6 +40,9 @@ function cloneItemSet(source: ItemSet): ItemSet {
     items: cloneItems(source.items, source.itemSlots),
     exampleBuilds: cloneExampleBuilds(source.exampleBuilds),
     ...(source.layoutChosen ? { layoutChosen: true } : {}),
+    itemExclusions: source.itemExclusions.map(([a, b]) => [a, b]),
+    itemRequirements: source.itemRequirements.map(([a, b]) => [a, b]),
+    itemSituational: { ...source.itemSituational },
   }
 }
 
@@ -46,7 +51,9 @@ function cloneItemSet(source: ItemSet): ItemSet {
 export function addCategory(categories: Category[], label: string, seed?: CategorySeed): Category[] {
   const trimmed = label.trim() || 'New Category'
   const runePages = seed ? cloneRunePages(seed.runePages) : []
-  const itemSet: ItemSet = seed ? cloneItemSet(seed) : { itemSlots: [], items: {}, exampleBuilds: [] }
+  const itemSet: ItemSet = seed
+    ? cloneItemSet(seed)
+    : { itemSlots: [], items: {}, exampleBuilds: [], itemExclusions: [], itemRequirements: [], itemSituational: {} }
   const skills = seed ? skillsAndSpellsOf(seed) : { summonerSpellSets: [], skillOrder: emptySkillOrder() }
   return [...categories, { id: newId(), label: trimmed, runePages, ...itemSet, ...skills }]
 }
@@ -111,7 +118,8 @@ export function mergedCategoryRunePages(categories: Category[]): RunePage[] {
 // The "All" tab's read-only view. Categories can have different slots, so slots are lined up by
 // label (case-insensitive): each label shows once, in the order first seen. Per slot, every item
 // from any category is listed once (first category wins the display order). Example builds all
-// share the same fixed slots, so they're just listed one category after another.
+// share the same fixed slots, so they're just listed one category after another. Excludes,
+// requirements and situational flags are the union of every category's.
 export function mergedCategoryItemSet(categories: Category[]): ItemSet {
   const itemSlots: ItemSlot[] = []
   const slotIdByLabel = new Map<string, string>()
@@ -126,6 +134,9 @@ export function mergedCategoryItemSet(categories: Category[]): ItemSet {
   const mergedId = (slot: ItemSlot) => slotIdByLabel.get(slot.label.toLowerCase())!
   const items: BuildItems = Object.fromEntries(itemSlots.map((s) => [s.id, [] as ItemPlacement[]]))
   const exampleBuilds: ExampleBuild[] = []
+  const itemExclusions: ItemExclusionPair[] = []
+  const itemRequirements: ItemRequirementPair[] = []
+  const itemSituational: ItemSituationalFlags = {}
   for (const category of categories) {
     for (const slot of category.itemSlots) {
       const merged = items[mergedId(slot)]
@@ -134,8 +145,15 @@ export function mergedCategoryItemSet(categories: Category[]): ItemSet {
       }
     }
     exampleBuilds.push(...category.exampleBuilds)
+    for (const [a, b] of category.itemExclusions) {
+      if (!isExcludedPair(itemExclusions, a, b)) itemExclusions.push([a, b])
+    }
+    for (const [a, b] of category.itemRequirements) {
+      if (!isRequiredPair(itemRequirements, a, b)) itemRequirements.push([a, b])
+    }
+    Object.assign(itemSituational, category.itemSituational)
   }
-  return { itemSlots, items, exampleBuilds }
+  return { itemSlots, items, exampleBuilds, itemExclusions, itemRequirements, itemSituational }
 }
 
 // The item-set the Items tab (and the simulator) works on: a category's own, the merged "All"

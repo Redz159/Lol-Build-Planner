@@ -84,10 +84,18 @@ export function applyItemSetLayout(template: LayoutTemplate): Partial<ItemSet> {
   }
 }
 
-// "Clear items": drops every slot, item and example build, which sends the set back to the
-// layout picker.
+// "Clear items": drops every slot, item, example build, exclude, requirement and situational
+// flag, which sends the set back to the layout picker.
 export function clearItemSet(): Partial<ItemSet> {
-  return { itemSlots: [], items: {}, exampleBuilds: [], layoutChosen: false }
+  return {
+    itemSlots: [],
+    items: {},
+    exampleBuilds: [],
+    layoutChosen: false,
+    itemExclusions: [],
+    itemRequirements: [],
+    itemSituational: {},
+  }
 }
 
 // Local notes are keyed by slot id, so once no item-set in the loadout has a slot anymore its

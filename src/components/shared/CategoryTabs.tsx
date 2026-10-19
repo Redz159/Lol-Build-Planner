@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import type { Category } from '../../types/build'
-import type { ItemNoteGlobalFlags, ItemNotes, ItemSituationalFlags, ItemSlot, ItemSlotNotes } from '../../types/items'
+import type { ItemNoteGlobalFlags, ItemNotes, ItemSlot, ItemSlotNotes } from '../../types/items'
 import { categoryHasPlacement, mergedCategoryItemSet } from '../../lib/categories'
 import { BuildSlotsPanel } from '../items/BuildSlotsPanel'
 import { useConfirm } from './useConfirm'
@@ -14,7 +14,6 @@ interface Props {
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
-  itemSituational: ItemSituationalFlags
   mode: 'view' | 'edit'
   activeId: string | null
   onSelect: (id: string) => void
@@ -53,7 +52,6 @@ export function CategoryTabs({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
-  itemSituational,
   mode,
   activeId,
   onSelect,
@@ -220,7 +218,6 @@ export function CategoryTabs({
           itemNotes={itemNotes}
           itemSlotNotes={itemSlotNotes}
           itemNoteGlobal={itemNoteGlobal}
-          itemSituational={itemSituational}
           onToggle={(slotLabel, itemId) => onToggleCategoryItem(quickAddCategory.id, slotLabel, itemId)}
           onClose={() => setQuickAddCategoryId(null)}
         />
@@ -232,8 +229,8 @@ export function CategoryTabs({
 
 // The same slot/item layout as the "All" tab, except every item that's already in *this*
 // category (in that slot) is rung gold, and clicking any item toggles its membership instead of
-// switching a build-path preview. Excludes/requires/notes/situational all still apply — they're
-// shared globally by item id, so they just come along for free once the item's placed.
+// switching a build-path preview. Notes are shared by item id; situational flags are every
+// category's merged, the same as on "All".
 function CategoryQuickAddPopup({
   category,
   categories,
@@ -242,7 +239,6 @@ function CategoryQuickAddPopup({
   itemNotes,
   itemSlotNotes,
   itemNoteGlobal,
-  itemSituational,
   onToggle,
   onClose,
 }: {
@@ -253,11 +249,11 @@ function CategoryQuickAddPopup({
   itemNotes: ItemNotes
   itemSlotNotes: ItemSlotNotes
   itemNoteGlobal: ItemNoteGlobalFlags
-  itemSituational: ItemSituationalFlags
   onToggle: (slotLabel: string, itemId: string) => void
   onClose: () => void
 }) {
-  const mergedItems = mergedCategoryItemSet(categories).items
+  const merged = mergedCategoryItemSet(categories)
+  const mergedItems = merged.items
   // Categories can have different slots, so membership is matched by slot label.
   const selectedPlacementIds = new Set(
     slots.flatMap((slot) =>
@@ -290,7 +286,7 @@ function CategoryQuickAddPopup({
           itemNotes={itemNotes}
           itemSlotNotes={itemSlotNotes}
           itemNoteGlobal={itemNoteGlobal}
-          itemSituational={itemSituational}
+          itemSituational={merged.itemSituational}
           slots={slots}
           mode="view"
           activeSlotId={null}
