@@ -119,7 +119,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   }
 
   const clearItems = async () => {
-    if (!(await confirm("Clear every item, slot and example build here? This can't be undone."))) return
+    if (!(await confirm("Clear every item, slot, example build, exclude, requirement and situational flag here? This can't be undone."))) return
     patchCurrentSet(clearItemSet())
     setActiveSlotId(null)
     setPreview({})
