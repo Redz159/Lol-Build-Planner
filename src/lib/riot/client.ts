@@ -1,4 +1,4 @@
-import type { RiotAccount, RiotMatch, RiotTimeline } from './types'
+import type { RiotAccount, RiotActiveRegion, RiotMatch, RiotTimeline } from './types'
 
 // A personal Riot API key's real limit is two separate buckets: 20 requests/sec AND 100
 // requests/2min. The sustained one is the binding one for anything but a tiny scan — a flat
@@ -54,6 +54,11 @@ async function proxyFetch<T>(host: string, path: string): Promise<T> {
 
 export function getAccountByRiotId(host: string, gameName: string, tagLine: string): Promise<RiotAccount> {
   return proxyFetch(host, `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`)
+}
+
+// The League server (platform) the account currently plays on.
+export function getActiveLolRegion(host: string, puuid: string): Promise<RiotActiveRegion> {
+  return proxyFetch(host, `/riot/account/v1/region/by-game/lol/by-puuid/${puuid}`)
 }
 
 // Riot's match-v5 list endpoint has no champion filter — despite some docs/tools implying

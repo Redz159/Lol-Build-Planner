@@ -7,6 +7,13 @@ export interface RiotAccount {
   tagLine: string
 }
 
+export interface RiotActiveRegion {
+  puuid: string
+  game: string
+  // Platform id, e.g. "euw1", "na1", "kr".
+  region: string
+}
+
 export interface RiotPerkSelection {
   perk: number
 }

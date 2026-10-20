@@ -1,7 +1,8 @@
 import type { Build, Role } from '../../types/build'
 import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import { newId } from '../id'
-import { getAccountByRiotId, getMatch, getMatchIdsByPuuid, getMatchTimeline } from './client'
+import { getAccountByRiotId, getActiveLolRegion, getMatch, getMatchIdsByPuuid, getMatchTimeline } from './client'
+import { ACCOUNT_HOST, matchHostForPlatform } from './regions'
 import { buildLoadoutForRole, classifyGameItems, findParticipant, roleForParticipant } from './aggregate'
 
 export interface ImportProgress {
@@ -27,7 +28,6 @@ interface RoleGameEntry {
 }
 
 export async function importBuildFromRiot(
-  regionHost: string,
   gameName: string,
   tagLine: string,
   champion: DDragonChampion,
@@ -37,7 +37,9 @@ export async function importBuildFromRiot(
   onProgress: (p: ImportProgress) => void,
 ): Promise<Build> {
   onProgress({ stage: 'account', scanned: 0, found: 0, target: sampleSize })
-  const account = await getAccountByRiotId(regionHost, gameName, tagLine)
+  const account = await getAccountByRiotId(ACCOUNT_HOST, gameName, tagLine)
+  const { region } = await getActiveLolRegion(ACCOUNT_HOST, account.puuid)
+  const regionHost = matchHostForPlatform(region)
 
   const championId = Number(champion.key)
   const byRole = new Map<Role, RoleGameEntry[]>()

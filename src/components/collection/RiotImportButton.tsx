@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useGameData } from '../../state/GameDataContext'
 import { useCollection } from '../../state/CollectionContext'
-import { RIOT_REGIONS, type RiotRegionId } from '../../lib/riot/regions'
 import { importBuildFromRiot, type ImportProgress } from '../../lib/riot/import'
 import { ChampionSelect } from './ChampionSelect'
 import { activeButtonStyle, primaryButtonStyle, toolbarPanelStyle, toolbarPanelTitleStyle } from './toolbarStyles'
@@ -31,7 +30,6 @@ export function RiotImportButton({ open, onOpenChange, panelSlot }: Props) {
   const [championId, setChampionId] = useState('')
   const [gameName, setGameName] = useState('')
   const [tagLine, setTagLine] = useState('')
-  const [region, setRegion] = useState<RiotRegionId>('europe')
   const [sampleSize, setSampleSize] = useState(30)
   const [progress, setProgress] = useState<ImportProgress | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -44,9 +42,7 @@ export function RiotImportButton({ open, onOpenChange, panelSlot }: Props) {
     setError(null)
     setProgress({ stage: 'account', scanned: 0, found: 0, target: sampleSize })
     try {
-      const host = RIOT_REGIONS.find((r) => r.id === region)!.host
       const build = await importBuildFromRiot(
-        host,
         gameName.trim(),
         tagLine.trim().replace(/^#/, ''),
         champion,
@@ -84,13 +80,6 @@ export function RiotImportButton({ open, onOpenChange, panelSlot }: Props) {
           onChange={(e) => setTagLine(e.target.value)}
           style={{ width: 70 }}
         />
-        <select value={region} onChange={(e) => setRegion(e.target.value as RiotRegionId)}>
-          {RIOT_REGIONS.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-dim)' }}>
           Sample size
           <input
