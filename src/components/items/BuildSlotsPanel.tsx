@@ -13,6 +13,9 @@ import { ItemIcon, type ItemRelationOutline } from './ItemIcon'
 import { useConfirm } from '../shared/useConfirm'
 import './items.css'
 
+// Room above an item row for the "Situational" caption on its divider.
+const SITUATIONAL_CAPTION_SPACE = 14
+
 interface Props {
   items: DDragonItem[]
   buildItems: BuildItems
@@ -221,6 +224,7 @@ export function BuildSlotsPanel({
         const orderedPlacements = mode === 'view' ? [...placements].sort((a, b) => rank(a) - rank(b)) : placements
         const situationalDividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => rank(p) >= 1) : -1
         const excludedDividerIndex = mode === 'view' ? orderedPlacements.findIndex((p) => rank(p) >= 2) : -1
+        const hasSituationalDivider = situationalDividerIndex > 0 && situationalDividerIndex !== excludedDividerIndex
         const active = activeSlotId === slotId
         const dragOver = mode === 'edit' && dragOverSlotId === slotId
         const editing = editingSlotId === slotId
@@ -407,12 +411,19 @@ export function BuildSlotsPanel({
             {placements.length === 0 ? (
               <div style={{ color: 'var(--text-dim)', fontSize: 12 }}>Empty</div>
             ) : (
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: hasSituationalDivider ? `${SITUATIONAL_CAPTION_SPACE + 4}px 10px` : 10,
+                  paddingTop: hasSituationalDivider ? SITUATIONAL_CAPTION_SPACE : undefined,
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                }}
+              >
                 {orderedPlacements.map((placement, index) => {
                   const item = items.find((i) => i.id === placement.itemId)
                   if (!item) return null
-                  const showSituationalDivider =
-                    index === situationalDividerIndex && index > 0 && situationalDividerIndex !== excludedDividerIndex
+                  const showSituationalDivider = hasSituationalDivider && index === situationalDividerIndex
                   const showExcludedDivider = index === excludedDividerIndex && index > 0
                   const handleClick = (e: MouseEvent) => {
                     if (mode === 'edit') {
@@ -434,6 +445,8 @@ export function BuildSlotsPanel({
                   return (
                     <Fragment key={placement.id}>
                       {showSituationalDivider && (
+                        // The caption hangs off the divider itself (into the row's top padding /
+                        // row gap), so it stays with the divider however the row wraps.
                         <div
                           aria-hidden="true"
                           style={{ position: 'relative', alignSelf: 'stretch', width: 0, borderLeft: '2px dotted var(--gold)' }}
@@ -441,11 +454,12 @@ export function BuildSlotsPanel({
                           <span
                             style={{
                               position: 'absolute',
-                              top: -26,
-                              left: 5,
+                              top: -SITUATIONAL_CAPTION_SPACE,
+                              left: -2,
                               whiteSpace: 'nowrap',
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: 600,
+                              lineHeight: '12px',
                               textTransform: 'uppercase',
                               letterSpacing: 0.5,
                               color: 'var(--gold)',
