@@ -1,45 +1,61 @@
 export interface StatCategory {
   id: string
   label: string
-  short: string
-  color: string
+  // Path under CommunityDragon's texticons/lol folder, without extension (see statIcons.ts).
+  icon: string
+  // The labels this stat goes by in an item's <stats> block, flat and percent alike.
+  statLabels: string[]
 }
 
-// Data Dragon's own item.tags array is Riot's factual categorization of an item's stats —
-// this maps those raw tag strings onto a small, deduped set of display categories.
-// Several raw tags alias the same category (e.g. SpellBlock/MagicResist both mean MR).
-const CATEGORY_BY_RAW_TAG: Record<string, StatCategory> = {
-  Health: { id: 'health', label: 'Health', short: 'HP', color: '#3fa34d' },
-  HealthRegen: { id: 'healthregen', label: 'Health Regen', short: 'HP5', color: '#3fa34d' },
-  Mana: { id: 'mana', label: 'Mana', short: 'MP', color: '#3f7fa3' },
-  ManaRegen: { id: 'manaregen', label: 'Mana Regen', short: 'MP5', color: '#3f7fa3' },
-  Armor: { id: 'armor', label: 'Armor', short: 'AR', color: '#c9a227' },
-  SpellBlock: { id: 'mr', label: 'Magic Resist', short: 'MR', color: '#8a6fff' },
-  MagicResist: { id: 'mr', label: 'Magic Resist', short: 'MR', color: '#8a6fff' },
-  Damage: { id: 'ad', label: 'Attack Damage', short: 'AD', color: '#d9704f' },
-  SpellDamage: { id: 'ap', label: 'Ability Power', short: 'AP', color: '#5fa8ff' },
-  AttackSpeed: { id: 'as', label: 'Attack Speed', short: 'AS', color: '#e0b64f' },
-  CriticalStrike: { id: 'crit', label: 'Critical Strike', short: 'CRIT', color: '#e05f5f' },
-  LifeSteal: { id: 'lifesteal', label: 'Life Steal', short: 'LS', color: '#c9455c' },
-  SpellVamp: { id: 'omnivamp', label: 'Omnivamp', short: 'OV', color: '#c9457e' },
-  CooldownReduction: { id: 'ah', label: 'Ability Haste', short: 'AH', color: '#4fc9c0' },
-  AbilityHaste: { id: 'ah', label: 'Ability Haste', short: 'AH', color: '#4fc9c0' },
-  ArmorPenetration: { id: 'pen', label: 'Armor Penetration', short: 'PEN', color: '#9a5fe0' },
-  NonbootsMovement: { id: 'ms', label: 'Move Speed', short: 'MS', color: '#5f9ae0' },
-  Tenacity: { id: 'tenacity', label: 'Tenacity', short: 'TEN', color: '#c98a4f' },
+// Every stat a purchasable item can grant, matched against the item's own <stats> block rather
+// than Data Dragon's item.tags — the tags are a loose guess (LifeSteal is on items that only heal
+// from a passive) and have no entry at all for Lethality, Heal and Shield Power or Crit Damage.
+export const STAT_CATEGORIES: StatCategory[] = [
+  { id: 'health', label: 'Health', icon: 'statsicon/scalehealth', statLabels: ['Health'] },
+  { id: 'healthregen', label: 'Health Regen', icon: 'statsicon/scalehpregen', statLabels: ['Base Health Regen', 'Health Regen per 5 seconds'] },
+  { id: 'mana', label: 'Mana', icon: 'statsicon/scalemana', statLabels: ['Mana'] },
+  { id: 'manaregen', label: 'Mana Regen', icon: 'statsicon/scalemanaregen', statLabels: ['Base Mana Regen', 'Mana Regen per 5 seconds'] },
+  { id: 'armor', label: 'Armor', icon: 'statsicon/scalearmor', statLabels: ['Armor'] },
+  { id: 'mr', label: 'Magic Resist', icon: 'statsicon/scalemr', statLabels: ['Magic Resist'] },
+  { id: 'ad', label: 'Attack Damage', icon: 'statsicon/scalead', statLabels: ['Attack Damage'] },
+  { id: 'ap', label: 'Ability Power', icon: 'statsicon/scaleap', statLabels: ['Ability Power'] },
+  { id: 'as', label: 'Attack Speed', icon: 'statsicon/scaleas', statLabels: ['Attack Speed'] },
+  { id: 'crit', label: 'Critical Strike Chance', icon: 'statsicon/scalecrit', statLabels: ['Critical Strike Chance'] },
+  { id: 'critdamage', label: 'Critical Strike Damage', icon: 'statsicon/scalecritmult', statLabels: ['Critical Strike Damage'] },
+  { id: 'lifesteal', label: 'Life Steal', icon: 'statsicon/scalels', statLabels: ['Life Steal'] },
+  { id: 'omnivamp', label: 'Omnivamp', icon: 'statsicon/scalesv', statLabels: ['Omnivamp'] },
+  { id: 'ah', label: 'Ability Haste', icon: 'statsicon/scaleah', statLabels: ['Ability Haste', 'Cooldown Reduction'] },
+  { id: 'lethality', label: 'Lethality', icon: 'statsicon/scaleapen', statLabels: ['Lethality'] },
+  { id: 'armorpen', label: 'Armor Penetration', icon: 'statsicon/scaleapen', statLabels: ['Armor Penetration'] },
+  { id: 'magicpen', label: 'Magic Penetration', icon: 'statsicon/scalempen', statLabels: ['Magic Penetration'] },
+  { id: 'ms', label: 'Move Speed', icon: 'statsicon/scalems', statLabels: ['Move Speed'] },
+  { id: 'tenacity', label: 'Tenacity', icon: 'statsicon/scaletenacity', statLabels: ['Tenacity'] },
+  { id: 'hsp', label: 'Heal and Shield Power', icon: 'statsicon/scalehealshield', statLabels: ['Heal and Shield Power'] },
+  { id: 'adaptive', label: 'Adaptive Force', icon: 'statsicon/scaleadaptiveforce', statLabels: ['Adaptive Force'] },
+  { id: 'gold', label: 'Gold Per 10 Seconds', icon: 'gameplay/goldcoins', statLabels: ['Gold Per 10 Seconds'] },
+]
+
+const CATEGORY_BY_STAT_LABEL = new Map(STAT_CATEGORIES.flatMap((c) => c.statLabels.map((label) => [label, c] as const)))
+
+// One line of a <stats> block, e.g. "<attention>25%</attention> Attack Speed" -> "Attack Speed".
+export function statLineLabel(line: string): string | undefined {
+  return line
+    .replace(/<[^>]+>/g, '')
+    .trim()
+    .match(/^[\d.]+%?\s+(.+)$/)?.[1]
 }
 
-// Deduped list of every stat category an item can carry, for filter UIs.
-export const ALL_STAT_CATEGORIES: StatCategory[] = [...new Map(Object.values(CATEGORY_BY_RAW_TAG).map((c) => [c.id, c])).values()]
+export function statCategoryForLabel(label: string): StatCategory | undefined {
+  return CATEGORY_BY_STAT_LABEL.get(label)
+}
 
-export function getAutoStatTags(rawTags: string[]): StatCategory[] {
-  const byId = new Map<string, StatCategory>()
-  for (const raw of rawTags) {
-    const category = CATEGORY_BY_RAW_TAG[raw]
-    if (category) byId.set(category.id, category)
+export function itemStatCategoryIds(description: string): Set<string> {
+  const block = description.match(/<stats>(.*?)<\/stats>/)?.[1] ?? ''
+  const ids = new Set<string>()
+  for (const line of block.split(/<br\s*\/?>/)) {
+    const label = statLineLabel(line)
+    const category = label ? statCategoryForLabel(label) : undefined
+    if (category) ids.add(category.id)
   }
-  if (rawTags.includes('Boots') && !byId.has('ms')) {
-    byId.set('ms', CATEGORY_BY_RAW_TAG.NonbootsMovement)
-  }
-  return [...byId.values()]
+  return ids
 }

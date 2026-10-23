@@ -2,6 +2,7 @@ import type { DragEvent, MouseEvent } from 'react'
 import type { DDragonItem } from '../../types/ddragon'
 import { itemImageUrl } from '../../lib/ddragon'
 import { Tooltip } from '../shared/Tooltip'
+import { addStatIconsToDescription } from '../../lib/statIcons'
 
 // Hover relation ring: gold marks other placements of the same item, red a mutual exclusion,
 // green an item the hovered one requires, blue an item that requires the hovered one.
@@ -130,7 +131,7 @@ export function ItemIcon({
     <Tooltip
       title={title ?? item.name}
       extra={<div className="tooltip-gold">{item.gold.total}g</div>}
-      descriptionHtml={item.description}
+      descriptionHtml={addStatIconsToDescription(item.description)}
       note={note}
     >
       {button}

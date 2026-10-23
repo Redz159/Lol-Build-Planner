@@ -1,7 +1,7 @@
 import type { DDragonItem } from '../types/ddragon'
 import type { Role } from '../types/build'
 import type { BuildItems } from '../types/items'
-import { ALL_STAT_CATEGORIES, getAutoStatTags } from './itemStatTags'
+import { STAT_CATEGORIES, itemStatCategoryIds } from './itemStatTags'
 
 // These are derived from Data Dragon's own item fields rather than a hardcoded item-id
 // list, so the classification keeps working as items are added/removed each patch.
@@ -97,10 +97,10 @@ export const ATTRIBUTE_FILTERS: FilterOption[] = [
   { id: 'attr:legendary', label: 'Legendary Item', test: isLegendaryItem },
 ]
 
-export const STAT_FILTERS: FilterOption[] = ALL_STAT_CATEGORIES.map((category) => ({
+export const STAT_FILTERS: FilterOption[] = STAT_CATEGORIES.map((category) => ({
   id: `stat:${category.id}`,
   label: category.label,
-  test: (item) => getAutoStatTags(item.tags).some((c) => c.id === category.id),
+  test: (item) => itemStatCategoryIds(item.description).has(category.id),
 }))
 
 export type FilterMode = 'any' | 'all'

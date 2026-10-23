@@ -79,6 +79,13 @@
   display: none;
 }
 
+.tooltip-stat-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
 .tooltip-desc attention {
   color: var(--gold-bright);
   font-weight: 600;
