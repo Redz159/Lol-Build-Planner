@@ -3,7 +3,7 @@ import type { ExampleBuild, ItemSet, Loadout } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
 import { effectiveItemNote, type BuildItems, type ItemPlacement, type ItemSlot, type ItemSlotNotes, itemSlotNoteKey } from '../../types/items'
 import { newId } from '../../lib/id'
-import { isBoots } from '../../lib/itemAttributes'
+import { filterBuildItemsByStats, isBoots } from '../../lib/itemAttributes'
 import { joatStatNames } from '../../lib/joat'
 import { builtinExclusionPairs, isExcludedPair, toggleExclusionPair } from '../../lib/itemExclusions'
 import { isRequiredPair, requiredItemIds, toggleRequirementPair } from '../../lib/itemRequirements'
@@ -27,6 +27,7 @@ import { useGameData } from '../../state/GameDataContext'
 import { useConfirm } from '../shared/useConfirm'
 import { BuildSlotsPanel } from './BuildSlotsPanel'
 import { ItemBrowser } from './ItemBrowser'
+import { StatFilterSidebar } from './StatFilterSidebar'
 import { ItemAssignPopup, type ItemRelationMode } from './ItemAssignPopup'
 import { ExampleBuildsSection } from './ExampleBuildsSection'
 import { LayoutPicker } from './LayoutPicker'
@@ -53,6 +54,7 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [activeSlotId, setActiveSlotId] = useState<string | null>(null)
   const [popupItemId, setPopupItemId] = useState<string | null>(null)
+  const [statFilters, setStatFilters] = useState<Set<string>>(new Set())
   // Which slot's placement opened the note popup, if any — lets the popup edit that slot's own
   // note instead of the item's global one. Null when opened from the browser with no specific
   // slot in context (e.g. no active fast-add slot).
@@ -504,37 +506,60 @@ export function ItemsEditor({ loadout, mode, onChange, championKey, buildTitle, 
   )
 
   if (mode === 'view') {
+    const toggleStatFilter = (id: string) =>
+      setStatFilters((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    const filteredItems = filterBuildItemsByStats(currentItems, items, statFilters)
+    const hasItems = visibleSlots.some((slot) => (currentItems[slot.id] ?? []).length > 0)
+    const nothingMatches = hasItems && visibleSlots.every((slot) => (filteredItems[slot.id] ?? []).length === 0)
     return (
       <div>
         {leagueInteropRow}
         {joatCounter}
-        <BuildSlotsPanel
-          items={items}
-          buildItems={currentItems}
-          itemNotes={loadout.itemNotes}
-          itemSlotNotes={loadout.itemSlotNotes}
-          itemNoteGlobal={loadout.itemNoteGlobal}
-          itemSituational={currentSet.itemSituational}
-          slots={visibleSlots}
-          mode="view"
-          activeSlotId={null}
-          onSetActiveSlot={() => {}}
-          preview={preview}
-          onTogglePreview={togglePreview}
-          onRemovePlacement={() => {}}
-          onOpenPopup={() => {}}
-          onDragStartPlacement={() => {}}
-          onDropOnSlot={() => {}}
-          onDropOnPlacement={() => {}}
-          onAddSlot={() => {}}
-          onRenameSlot={() => {}}
-          onDeleteSlot={() => {}}
-          onToggleMultiSelect={() => {}}
-          excludedPlacementIds={excludedPlacementIds}
-          hoverOutlines={hoverOutlines}
-          onHoverPlacement={setHoveredPlacementId}
-          itemGameCounts={itemGameCounts}
-        />
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {nothingMatches ? (
+              <div style={{ color: 'var(--text-dim)' }}>No items in this build have all the selected stats.</div>
+            ) : (
+              <BuildSlotsPanel
+                items={items}
+                buildItems={filteredItems}
+                itemNotes={loadout.itemNotes}
+                itemSlotNotes={loadout.itemSlotNotes}
+                itemNoteGlobal={loadout.itemNoteGlobal}
+                itemSituational={currentSet.itemSituational}
+                slots={visibleSlots}
+                mode="view"
+                activeSlotId={null}
+                onSetActiveSlot={() => {}}
+                preview={preview}
+                onTogglePreview={togglePreview}
+                onRemovePlacement={() => {}}
+                onOpenPopup={() => {}}
+                onDragStartPlacement={() => {}}
+                onDropOnSlot={() => {}}
+                onDropOnPlacement={() => {}}
+                onAddSlot={() => {}}
+                onRenameSlot={() => {}}
+                onDeleteSlot={() => {}}
+                onToggleMultiSelect={() => {}}
+                excludedPlacementIds={excludedPlacementIds}
+                hoverOutlines={hoverOutlines}
+                onHoverPlacement={setHoveredPlacementId}
+                itemGameCounts={itemGameCounts}
+              />
+            )}
+          </div>
+          {hasItems && (
+            <div style={{ flex: '0 0 180px' }}>
+              <StatFilterSidebar selected={statFilters} onToggle={toggleStatFilter} onClear={() => setStatFilters(new Set())} />
+            </div>
+          )}
+        </div>
         <ExampleBuildsSection
           mode="view"
           exampleBuilds={currentExampleBuilds}

@@ -1,5 +1,6 @@
 import type { DDragonItem } from '../types/ddragon'
 import type { Role } from '../types/build'
+import type { BuildItems } from '../types/items'
 import { ALL_STAT_CATEGORIES, getAutoStatTags } from './itemStatTags'
 
 // These are derived from Data Dragon's own item fields rather than a hardcoded item-id
@@ -113,4 +114,20 @@ export function itemMatchesFilters(
   if (selected.size === 0) return true
   const selectedOptions = options.filter((opt) => selected.has(opt.id))
   return mode === 'any' ? selectedOptions.some((opt) => opt.test(item)) : selectedOptions.every((opt) => opt.test(item))
+}
+
+// View mode's stat filter: keeps only the placements whose item has every selected stat, slot by
+// slot, so slots left with nothing simply drop out of the view.
+export function filterBuildItemsByStats(buildItems: BuildItems, items: DDragonItem[], selected: ReadonlySet<string>): BuildItems {
+  if (selected.size === 0) return buildItems
+  const byId = new Map(items.map((item) => [item.id, item]))
+  return Object.fromEntries(
+    Object.entries(buildItems).map(([slotId, placements]) => [
+      slotId,
+      placements.filter((p) => {
+        const item = byId.get(p.itemId)
+        return !!item && itemMatchesFilters(item, selected, STAT_FILTERS, 'all')
+      }),
+    ]),
+  )
 }
