@@ -1,6 +1,6 @@
 import type { Category, ExampleBuild, ItemSet, Loadout } from '../types/build'
 import type { RunePage } from '../types/runes'
-import type { BuildItems, ItemExclusionPair, ItemPlacement, ItemRequirementPair, ItemSituationalFlags, ItemSlot } from '../types/items'
+import { itemSlotNoteKey, type BuildItems, type ItemExclusionPair, type ItemPlacement, type ItemRequirementPair, type ItemSituationalFlags, type ItemSlot, type ItemSlotNotes } from '../types/items'
 import { newId } from './id'
 import { cloneRunePages } from './runeRules'
 import { cloneExampleBuilds } from './exampleBuilds'
@@ -32,8 +32,8 @@ function cloneItems(source: BuildItems, slots: ItemSlot[]): BuildItems {
   return Object.fromEntries(slots.map((slot) => [slot.id, (source[slot.id] ?? []).map((p) => ({ id: newId(), itemId: p.itemId }))]))
 }
 
-// Slot ids are kept as-is (only placements get fresh ids), so per-slot local notes keep working
-// for the copy.
+// Slot ids are kept as-is (only placements get fresh ids). duplicateCategory re-mints them
+// afterwards so the copy doesn't share local notes with its source.
 function cloneItemSet(source: ItemSet): ItemSet {
   return {
     itemSlots: source.itemSlots.map((s) => ({ ...s })),
@@ -79,14 +79,70 @@ function cloneCategory(source: CategorySeed, label: string): Category {
 }
 
 // Inserts the clone right after its source and returns the clone's id so the caller can switch
-// the active tab to it.
-export function duplicateCategory(categories: Category[], id: string): { categories: Category[]; newId: string } {
+// the active tab to it. The clone gets fresh slot ids, so local (non-global) notes stay per
+// category: the source's local notes are copied onto the clone's slots and returned with the
+// loadout's other notes, and editing one category's note afterwards leaves the other's alone.
+export function duplicateCategory(
+  categories: Category[],
+  id: string,
+  itemSlotNotes: ItemSlotNotes,
+): { categories: Category[]; newId: string; itemSlotNotes: ItemSlotNotes } {
   const index = categories.findIndex((c) => c.id === id)
-  if (index === -1) return { categories, newId: id }
-  const clone = cloneCategory(categories[index], `${categories[index].label} Copy`)
+  if (index === -1) return { categories, newId: id, itemSlotNotes }
+  const source = categories[index]
+  const separated = withFreshSlotIds(
+    cloneCategory(source, `${source.label} Copy`),
+    new Set(source.itemSlots.map((s) => s.id)),
+    itemSlotNotes,
+  )
   const next = [...categories]
-  next.splice(index + 1, 0, clone)
-  return { categories: next, newId: clone.id }
+  next.splice(index + 1, 0, separated.category)
+  return { categories: next, newId: separated.category.id, itemSlotNotes: separated.itemSlotNotes }
+}
+
+// Gives the category's slots in `slotIds` new ids, copying each one's local notes onto the new id
+// (the old entries stay, since another category still uses those slots).
+function withFreshSlotIds(
+  category: Category,
+  slotIds: Set<string>,
+  itemSlotNotes: ItemSlotNotes,
+): { category: Category; itemSlotNotes: ItemSlotNotes } {
+  const fresh = new Map(category.itemSlots.filter((s) => slotIds.has(s.id)).map((s) => [s.id, newId()]))
+  if (fresh.size === 0) return { category, itemSlotNotes }
+  const remap = (slotId: string) => fresh.get(slotId) ?? slotId
+  const copiedNotes = Object.entries(itemSlotNotes).flatMap(([key, note]) => {
+    const sep = key.indexOf('::')
+    const freshId = fresh.get(key.slice(0, sep))
+    return freshId ? [[itemSlotNoteKey(freshId, key.slice(sep + 2)), note]] : []
+  })
+  return {
+    category: {
+      ...category,
+      itemSlots: category.itemSlots.map((s) => ({ ...s, id: remap(s.id) })),
+      items: Object.fromEntries(Object.entries(category.items).map(([slotId, placements]) => [remap(slotId), placements])),
+    },
+    itemSlotNotes: { ...itemSlotNotes, ...Object.fromEntries(copiedNotes) },
+  }
+}
+
+// Categories duplicated before duplicateCategory minted fresh slot ids share slot ids with their
+// source, and with them every local note. Splits those up on load: the first category using a
+// slot id keeps it, each later one gets a new id with a copy of the notes. The loadout's own
+// plain slots don't count, since they're hidden once categories exist.
+export function separateSharedCategorySlots(loadout: Loadout): Loadout {
+  const seen = new Set<string>()
+  let itemSlotNotes = loadout.itemSlotNotes
+  let changed = false
+  const categories = loadout.categories.map((category) => {
+    const shared = new Set(category.itemSlots.filter((s) => seen.has(s.id)).map((s) => s.id))
+    for (const s of category.itemSlots) seen.add(s.id)
+    if (shared.size === 0) return category
+    changed = true
+    const separated = withFreshSlotIds(category, shared, itemSlotNotes)
+    itemSlotNotes = separated.itemSlotNotes
+    return separated.category
+  })
+  return changed ? { ...loadout, categories, itemSlotNotes } : loadout
 }
 
 // Copies a category, with its own item slots, into another loadout's category list. Keeps the

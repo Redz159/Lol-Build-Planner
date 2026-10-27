@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Category } from '../types/build'
-import type { ItemSlot } from '../types/items'
+import { itemSlotNoteKey, type ItemSlot } from '../types/items'
 import {
   addCategory,
   categoryHasPlacement,
@@ -10,6 +10,7 @@ import {
   duplicateCategory,
   mergedCategoryItemSet,
   renameCategory,
+  separateSharedCategorySlots,
   toggleCategoryPlacement,
 } from './categories'
 import { emptyLoadout } from './loadouts'
@@ -69,11 +70,49 @@ describe('duplicateCategory', () => {
   it('inserts the copy right after its source, keeping its own slots', () => {
     const own: ItemSlot[] = [{ id: 'core', label: 'Core Items' }]
     const categories = [withItems('A', ['1055'], own), withItems('B', [])]
-    const { categories: next, newId } = duplicateCategory(categories, categories[0].id)
+    const { categories: next, newId } = duplicateCategory(categories, categories[0].id, {})
     expect(next.map((c) => c.label)).toEqual(['A', 'A Copy', 'B'])
     expect(next[1].id).toBe(newId)
-    expect(next[1].itemSlots).toEqual(own)
-    expect(next[1].items.core.map((p) => p.itemId)).toEqual(['1055'])
+    expect(next[1].itemSlots.map((s) => s.label)).toEqual(['Core Items'])
+    expect(next[1].items[next[1].itemSlots[0].id].map((p) => p.itemId)).toEqual(['1055'])
+  })
+
+  it('gives the copy its own slot ids and its own copy of the local notes', () => {
+    const own: ItemSlot[] = [{ id: 'core', label: 'Core Items' }]
+    const notes = { [itemSlotNoteKey('core', '1055')]: 'rush', [itemSlotNoteKey('other', '1')]: 'x' }
+    const { categories, itemSlotNotes } = duplicateCategory([withItems('A', ['1055'], own)], 'unused', notes)
+    expect(categories).toHaveLength(1)
+    expect(itemSlotNotes).toBe(notes)
+    const source = withItems('A', ['1055'], own)
+    const result = duplicateCategory([source], source.id, notes)
+    const cloneSlotId = result.categories[1].itemSlots[0].id
+    expect(cloneSlotId).not.toBe('core')
+    expect(result.itemSlotNotes).toEqual({ ...notes, [itemSlotNoteKey(cloneSlotId, '1055')]: 'rush' })
+  })
+})
+
+describe('separateSharedCategorySlots', () => {
+  it('gives later categories sharing a slot id their own id and copy of its notes', () => {
+    const own: ItemSlot[] = [{ id: 'core', label: 'Core Items' }]
+    const notes = { [itemSlotNoteKey('core', '1055')]: 'rush' }
+    const loadout = {
+      ...emptyLoadout(),
+      itemSlots: own,
+      categories: [withItems('A', ['1055'], own), withItems('B', ['1055'], own)],
+      itemSlotNotes: notes,
+    }
+    const result = separateSharedCategorySlots(loadout)
+    const [a, b] = result.categories
+    expect(a).toBe(loadout.categories[0])
+    const bSlotId = b.itemSlots[0].id
+    expect(bSlotId).not.toBe('core')
+    expect(b.items[bSlotId].map((p) => p.itemId)).toEqual(['1055'])
+    expect(result.itemSlotNotes).toEqual({ ...notes, [itemSlotNoteKey(bSlotId, '1055')]: 'rush' })
+  })
+
+  it('leaves a loadout without shared slot ids untouched', () => {
+    const loadout = { ...emptyLoadout(), categories: [withItems('A', []), withItems('B', [], [{ id: 'x', label: 'X' }])] }
+    expect(separateSharedCategorySlots(loadout)).toBe(loadout)
   })
 })
 
@@ -89,7 +128,7 @@ describe('per-category excludes, requirements and situational flags', () => {
     expect(fresh.itemExclusions).toEqual([])
     expect(fresh.itemRequirements).toEqual([])
     expect(fresh.itemSituational).toEqual({})
-    const copy = duplicateCategory([source], source.id).categories[1]
+    const copy = duplicateCategory([source], source.id, {}).categories[1]
     expect(copy.itemExclusions).toEqual([['1', '2']])
     expect(copy.itemRequirements).toEqual([['3', '4']])
     expect(copy.itemSituational).toEqual({ '5': true })

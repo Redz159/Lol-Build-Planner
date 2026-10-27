@@ -16,6 +16,7 @@ import { ROLES } from './loadouts'
 import { SKILL_KEYS, SKILL_POINTS } from './skillOrder'
 import { newId } from './id'
 import { EXAMPLE_BUILD_SLOTS, migrateExampleBuildItems } from './exampleBuilds'
+import { separateSharedCategorySlots } from './categories'
 
 const STORAGE_KEY = 'lolbp:collection'
 
@@ -326,7 +327,7 @@ export function migrateBuild(raw: any): Build {
     favorite: raw.favorite ?? false,
     createdAt: raw.createdAt ?? new Date().toISOString(),
     updatedAt: raw.updatedAt ?? new Date().toISOString(),
-    loadouts,
+    loadouts: loadouts.map(separateSharedCategorySlots),
   }
 }
 

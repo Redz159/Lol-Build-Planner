@@ -166,8 +166,8 @@ export function BuildDetailPage() {
   }
 
   const duplicateCategoryHandler = (id: string) => {
-    const { categories, newId: clonedId } = duplicateCategory(activeLoadout.categories, id)
-    saveLoadout({ categories })
+    const { categories, newId: clonedId, itemSlotNotes } = duplicateCategory(activeLoadout.categories, id, activeLoadout.itemSlotNotes)
+    saveLoadout({ categories, itemSlotNotes })
     setSelectedCategoryId(clonedId)
   }
 
