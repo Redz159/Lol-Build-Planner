@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Build, ExampleBuild, SkillKey, SkillOrder } from '../../types/build'
+import type { Build, ExampleBuild, Role, SkillKey, SkillOrder } from '../../types/build'
 import type { DDragonChampion, DDragonItem, DDragonRuneTree } from '../../types/ddragon'
 import type { BuildItems, ItemSlot } from '../../types/items'
 import type { RunePage } from '../../types/runes'
@@ -24,6 +24,7 @@ interface Props {
   slots: ItemSlot[]
   buildItems: BuildItems
   exampleBuilds: ExampleBuild[]
+  roles: Role[]
   runePages: RunePage[]
   skillOrder: SkillOrder
 }
@@ -67,18 +68,19 @@ function targetSource(builds: Build[], championId: string): { items?: ItemSource
       slots: visibleItemSlots(itemSet.itemSlots, loadout.roles),
       items: itemSet.items,
       exampleBuilds: itemSet.exampleBuilds,
+      roles: loadout.roles,
     },
     runePages: hasCategories ? mergedCategoryRunePages(loadout.categories) : loadout.runePages,
   }
 }
 
-export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runePages, skillOrder }: Props) {
+export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, roles, runePages, skillOrder }: Props) {
   const { items: allItems, runeTrees, champions } = useGameData()
   const { builds } = useCollection()
   const own = useSimData(champion.id)
 
   const [level, setLevel] = useState(18)
-  const [itemIds, setItemIds] = useState<string[]>(() => (exampleBuilds[0] ? exampleBuildFinalItems(exampleBuilds[0], allItems) : []))
+  const [itemIds, setItemIds] = useState<string[]>(() => (exampleBuilds[0] ? exampleBuildFinalItems(exampleBuilds[0], allItems, roles) : []))
   const [runePicks, setRunePicks] = useState<RunePicks>(() => initialRunePicks(runePages, runeTrees))
   const [rankOverrides, setRankOverrides] = useState<Partial<Record<SkillKey, number>>>({})
   const [stacks, setStacks] = useState<Record<string, number>>({})
@@ -135,7 +137,7 @@ export function SimulatorTab({ champion, slots, buildItems, exampleBuilds, runeP
             allItems={allItems}
             itemIds={itemIds}
             onItemsChange={setItemIds}
-            itemSource={{ slots, items: buildItems, exampleBuilds }}
+            itemSource={{ slots, items: buildItems, exampleBuilds, roles }}
             trees={runeTrees}
             runePages={runePages}
             runePicks={runePicks}

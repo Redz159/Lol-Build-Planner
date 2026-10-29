@@ -454,6 +454,7 @@ export function BuildDetailPage() {
                 slots={visibleItemSlots(currentItems.itemSlots, activeLoadout.roles)}
                 buildItems={currentItems.items}
                 exampleBuilds={currentItems.exampleBuilds}
+                roles={activeLoadout.roles}
                 runePages={currentRunePages}
                 skillOrder={currentSkills.skillOrder}
               />

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ExampleBuild } from '../../types/build'
+import type { ExampleBuild, Role } from '../../types/build'
 import type { DDragonItem } from '../../types/ddragon'
 import type { BuildItems, ItemSlot } from '../../types/items'
 import { MAX_SIM_ITEMS, exampleBuildFinalItems } from '../../lib/simulatorLoadout'
@@ -9,6 +9,7 @@ export interface ItemSource {
   slots: ItemSlot[]
   items: BuildItems
   exampleBuilds: ExampleBuild[]
+  roles: Role[]
 }
 
 interface Props {
@@ -54,7 +55,7 @@ export function ItemLoadoutPicker({ allItems, selected, onChange, source }: Prop
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 13 }}>
           <span style={{ color: 'var(--text-dim)' }}>Example builds:</span>
           {source.exampleBuilds.map((b) => (
-            <button key={b.id} type="button" className="sim-small-button" onClick={() => onChange(exampleBuildFinalItems(b, allItems))}>
+            <button key={b.id} type="button" className="sim-small-button" onClick={() => onChange(exampleBuildFinalItems(b, allItems, source.roles))}>
               {b.label}
             </button>
           ))}

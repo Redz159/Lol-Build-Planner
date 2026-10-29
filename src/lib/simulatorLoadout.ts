@@ -1,4 +1,4 @@
-import type { ExampleBuild, SkillKey, SkillOrder } from '../types/build'
+import type { ExampleBuild, Role, SkillKey, SkillOrder } from '../types/build'
 import type { DDragonItem, DDragonRune, DDragonRuneTree } from '../types/ddragon'
 import type { RunePage, ShardSelection } from '../types/runes'
 import { DEFENSE_SHARDS, FLEX_SHARDS, OFFENSE_SHARDS, type StatShardOption } from '../data/statShards'
@@ -157,15 +157,18 @@ export function ranksAtLevel(order: SkillOrder, level: number): Record<SkillKey,
   return ranks
 }
 
-// A finished example build's "final six": the top pick of every slot, skipping the starter slot
-// and anything that still builds into something else (components, tier-1 boots).
-export function exampleBuildFinalItems(build: ExampleBuild, allItems: DDragonItem[]): string[] {
+// A finished example build's "final six": the top pick of every slot, skipping anything that
+// still builds into something else (components). Boots are always kept, even when they still
+// upgrade, and the starter slot is kept for supports (their support item); everything else in
+// the starter slot is skipped.
+export function exampleBuildFinalItems(build: ExampleBuild, allItems: DDragonItem[], roles: Role[]): string[] {
   const result: string[] = []
   for (const slot of EXAMPLE_BUILD_SLOTS) {
-    if (slot.kind === 'starter') continue
+    const keepAnyway = slot.kind === 'boots' || (slot.kind === 'starter' && roles.includes('support'))
+    if (slot.kind === 'starter' && !keepAnyway) continue
     const itemId = build.items[slot.id]?.[0]?.itemId
     const item = allItems.find((i) => i.id === itemId)
-    if (!item || item.into.length > 0 || result.includes(item.id)) continue
+    if (!item || (item.into.length > 0 && !keepAnyway) || result.includes(item.id)) continue
     result.push(item.id)
   }
   return result.slice(0, MAX_SIM_ITEMS)
