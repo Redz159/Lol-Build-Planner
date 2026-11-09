@@ -9,6 +9,7 @@ import {
   type ItemSlot,
   type ItemSlotNotes,
 } from '../../types/items'
+import { dragLeftElement } from '../../lib/dragLeave'
 import { ItemIcon, type ItemRelationOutline } from './ItemIcon'
 import { useConfirm } from '../shared/useConfirm'
 import './items.css'
@@ -246,7 +247,13 @@ export function BuildSlotsPanel({
                   }
                 : undefined
             }
-            onDragLeave={mode === 'edit' ? () => setDragOverSlotId((prev) => (prev === slotId ? null : prev)) : undefined}
+            onDragLeave={
+              mode === 'edit'
+                ? (e: DragEvent) => {
+                    if (dragLeftElement(e)) setDragOverSlotId((prev) => (prev === slotId ? null : prev))
+                  }
+                : undefined
+            }
             onDrop={
               mode === 'edit'
                 ? (e: DragEvent) => {
@@ -500,7 +507,9 @@ export function BuildSlotsPanel({
                         }
                         onDragLeave={
                           mode === 'edit'
-                            ? () => setDragOverPlacement((prev) => (prev?.id === placement.id ? null : prev))
+                            ? (e: DragEvent) => {
+                                if (dragLeftElement(e)) setDragOverPlacement((prev) => (prev?.id === placement.id ? null : prev))
+                              }
                             : undefined
                         }
                         onDrop={

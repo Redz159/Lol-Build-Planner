@@ -32,6 +32,12 @@ export function Tooltip({ title, descriptionHtml, extra, note, children }: Props
     window.clearTimeout(timer.current)
     setPhase('hidden')
   }
+  // mouseleave doesn't fire during a native drag, so the tooltip has to be dismissed explicitly.
+  // The state change waits a tick: re-rendering inside dragstart can make Chrome cancel the drag.
+  const hideForDrag = () => {
+    window.clearTimeout(timer.current)
+    window.setTimeout(() => setPhase('hidden'), 0)
+  }
 
   // Renders once, off-screen but fully laid out, to measure its real size — only then do we know
   // whether it fits below the anchor or needs to flip above it.
@@ -66,7 +72,7 @@ export function Tooltip({ title, descriptionHtml, extra, note, children }: Props
   )
 
   return (
-    <span ref={anchorRef} className="tooltip-anchor" onMouseEnter={show} onMouseLeave={hide}>
+    <span ref={anchorRef} className="tooltip-anchor" onMouseEnter={show} onMouseLeave={hide} onDragStart={hideForDrag}>
       {children}
       {phase !== 'hidden' && createPortal(bubble, document.body)}
     </span>

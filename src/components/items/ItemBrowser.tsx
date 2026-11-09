@@ -11,6 +11,7 @@ import {
   type ItemSlotNotes,
 } from '../../types/items'
 import { ATTRIBUTE_FILTERS, STAT_FILTERS, isItemVisibleForRoles, itemMatchesFilters, type FilterMode } from '../../lib/itemAttributes'
+import { dragLeftElement } from '../../lib/dragLeave'
 import { ItemFilterPanel } from './ItemFilterPanel'
 import { ItemIcon } from './ItemIcon'
 import './items.css'
@@ -96,7 +97,9 @@ export function ItemBrowser({
         e.preventDefault()
         if (!dragOver) setDragOver(true)
       }}
-      onDragLeave={() => setDragOver(false)}
+      onDragLeave={(e: DragEvent) => {
+        if (dragLeftElement(e)) setDragOver(false)
+      }}
       onDrop={(e: DragEvent) => {
         e.preventDefault()
         setDragOver(false)
