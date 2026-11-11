@@ -36,12 +36,21 @@ export interface ExampleBuild {
   items: BuildItems
 }
 
+// The small picture shown left of a category's label: one of its items or runes, or an uploaded
+// image (downscaled to a small data URL so it fits in localStorage and exported JSON).
+export type CategoryIcon =
+  | { kind: 'item'; itemId: string }
+  | { kind: 'rune'; runeId: number }
+  | { kind: 'image'; dataUrl: string }
+
 // A category is its own independent rune-page set and item set, with its own item slots — like
 // a parallel mini-loadout a loadout can switch between, rather than a tag on its single rune/item
 // selection. Runes and items live *under* a category now, not the other way around.
 export interface Category {
   id: string
   label: string
+  // Absent means no icon.
+  icon?: CategoryIcon
   runePages: RunePage[]
   itemSlots: ItemSlot[]
   items: BuildItems

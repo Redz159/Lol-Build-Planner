@@ -55,6 +55,27 @@ describe('migrateBuild category item slots', () => {
   })
 })
 
+describe('migrateBuild category icons', () => {
+  it('keeps valid icons and drops malformed ones', () => {
+    const icons = [
+      { kind: 'item', itemId: '3089' },
+      { kind: 'rune', runeId: 8112 },
+      { kind: 'image', dataUrl: 'data:image/png;base64,AAAA' },
+      { kind: 'image', dataUrl: 'https://example.com/x.png' },
+      { kind: 'rune', runeId: '8112' },
+      'nope',
+    ]
+    const build = migrateBuild({
+      id: 'b',
+      champion: { id: 'Ahri', name: 'Ahri' },
+      title: 'Test',
+      loadouts: [{ categories: icons.map((icon, i) => ({ id: `c${i}`, label: `C${i}`, icon })) }],
+    })
+    expect(build.loadouts[0].categories.map((c) => c.icon)).toEqual([...icons.slice(0, 3), undefined, undefined, undefined])
+    expect('icon' in build.loadouts[0].categories[3]).toBe(false)
+  })
+})
+
 describe('migrateBuild category item relations', () => {
   it('gives older categories a copy of the loadout-wide ones and keeps their own when saved', () => {
     const build = migrateBuild({

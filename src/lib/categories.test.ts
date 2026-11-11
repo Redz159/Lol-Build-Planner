@@ -3,7 +3,7 @@ import type { Category } from '../types/build'
 import { itemSlotNoteKey, type ItemSlot } from '../types/items'
 import {
   addCategory,
-  categoryHasPlacement,
+  categoryIconChoices,
   copyCategoryToLoadout,
   currentItemSet,
   deleteCategory,
@@ -11,7 +11,7 @@ import {
   mergedCategoryItemSet,
   renameCategory,
   separateSharedCategorySlots,
-  toggleCategoryPlacement,
+  setCategoryIcon,
 } from './categories'
 import { emptyLoadout } from './loadouts'
 
@@ -63,6 +63,42 @@ describe('renameCategory / deleteCategory', () => {
   it('deletes by id', () => {
     const categories = addCategory(addCategory([], 'A'), 'B')
     expect(deleteCategory(categories, categories[0].id).map((c) => c.label)).toEqual(['B'])
+  })
+})
+
+describe('category icons', () => {
+  it('sets and clears an icon', () => {
+    const categories = addCategory([], 'A')
+    const withIcon = setCategoryIcon(categories, categories[0].id, { kind: 'item', itemId: '1055' })
+    expect(withIcon[0].icon).toEqual({ kind: 'item', itemId: '1055' })
+    expect('icon' in setCategoryIcon(withIcon, categories[0].id, undefined)[0]).toBe(false)
+  })
+
+  it('keeps the icon on duplicate and copy-to-loadout', () => {
+    const source: Category = { ...withItems('A', []), icon: { kind: 'rune', runeId: 8112 } }
+    expect(duplicateCategory([source], source.id, {}).categories[1].icon).toEqual({ kind: 'rune', runeId: 8112 })
+    expect(copyCategoryToLoadout([], source).categories[0].icon).toEqual({ kind: 'rune', runeId: 8112 })
+  })
+
+  it('offers every item and picked rune once, in order', () => {
+    const category: Category = {
+      ...withItems('A', ['1055', '2003']),
+      exampleBuilds: [{ id: 'e', label: 'E', items: { boots: [{ id: 'p', itemId: '3006' }, { id: 'q', itemId: '1055' }] } }],
+      runePages: [
+        {
+          id: 'r',
+          primaryTreeId: 8100,
+          keystoneId: 8112,
+          preferredKeystone: false,
+          primaryRuneIds: [8126, 0],
+          preferredPrimaryRuneIds: [],
+          variants: [
+            { id: 'v', secondaryTreeId: 8000, secondaryRuneIds: [9111, 8126], preferredSecondaryRuneIds: [], shards: { offense: [], flex: [], defense: [] }, preferredShards: { offense: [], flex: [], defense: [] } },
+          ],
+        },
+      ],
+    }
+    expect(categoryIconChoices(category)).toEqual({ itemIds: ['1055', '2003', '3006'], runeIds: [8112, 8126, 9111] })
   })
 })
 
@@ -195,18 +231,5 @@ describe('currentItemSet', () => {
     expect(currentItemSet(loadout, a.id)).toBe(a)
     expect(currentItemSet(loadout, null)).toBe(loadout)
     expect(currentItemSet(loadout, 'all').items.starter.map((p) => p.itemId)).toEqual(['1'])
-  })
-})
-
-describe('toggleCategoryPlacement', () => {
-  it('adds a missing item and removes a present one, matching the slot by label', () => {
-    const added = toggleCategoryPlacement(withItems('A', []), 'STARTER', '1055')
-    expect(categoryHasPlacement(added, 'starter', '1055')).toBe(true)
-    expect(toggleCategoryPlacement(added, 'Starter', '1055').items.starter).toEqual([])
-  })
-
-  it('leaves a category without that slot alone', () => {
-    const category = withItems('A', [])
-    expect(toggleCategoryPlacement(category, 'Core Items', '1055')).toBe(category)
   })
 })

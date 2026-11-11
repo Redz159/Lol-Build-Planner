@@ -1,4 +1,4 @@
-import type { Category, ExampleBuild, ItemSet, Loadout } from '../types/build'
+import type { Category, CategoryIcon, ExampleBuild, ItemSet, Loadout } from '../types/build'
 import type { RunePage } from '../types/runes'
 import { itemSlotNoteKey, type BuildItems, type ItemExclusionPair, type ItemPlacement, type ItemRequirementPair, type ItemSituationalFlags, type ItemSlot, type ItemSlotNotes } from '../types/items'
 import { newId } from './id'
@@ -68,10 +68,41 @@ export function deleteCategory(categories: Category[], id: string): Category[] {
   return categories.filter((c) => c.id !== id)
 }
 
-function cloneCategory(source: CategorySeed, label: string): Category {
+// `undefined` removes the icon.
+export function setCategoryIcon(categories: Category[], id: string, icon: CategoryIcon | undefined): Category[] {
+  return categories.map((c) => {
+    if (c.id !== id) return c
+    const { icon: _old, ...rest } = c
+    return icon ? { ...rest, icon } : rest
+  })
+}
+
+// What the icon picker offers from the category itself: every item placed in it (slots in order,
+// then example builds) and every rune its pages pick (keystone, primary, then secondary runes).
+export function categoryIconChoices(category: Category): { itemIds: string[]; runeIds: number[] } {
+  const itemIds = new Set<string>()
+  for (const slot of category.itemSlots) {
+    for (const p of category.items[slot.id] ?? []) itemIds.add(p.itemId)
+  }
+  for (const example of category.exampleBuilds) {
+    for (const placements of Object.values(example.items)) {
+      for (const p of placements) itemIds.add(p.itemId)
+    }
+  }
+  const runeIds = new Set<number>()
+  for (const page of category.runePages) {
+    for (const id of [page.keystoneId, ...page.primaryRuneIds, ...page.variants.flatMap((v) => v.secondaryRuneIds)]) {
+      if (id) runeIds.add(id)
+    }
+  }
+  return { itemIds: [...itemIds], runeIds: [...runeIds] }
+}
+
+function cloneCategory(source: CategorySeed & { icon?: CategoryIcon }, label: string): Category {
   return {
     id: newId(),
     label,
+    ...(source.icon ? { icon: { ...source.icon } } : {}),
     runePages: cloneRunePages(source.runePages),
     ...cloneItemSet(source),
     ...skillsAndSpellsOf(source),
@@ -217,24 +248,4 @@ export function mergedCategoryItemSet(categories: Category[]): ItemSet {
 export function currentItemSet(loadout: Loadout, categoryId: string | null): ItemSet {
   if (categoryId === 'all') return mergedCategoryItemSet(loadout.categories)
   return (categoryId && loadout.categories.find((c) => c.id === categoryId)) || loadout
-}
-
-function slotWithLabel(category: Category, slotLabel: string): ItemSlot | undefined {
-  return category.itemSlots.find((s) => s.label.toLowerCase() === slotLabel.toLowerCase())
-}
-
-// The category tab's quick-add popup shows the merged "All" slots, so it matches by slot label.
-export function categoryHasPlacement(category: Category, slotLabel: string, itemId: string): boolean {
-  const slot = slotWithLabel(category, slotLabel)
-  return !!slot && (category.items[slot.id] ?? []).some((p) => p.itemId === itemId)
-}
-
-// A category without a slot of that label is left unchanged.
-export function toggleCategoryPlacement(category: Category, slotLabel: string, itemId: string): Category {
-  const slot = slotWithLabel(category, slotLabel)
-  if (!slot) return category
-  const current = category.items[slot.id] ?? []
-  const exists = current.some((p) => p.itemId === itemId)
-  const next = exists ? current.filter((p) => p.itemId !== itemId) : [...current, { id: newId(), itemId }]
-  return { ...category, items: { ...category.items, [slot.id]: next } }
 }

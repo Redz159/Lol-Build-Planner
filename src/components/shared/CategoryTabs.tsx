@@ -1,19 +1,10 @@
 import { useState, type CSSProperties } from 'react'
-import type { DDragonItem } from '../../types/ddragon'
-import type { Category } from '../../types/build'
-import type { ItemNoteGlobalFlags, ItemNotes, ItemSlot, ItemSlotNotes } from '../../types/items'
-import { categoryHasPlacement, mergedCategoryItemSet } from '../../lib/categories'
-import { BuildSlotsPanel } from '../items/BuildSlotsPanel'
+import type { Category, CategoryIcon } from '../../types/build'
 import { useConfirm } from './useConfirm'
+import { CategoryIconImage, CategoryIconPicker } from './CategoryIconPicker'
 
 interface Props {
   categories: Category[]
-  // The merged "All" slots (visible ones only) — what the quick-add popup lays items out by.
-  slots: ItemSlot[]
-  items: DDragonItem[]
-  itemNotes: ItemNotes
-  itemSlotNotes: ItemSlotNotes
-  itemNoteGlobal: ItemNoteGlobalFlags
   mode: 'view' | 'edit'
   activeId: string | null
   onSelect: (id: string) => void
@@ -22,36 +13,32 @@ interface Props {
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
   onCopyOut?: (id: string) => void
-  onToggleCategoryItem: (categoryId: string, slotLabel: string, itemId: string) => void
+  onSetIcon: (id: string, icon: CategoryIcon | undefined) => void
 }
 
-const QUICK_ADD_BUTTON_WIDTH = 18
-
-function tabStyle(active: boolean, hovered = false, reserveQuickAdd = false): CSSProperties {
+function tabStyle(active: boolean): CSSProperties {
   return {
-    padding: reserveQuickAdd ? `4px ${QUICK_ADD_BUTTON_WIDTH + 12}px 4px 10px` : '4px 10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 36,
+    padding: '5px 14px',
     borderRadius: 8,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 600,
     border: `1px solid ${active ? 'var(--gold)' : 'var(--border-strong)'}`,
     background: active ? 'rgba(200, 170, 110, 0.18)' : 'var(--bg-panel-raised)',
     color: active ? 'var(--gold-bright)' : 'var(--text-dim)',
     boxShadow: 'none',
-    filter: hovered ? 'brightness(0.85)' : undefined,
   }
 }
 
-const iconBtnStyle: CSSProperties = { padding: '2px 6px', fontSize: 11 }
+const actionBtnStyle: CSSProperties = { padding: '5px 12px', fontSize: 13 }
 
 // Sits above the Runes/Items tabs, one level up from both — a category bundles its own rune
 // pages and its own item set, so switching category swaps what both of those tabs show.
 export function CategoryTabs({
   categories,
-  slots,
-  items,
-  itemNotes,
-  itemSlotNotes,
-  itemNoteGlobal,
   mode,
   activeId,
   onSelect,
@@ -60,18 +47,16 @@ export function CategoryTabs({
   onDelete,
   onDuplicate,
   onCopyOut,
-  onToggleCategoryItem,
+  onSetIcon,
 }: Props) {
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [iconPickerId, setIconPickerId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
   const [addingNew, setAddingNew] = useState(false)
   const [newLabelDraft, setNewLabelDraft] = useState('')
-  const [quickAddCategoryId, setQuickAddCategoryId] = useState<string | null>(null)
   const { confirm, dialog: confirmDialog } = useConfirm()
 
-  // Category CRUD (rename/duplicate/delete/add, and the cross-category quick-add) is edit-mode
-  // only, matching how slot rename/delete works — view mode only ever switches between tabs.
+  // Category CRUD (rename/duplicate/delete/add/icon) is edit-mode only, matching how slot rename/delete works — view mode only ever switches between tabs.
   const editable = mode === 'edit'
   if (!editable && categories.length === 0) return null
 
@@ -91,103 +76,47 @@ export function CategoryTabs({
     setNewLabelDraft('')
   }
 
-  const quickAddCategory = quickAddCategoryId ? categories.find((c) => c.id === quickAddCategoryId) : undefined
+  const iconPickerCategory = iconPickerId ? categories.find((c) => c.id === iconPickerId) : undefined
+  const selected = editable ? categories.find((c) => c.id === activeId) : undefined
 
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+    <div className="panel" style={{ marginBottom: 14, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>Categories</div>
+        {editable && (
+          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            Split this build into variants, e.g. vs AD / vs AP. Each category has its own runes, items and skills.
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {categories.length > 1 && (
           <button type="button" onClick={() => onSelect('all')} style={tabStyle(activeId === 'all')}>
             All
           </button>
         )}
-        {categories.map((category) => {
-          const active = activeId === category.id
-          const editing = editable && editingId === category.id
-          return (
-            <div key={category.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {editing ? (
-                <input
-                  type="text"
-                  autoFocus
-                  value={renameDraft}
-                  onChange={(e) => setRenameDraft(e.target.value)}
-                  onBlur={commitRename}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitRename()
-                    else if (e.key === 'Escape') setEditingId(null)
-                  }}
-                  style={{ fontSize: 12, fontWeight: 600, padding: '4px 8px', width: 120 }}
-                />
-              ) : (
-                <div
-                  style={{ position: 'relative' }}
-                  onMouseEnter={() => setHoveredId(category.id)}
-                  onMouseLeave={() => setHoveredId((prev) => (prev === category.id ? null : prev))}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSelect(category.id)}
-                    style={tabStyle(active, hoveredId === category.id, editable && hoveredId === category.id)}
-                  >
-                    {category.label}
-                  </button>
-                  {editable && hoveredId === category.id && (
-                    <button
-                      type="button"
-                      title={`Toggle which items are in ${category.label}`}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setQuickAddCategoryId(category.id)
-                      }}
-                      style={{
-                        position: 'absolute',
-                        right: 1,
-                        top: 1,
-                        bottom: 1,
-                        width: QUICK_ADD_BUTTON_WIDTH,
-                        padding: 0,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        borderRadius: 6,
-                        border: 'none',
-                        background: 'var(--gold)',
-                        color: 'var(--bg-panel)',
-                      }}
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              )}
-              {editable && active && !editing && (
-                <>
-                  <button type="button" title="Rename category" onClick={() => startRename(category)} style={iconBtnStyle}>
-                    ✎
-                  </button>
-                  <button type="button" title="Duplicate category" onClick={() => onDuplicate(category.id)} style={iconBtnStyle}>
-                    ⧉
-                  </button>
-                  {onCopyOut && (
-                    <button type="button" title="Copy to another role-variant" onClick={() => onCopyOut(category.id)} style={iconBtnStyle}>
-                      ⇒
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    title="Delete category"
-                    onClick={async () => {
-                      if (await confirm(`Delete category "${category.label}"? This can't be undone.`)) onDelete(category.id)
-                    }}
-                    style={{ ...iconBtnStyle, color: 'var(--danger)' }}
-                  >
-                    ×
-                  </button>
-                </>
-              )}
-            </div>
-          )
-        })}
+        {categories.map((category) =>
+          editable && editingId === category.id ? (
+            <input
+              key={category.id}
+              type="text"
+              autoFocus
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename()
+                else if (e.key === 'Escape') setEditingId(null)
+              }}
+              style={{ fontSize: 14, fontWeight: 600, padding: '6px 10px', width: 160 }}
+            />
+          ) : (
+            <button key={category.id} type="button" onClick={() => onSelect(category.id)} style={tabStyle(activeId === category.id)}>
+              <CategoryIconImage icon={category.icon} size={24} />
+              {category.label}
+            </button>
+          ),
+        )}
         {editable &&
           (addingNew ? (
             <input
@@ -201,118 +130,66 @@ export function CategoryTabs({
                 if (e.key === 'Enter') commitAdd()
                 else if (e.key === 'Escape') setAddingNew(false)
               }}
-              style={{ fontSize: 12, padding: '4px 8px', width: 120 }}
+              style={{ fontSize: 14, padding: '6px 10px', width: 160 }}
             />
           ) : (
-            <button type="button" onClick={() => setAddingNew(true)} style={{ padding: '4px 10px', fontSize: 12 }}>
-              + Add category
+            <button
+              type="button"
+              onClick={() => setAddingNew(true)}
+              style={{ minHeight: 36, padding: '5px 14px', fontSize: 14, fontWeight: 600, color: 'var(--gold-bright)', borderStyle: 'dashed', borderColor: 'var(--gold)' }}
+            >
+              + New category
             </button>
           ))}
       </div>
-      {editable && quickAddCategory && (
-        <CategoryQuickAddPopup
-          category={quickAddCategory}
-          categories={categories}
-          slots={slots}
-          items={items}
-          itemNotes={itemNotes}
-          itemSlotNotes={itemSlotNotes}
-          itemNoteGlobal={itemNoteGlobal}
-          onToggle={(slotLabel, itemId) => onToggleCategoryItem(quickAddCategory.id, slotLabel, itemId)}
-          onClose={() => setQuickAddCategoryId(null)}
+      {selected && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginTop: 12,
+            paddingTop: 12,
+            borderTop: '1px solid var(--border)',
+          }}
+        >
+          <span style={{ fontSize: 13, color: 'var(--text-dim)', marginRight: 4 }}>
+            Selected: <strong style={{ color: 'var(--text)' }}>{selected.label}</strong>
+          </span>
+          <button type="button" onClick={() => setIconPickerId(selected.id)} style={actionBtnStyle}>
+            {selected.icon ? 'Change icon' : '+ Icon'}
+          </button>
+          <button type="button" onClick={() => startRename(selected)} style={actionBtnStyle}>
+            Rename
+          </button>
+          <button type="button" onClick={() => onDuplicate(selected.id)} style={actionBtnStyle}>
+            Duplicate
+          </button>
+          {onCopyOut && (
+            <button type="button" onClick={() => onCopyOut(selected.id)} style={actionBtnStyle} title="Copy to another role-variant">
+              Copy to…
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={async () => {
+              if (await confirm(`Delete category "${selected.label}"? This can't be undone.`)) onDelete(selected.id)
+            }}
+            style={{ ...actionBtnStyle, color: 'var(--danger)' }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+      {editable && iconPickerCategory && (
+        <CategoryIconPicker
+          category={iconPickerCategory}
+          onPick={(icon) => onSetIcon(iconPickerCategory.id, icon)}
+          onClose={() => setIconPickerId(null)}
         />
       )}
       {confirmDialog}
-    </div>
-  )
-}
-
-// The same slot/item layout as the "All" tab, except every item that's already in *this*
-// category (in that slot) is rung gold, and clicking any item toggles its membership instead of
-// switching a build-path preview. Notes are shared by item id; situational flags are every
-// category's merged, the same as on "All".
-function CategoryQuickAddPopup({
-  category,
-  categories,
-  slots,
-  items,
-  itemNotes,
-  itemSlotNotes,
-  itemNoteGlobal,
-  onToggle,
-  onClose,
-}: {
-  category: Category
-  categories: Category[]
-  slots: ItemSlot[]
-  items: DDragonItem[]
-  itemNotes: ItemNotes
-  itemSlotNotes: ItemSlotNotes
-  itemNoteGlobal: ItemNoteGlobalFlags
-  onToggle: (slotLabel: string, itemId: string) => void
-  onClose: () => void
-}) {
-  const merged = mergedCategoryItemSet(categories)
-  const mergedItems = merged.items
-  // Categories can have different slots, so membership is matched by slot label.
-  const selectedPlacementIds = new Set(
-    slots.flatMap((slot) =>
-      (mergedItems[slot.id] ?? []).filter((p) => categoryHasPlacement(category, slot.label, p.itemId)).map((p) => p.id),
-    ),
-  )
-
-  return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(5, 7, 11, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-    >
-      <div
-        className="panel"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 18, width: 1100, maxWidth: '92vw', maxHeight: '80vh', overflowY: 'auto' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
-          <div style={{ fontWeight: 600 }}>Add items to {category.label}</div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', padding: '4px 9px' }}>
-            ✕
-          </button>
-        </div>
-        <div style={{ color: 'var(--text-dim)', fontSize: 12, marginBottom: 10 }}>
-          Every item placed in any category. Highlighted ones are already in {category.label} — click to add or remove.
-        </div>
-        <BuildSlotsPanel
-          items={items}
-          buildItems={mergedItems}
-          itemNotes={itemNotes}
-          itemSlotNotes={itemSlotNotes}
-          itemNoteGlobal={itemNoteGlobal}
-          itemSituational={merged.itemSituational}
-          slots={slots}
-          mode="view"
-          activeSlotId={null}
-          onSetActiveSlot={() => {}}
-          preview={{}}
-          onTogglePreview={() => {}}
-          onRemovePlacement={() => {}}
-          onOpenPopup={() => {}}
-          onDragStartPlacement={() => {}}
-          onDropOnSlot={() => {}}
-          onDropOnPlacement={() => {}}
-          onAddSlot={() => {}}
-          onRenameSlot={() => {}}
-          onDeleteSlot={() => {}}
-          onToggleMultiSelect={() => {}}
-          excludedPlacementIds={new Set()}
-          hoverOutlines={new Map()}
-          onHoverPlacement={() => {}}
-          selectedPlacementIds={selectedPlacementIds}
-          onToggleSelection={(slotId, placementId) => {
-            const placement = mergedItems[slotId]?.find((p) => p.id === placementId)
-            const slot = slots.find((s) => s.id === slotId)
-            if (placement && slot) onToggle(slot.label, placement.itemId)
-          }}
-        />
-      </div>
     </div>
   )
 }

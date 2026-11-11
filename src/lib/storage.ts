@@ -1,5 +1,5 @@
 import { EMPTY_COLLECTION, type Collection } from '../types/collection'
-import type { Build, Category, ExampleBuild, Loadout, Role, SkillOrder, SummonerSpellSet } from '../types/build'
+import type { Build, Category, CategoryIcon, ExampleBuild, Loadout, Role, SkillOrder, SummonerSpellSet } from '../types/build'
 import type { RunePage, RuneVariant } from '../types/runes'
 import {
   normalizeBuildItems,
@@ -133,6 +133,17 @@ function normalizeExampleBuilds(value: unknown, slots: ItemSlot[]): ExampleBuild
 // saved while excludes/requirements/situational were loadout-wide get a copy of the loadout's.
 type ItemRelations = Pick<Category, 'itemExclusions' | 'itemRequirements' | 'itemSituational'>
 
+export function normalizeCategoryIcon(value: unknown): CategoryIcon | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const raw = value as Record<string, unknown>
+  if (raw.kind === 'item' && typeof raw.itemId === 'string') return { kind: 'item', itemId: raw.itemId }
+  if (raw.kind === 'rune' && typeof raw.runeId === 'number') return { kind: 'rune', runeId: raw.runeId }
+  if (raw.kind === 'image' && typeof raw.dataUrl === 'string' && raw.dataUrl.startsWith('data:image/')) {
+    return { kind: 'image', dataUrl: raw.dataUrl }
+  }
+  return undefined
+}
+
 function normalizeCategories(
   value: unknown,
   fallbackSlots: ItemSlot[],
@@ -147,9 +158,11 @@ function normalizeCategories(
     const label = (raw as Record<string, unknown>).label
     if (typeof id !== 'string' || typeof label !== 'string') continue
     const slots = 'itemSlots' in raw ? normalizeItemSlots((raw as Record<string, unknown>).itemSlots) : fallbackSlots.map((s) => ({ ...s }))
+    const icon = normalizeCategoryIcon((raw as Record<string, unknown>).icon)
     result.push({
       id,
       label,
+      ...(icon ? { icon } : {}),
       runePages: normalizeRunePages((raw as Record<string, unknown>).runePages),
       itemSlots: slots,
       items: normalizeBuildItems((raw as Record<string, unknown>).items, slots),

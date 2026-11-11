@@ -23,11 +23,10 @@ import {
   deleteCategory,
   currentItemSet,
   duplicateCategory,
-  mergedCategoryItemSet,
   mergedCategoryRunePages,
   renameCategory,
+  setCategoryIcon,
   skillsAndSpellsOf,
-  toggleCategoryPlacement,
   type SkillsAndSpells,
 } from '../lib/categories'
 import { cloneRunePages } from '../lib/runeRules'
@@ -36,7 +35,7 @@ import { BuildHeader } from '../components/build/BuildHeader'
 import { CopyToPicker } from '../components/shared/CopyToPicker'
 import { useConfirm } from '../components/shared/useConfirm'
 import type { RunePage } from '../types/runes'
-import type { Build, Category, Loadout, Role } from '../types/build'
+import type { Build, Category, CategoryIcon, Loadout, Role } from '../types/build'
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -161,6 +160,10 @@ export function BuildDetailPage() {
     saveLoadout({ categories: renameCategory(activeLoadout.categories, id, label) })
   }
 
+  const setCategoryIconHandler = (id: string, icon: CategoryIcon | undefined) => {
+    saveLoadout({ categories: setCategoryIcon(activeLoadout.categories, id, icon) })
+  }
+
   const deleteCategoryHandler = (id: string) => {
     saveLoadout({ categories: deleteCategory(activeLoadout.categories, id) })
   }
@@ -190,14 +193,6 @@ export function BuildDetailPage() {
         }
         return { ...l, runePages: [...l.runePages, ...cloned] }
       }),
-    })
-  }
-
-  // The category tab row's own quick-add popup only ever copies existing item placements between
-  // categories — see CategoryTabs for why runes aren't part of that shortcut.
-  const toggleCategoryItemHandler = (categoryId: string, slotLabel: string, itemId: string) => {
-    saveLoadout({
-      categories: activeLoadout.categories.map((c) => (c.id === categoryId ? toggleCategoryPlacement(c, slotLabel, itemId) : c)),
     })
   }
 
@@ -319,11 +314,6 @@ export function BuildDetailPage() {
 
       <CategoryTabs
         categories={activeLoadout.categories}
-        slots={visibleItemSlots(mergedCategoryItemSet(activeLoadout.categories).itemSlots, activeLoadout.roles)}
-        items={items}
-        itemNotes={activeLoadout.itemNotes}
-        itemSlotNotes={activeLoadout.itemSlotNotes}
-        itemNoteGlobal={activeLoadout.itemNoteGlobal}
         mode={mode}
         activeId={effectiveCategoryId}
         onSelect={setSelectedCategoryId}
@@ -332,7 +322,7 @@ export function BuildDetailPage() {
         onDelete={deleteCategoryHandler}
         onDuplicate={duplicateCategoryHandler}
         onCopyOut={build.loadouts.length > 1 ? setCategoryCopySourceId : undefined}
-        onToggleCategoryItem={toggleCategoryItemHandler}
+        onSetIcon={setCategoryIconHandler}
       />
       {categoryCopySourceId && (
         <CopyToPicker
