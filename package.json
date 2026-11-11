@@ -8,10 +8,16 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "gen:champions": "node scripts/gen-champion-data.mjs",
+    "gen:champions": "node scripts/gen-champion-data.mjs && node scripts/gen-ability-index.mjs",
+    "gen:abilities": "node scripts/gen-ability-index.mjs",
     "test": "vitest run"
   },
   "dependencies": {
+    "@tiptap/core": "3.32.0",
+    "@tiptap/pm": "3.32.0",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
+    "@tiptap/suggestion": "3.32.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.3"

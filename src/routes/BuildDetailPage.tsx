@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCollection } from '../state/CollectionContext'
 import { useGameData } from '../state/GameDataContext'
@@ -36,6 +36,9 @@ import { CopyToPicker } from '../components/shared/CopyToPicker'
 import { useConfirm } from '../components/shared/useConfirm'
 import type { RunePage } from '../types/runes'
 import type { Build, Category, CategoryIcon, Loadout, Role } from '../types/build'
+
+// Lazy so the rich-text editor library only loads when the Guide tab is opened.
+const GuideTab = lazy(() => import('../components/guide/GuideTab'))
 
 export function BuildDetailPage() {
   const { buildId } = useParams<{ buildId: string }>()
@@ -432,6 +435,15 @@ export function BuildDetailPage() {
                   </div>
                 )}
               </>
+            ),
+          },
+          {
+            key: 'guide',
+            label: 'Guide',
+            content: (
+              <Suspense fallback={<div style={{ color: 'var(--text-dim)' }}>Loading editor...</div>}>
+                <GuideTab guide={build.guide ?? ''} mode={mode} onChange={(guide) => save({ guide: guide || undefined })} />
+              </Suspense>
             ),
           },
           {

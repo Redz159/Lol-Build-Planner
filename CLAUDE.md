@@ -74,7 +74,7 @@ Never add `Co-Authored-By: Claude ...`, `Claude-Session: ...`, "Generated with C
 
 **Data sources:**
 - Data Dragon (champions, items, runes, summoner spells), pinned to `DDRAGON_VERSION` in `src/data/ddragonVersion.ts`, fetched and cached in localStorage by `src/lib/ddragon.ts`.
-- Simulator champion data (base stats, spell formulas, tooltips) from CommunityDragon, pre-generated into `public/data/champions/*.json` by `npm run gen:champions`. Re-run it after changing `DDRAGON_VERSION`.
+- Simulator champion data (base stats, spell formulas, tooltips) from CommunityDragon, pre-generated into `public/data/champions/*.json` by `npm run gen:champions`. Re-run it after changing `DDRAGON_VERSION`. It also rebuilds `public/data/abilities.json` (every champion's passive + Q/W/E/R name and icon, for the Guide tab's `:` icon search; `npm run gen:abilities` alone).
 - Hand-maintained game knowledge: `src/data/itemGroups.ts`, `src/lib/itemExclusions.ts`, `src/lib/itemRequirements.ts`, `src/lib/runeEffects.ts`, `src/data/statShards.ts`.
 - Riot API (match import, `src/lib/riot/*`) only works under `npm run dev`, through the proxy in `vite.config.ts`, with `RIOT_API_KEY` set in `.env.local`.
 
