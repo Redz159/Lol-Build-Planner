@@ -96,4 +96,38 @@ Never add `Co-Authored-By: Claude ...`, `Claude-Session: ...`, "Generated with C
 
 **Game knowledge:** don't infer item groups, mode-exclusive items (ARAM etc.) or unique-item exclusivity from Data Dragon `tags` or descriptions. These guesses have been wrong before. Ask the user, or have them confirm a source.
 
-**Workflow:** simulator work happens on the `simulator` branch. Don't commit it to `main`; the user merges.
+## 7. Git Workflow: Branches, Commits, PRs
+
+Every feature, bugfix or other change gets its own branch. Nothing is committed directly to `main`, because every push to `main` deploys.
+
+**Branches:**
+- Start from an up-to-date `main` (`git switch main && git pull`). Do this before writing code, not just before committing.
+- Name the branch `<type>/<short-kebab-description>`, e.g. `feat/category-icons`, `fix/rune-shard-reset`, `refactor/item-slot-helpers`.
+- Types: `feat` (new behavior), `fix` (bug), `refactor` (no behavior change), `test`, `docs` (incl. CLAUDE.md, Notes), `chore` (deps, config, CI, data regeneration such as `gen:champions`).
+- One branch = one topic. If unrelated work comes up, finish or park the current branch and start another.
+- Simulator work: branch off `simulator` (e.g. `feat/sim-crit-damage`) and open the PR against `simulator`, not `main`. Only the user merges `simulator` into `main`.
+
+**Commits:**
+- Subject: imperative, capitalized, no trailing period, ≤ 72 chars, says what changes for the user (e.g. "Let each category have an icon"). No `feat:`-style prefix; the branch name carries the type.
+- Body (optional, after a blank line, wrapped at ~100): why, and anything non-obvious. Not a file list.
+- Several small commits on a branch are fine. Each should build and pass tests.
+- Run the three checks (section 6) before committing. Never commit unrelated files (e.g. untracked files in `Notes/`); `git add` paths explicitly.
+- No Claude attribution (section 5).
+
+**Pull requests:**
+- Push the branch (`git push -u origin <branch>`) and open a PR with `gh pr create` against `main` (or `simulator`, see above).
+- Title: same style as a commit subject. It becomes the squash commit on `main`.
+- Body:
+  ```
+  ## What
+  1–3 sentences on the change from the user's point of view.
+
+  ## Why
+  The problem or request it addresses.
+
+  ## Testing
+  - [x] npm run build / lint / test
+  - [x] Checked in the browser: <what was checked>   (or say why not)
+  ```
+- Wait for CI to pass (`gh pr checks`).
+- Merge only when the user says so, with `gh pr merge --squash --delete-branch`, then `git switch main && git pull`.
