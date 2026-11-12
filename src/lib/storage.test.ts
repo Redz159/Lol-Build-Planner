@@ -147,3 +147,16 @@ describe('migrateBuild boots slot', () => {
     ])
   })
 })
+
+describe('migrateBuild guide', () => {
+  const base = { id: 'b', champion: { id: 'Ahri', name: 'Ahri' }, title: 'Test', loadouts: [] }
+
+  it('keeps the guide text', () => {
+    expect(migrateBuild({ ...base, guide: '<p>Hi</p>' }).guide).toBe('<p>Hi</p>')
+  })
+
+  it('drops a blank or non-string guide', () => {
+    expect('guide' in migrateBuild({ ...base, guide: '  ' })).toBe(false)
+    expect('guide' in migrateBuild({ ...base, guide: 42 })).toBe(false)
+  })
+})

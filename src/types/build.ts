@@ -121,4 +121,7 @@ export interface Build {
   favorite: boolean
   createdAt: string
   updatedAt: string
+  // The Guide tab's text, as the editor's HTML. Inline icons are `span[data-game-icon]` elements.
+  // Only ever loaded through the editor's schema parser, never put into innerHTML.
+  guide?: string
 }

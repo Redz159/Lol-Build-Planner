@@ -341,6 +341,7 @@ export function migrateBuild(raw: any): Build {
     createdAt: raw.createdAt ?? new Date().toISOString(),
     updatedAt: raw.updatedAt ?? new Date().toISOString(),
     loadouts: loadouts.map(separateSharedCategorySlots),
+    ...(typeof raw.guide === 'string' && raw.guide.trim() !== '' ? { guide: raw.guide } : {}),
   }
 }
 

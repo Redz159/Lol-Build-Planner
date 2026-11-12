@@ -1,0 +1,118 @@
+.guide-editor .tiptap {
+  outline: none;
+  line-height: 1.6;
+}
+
+.guide-editor.editing .tiptap {
+  min-height: 320px;
+  padding: 12px 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.guide-editor.editing .tiptap:focus {
+  border-color: var(--border-strong);
+}
+
+.guide-editor .tiptap > :first-child {
+  margin-top: 0;
+}
+
+.guide-editor .tiptap p {
+  margin: 0 0 8px;
+}
+
+.guide-editor .tiptap h1,
+.guide-editor .tiptap h2,
+.guide-editor .tiptap h3 {
+  margin: 18px 0 8px;
+}
+
+.guide-editor .tiptap h1 {
+  font-size: 24px;
+}
+
+.guide-editor .tiptap h2 {
+  font-size: 20px;
+}
+
+.guide-editor .tiptap h3 {
+  font-size: 17px;
+}
+
+.guide-editor .tiptap ul,
+.guide-editor .tiptap ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.guide-editor .tiptap strong {
+  color: var(--text-heading);
+}
+
+/* The ":vol" query while the suggestion list is open. */
+.guide-editor .tiptap .suggestion {
+  color: var(--gold);
+}
+
+.guide-icon {
+  display: inline-block;
+  vertical-align: -5px;
+  margin: 0 1px;
+}
+
+.guide-icon img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  display: block;
+}
+
+.guide-icon.ProseMirror-selectednode img {
+  outline: 2px solid var(--accent);
+}
+
+.guide-icon-missing {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.guide-suggestions {
+  min-width: 260px;
+  max-width: 360px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  padding: 4px 0;
+}
+
+.guide-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.guide-suggestion.active {
+  background: var(--bg-panel-raised);
+}
+
+.guide-suggestion img {
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.guide-suggestion-subtitle {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
